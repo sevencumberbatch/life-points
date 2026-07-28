@@ -156,9 +156,24 @@
   .note{font-size:11px;color:var(--muted);margin-top:4px}
   .tag{font-size:10px;padding:1px 6px;border-radius:6px;background:#f0f1f3;color:var(--muted);margin-left:6px}
   .hidden{display:none}
+
+  /* 访问密码遮罩 */
+  #authGate{position:fixed;inset:0;z-index:9999;background:linear-gradient(135deg,#1a1d21,#2d3138);display:flex;align-items:center;justify-content:center}
+  #authGate.hidden{display:none}
+  .auth-card{background:#fff;border-radius:16px;padding:36px 32px;width:340px;max-width:90vw;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+  .auth-card h2{font-size:20px;margin-bottom:6px;color:var(--text)}
+  .auth-card p{font-size:13px;color:var(--muted);margin-bottom:20px}
+  .auth-card input{width:100%;padding:12px 14px;border:2px solid var(--border);border-radius:10px;font-size:15px;margin-bottom:12px;outline:none;transition:border-color .2s}
+  .auth-card input:focus{border-color:var(--study)}
+  .auth-card button{width:100%;padding:12px;border:none;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;transition:opacity .2s}
+  .auth-card button.primary{background:var(--study);color:#fff}
+  .auth-card button.primary:hover{opacity:.9}
+  .auth-card .auth-err{color:var(--neg);font-size:12px;min-height:18px;margin-top:4px}
+  .auth-card .auth-set-hint{font-size:11px;color:var(--muted);margin-top:12px;line-height:1.5}
 </style>
 </head>
 <body>
+<div id="authGate" class="hidden"></div>
 <div class="wrap">
   <div class="topbar"><div class="topbar-in">
     <div class="balance-box">
@@ -344,6 +359,8 @@ function renderBackup(){const el=document.getElementById('backupBar');if(!el)ret
   h+='<span style="display:flex;gap:6px;flex-wrap:wrap">';
   if(cbEnv&&cbKey){h+='<button onclick="forceSync()">立即同步</button>'}
   h+='<button onclick="configCloud()">'+(cbEnv?'同步设置':'配置云同步')+'</button></span>';
+  h+='<br><span>🔒 访问密码：<b style="color:var(--skill)">已设置</b> · 同一设备当天只需输一次</span>';
+  h+='<span style="display:flex;gap:6px;flex-wrap:wrap"><button onclick="changeAccessPass()">修改访问密码</button></span>';
   h+='<br><span>💾 备份：';if(dir){h+='已连接 <b>'+dir+'</b> · 自动写 life-points-backup.json · '}else{h+='<b>浏览器内自动备份</b>（建议连接文件夹加强） · '}h+='上次 '+lbStr;if(needsExportReminder())h+=' · <b style="color:var(--neg)">超7天未导出，建议备份</b>';
   h+='</span><span style="display:flex;gap:6px;flex-wrap:wrap">';h+='<button onclick="connectBackupDir()">'+(dir?'换目录':'连接文件夹')+'</button>';if(dir)h+='<button onclick="restoreFromFile()">从文件恢复</button>';h+='<button onclick="restoreFromIDB()">从浏览器恢复</button>';h+='</span>';el.innerHTML=h}
 async function initBackup(){await loadDirHandle();renderBackup();if(!localStorage.getItem(KEY)||Object.keys(DB.days||{}).length===0){const snap=await idbGet('snapshot');if(snap){if(confirm('检测到浏览器内自动备份，但当前无数据。是否恢复？')){DB=snap;save();render()}}}}
@@ -1042,13 +1059,68 @@ function resetConfirm(){
   save();render();
 }
 
+/* ============ 访问密码保护 ============ */
+const ACCESS_PASS_KEY='lpAccessPass';
+const ACCESS_AUTHED='lpAccessAuthed';
+function getAccessPass(){return localStorage.getItem(ACCESS_PASS_KEY)||''}
+function isAuthed(){return sessionStorage.getItem(ACCESS_AUTHED)==='1'}
+function hashStr(s){let h=0;for(let i=0;i<s.length;i++){h=((h<<5)-h+s.charCodeAt(i))| 0}return String(h)}
+function showAuthGate(){
+  const el=document.getElementById('authGate');
+  const hasPass=getAccessPass();
+  el.classList.remove('hidden');
+  el.innerHTML=`<div class="auth-card">
+    <h2>${hasPass?'🔒 请输入访问密码':'🔒 首次设置访问密码'}</h2>
+    <p>${hasPass?'输入密码后进入积分系统':'设置一个密码，以后每次打开需要输入'}</p>
+    <input type="password" id="authInput" placeholder="${hasPass?'访问密码':'设置访问密码'}" onkeydown="if(event.key==='Enter')doAuth()">
+    <div class="auth-err" id="authErr"></div>
+    <button class="primary" onclick="doAuth()">${hasPass?'进入':'设置并进入'}</button>
+    ${hasPass?'<div class="auth-set-hint">在备份状态条可修改访问密码</div>':''}
+  </div>`;
+  document.getElementById('authInput').focus();
+}
+function doAuth(){
+  const input=document.getElementById('authInput').value;
+  if(!input){document.getElementById('authErr').textContent='密码不能为空';return}
+  const stored=getAccessPass();
+  if(!stored){
+    // 首次设置
+    localStorage.setItem(ACCESS_PASS_KEY,hashStr(input));
+    sessionStorage.setItem(ACCESS_AUTHED,'1');
+    document.getElementById('authGate').classList.add('hidden');
+    render();initBackup();initCloud();
+    return;
+  }
+  if(hashStr(input)===stored){
+    sessionStorage.setItem(ACCESS_AUTHED,'1');
+    document.getElementById('authGate').classList.add('hidden');
+    render();initBackup();initCloud();
+  }else{
+    document.getElementById('authErr').textContent='密码错误';
+    document.getElementById('authInput').value='';
+    document.getElementById('authInput').focus();
+  }
+}
+function changeAccessPass(){
+  const oldPass=prompt('请输入当前访问密码：');
+  if(oldPass===null)return;
+  if(hashStr(oldPass)!==getAccessPass()){alert('当前密码错误');return}
+  const newPass=prompt('请输入新的访问密码：');
+  if(newPass===null)return;
+  if(!newPass.trim()){alert('密码不能为空');return}
+  localStorage.setItem(ACCESS_PASS_KEY,hashStr(newPass.trim()));
+  alert('访问密码已修改');
+}
+
 /* ============ 初始化 ============ */
 load();
 document.getElementById('datePick').value=curDate;
 document.getElementById('datePick').addEventListener('change',e=>{curDate=e.target.value;render()});
-render();
-initBackup();
-initCloud();
+if(isAuthed()){
+  render();initBackup();initCloud();
+}else{
+  showAuthGate();
+}
 </script>
 </body>
 </html>
