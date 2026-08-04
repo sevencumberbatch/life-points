@@ -258,6 +258,111 @@
   .history-filter-row select:focus,.history-filter-row input[type="date"]:focus,.history-filter-row input[type="text"]:focus{outline:none;border-color:var(--study)}
   .history-filter-row .search-input{flex:1;min-width:140px}
   .history-filter-row .date-sep{font-size:12px;color:var(--muted)}
+
+  /* ============ 响应式适配 ============ */
+  /* 平板及以下 */
+  @media(max-width:768px){
+    .wrap{padding:12px 12px 70px}
+    .topbar{padding:8px 0;margin:0 -12px 12px}
+    .topbar-in{padding:0 12px;gap:10px}
+    .balance-box{padding:8px 14px;min-width:120px}
+    .balance-box .val{font-size:22px}
+    .day-pts{gap:8px;min-width:160px}
+    .day-pts .chip{padding:5px 10px;font-size:12px}
+    .day-pts .chip b{font-size:16px}
+    .section{padding:12px 14px}
+    .section h2{font-size:14px}
+    .grid2{grid-template-columns:1fr}
+    .shop-grid{grid-template-columns:1fr}
+    .stat-grid{grid-template-columns:repeat(2,1fr)}
+  }
+  /* 手机 */
+  @media(max-width:480px){
+    .wrap{padding:10px 10px 60px}
+    .topbar{padding:6px 0;margin:0 -10px 10px}
+    .topbar-in{padding:0 10px;flex-direction:column;align-items:stretch;gap:8px}
+    .balance-box{text-align:center;min-width:auto;padding:8px 12px}
+    .balance-box .val{font-size:20px}
+    .day-pts{flex-direction:row;min-width:auto;width:100%;gap:6px}
+    .day-pts .chip{flex:1;text-align:center;padding:5px 6px;font-size:11px}
+    .day-pts .chip b{font-size:15px}
+    .date-nav{justify-content:center}
+    .date-nav input[type=date]{flex:1;max-width:160px}
+    .backup-bar{flex-direction:column;align-items:stretch;gap:6px;font-size:11px}
+    .backup-bar button{font-size:11px;padding:4px 8px;text-align:center}
+    .cap-bar{padding:8px 10px}
+    .cap-bar .row{font-size:11px}
+    .section{padding:10px 12px;margin-bottom:10px;border-radius:10px}
+    .section h2{font-size:13px}
+    .section .sub{font-size:11px}
+    .task{padding:7px 6px;gap:8px}
+    .task .tname{font-size:13px}
+    .task .tstd{font-size:10px}
+    .task .tpts{font-size:12px;min-width:40px}
+    .task .box{width:20px;height:20px}
+    .counter{padding:7px 6px;gap:8px}
+    .counter .tname{font-size:13px}
+    .counter button{width:26px;height:26px;font-size:15px}
+    .counter .tpts{font-size:12px;min-width:40px}
+    .combo{padding:6px 10px;font-size:11px}
+    .zone{padding:8px 10px}
+    .zone-head .zn{font-size:13px}
+    .zone-tasks{gap:10px}
+    .zone-tasks .task{padding:3px 6px}
+    .weekly-bonus{padding:8px 10px;font-size:12px}
+    .weight-box{gap:8px}
+    .weight-box input{width:100px;font-size:13px;padding:6px 8px}
+    .weight-box button{padding:7px 12px;font-size:12px}
+    .shop-tabs{gap:4px}
+    .shop-tab{padding:4px 8px;font-size:12px}
+    .shop-item{padding:8px 10px}
+    .shop-item .nm{font-size:12px}
+    .shop-item .cost{font-size:12px}
+    .shop-item button{padding:4px 8px;font-size:11px}
+    .stat-grid{grid-template-columns:repeat(2,1fr);gap:8px}
+    .stat-card{padding:8px 10px}
+    .stat-card .v{font-size:18px}
+    .stat-card .l{font-size:10px}
+    .log-list{max-height:200px}
+    .log-row{padding:5px 10px;font-size:11px}
+    #detailBody{max-height:360px}
+    .detail-day-hd{padding:6px 10px;font-size:12px}
+    .detail-row{padding:4px 10px;font-size:11px}
+    .footer-acts{gap:6px}
+    .footer-acts button{padding:7px 10px;font-size:12px}
+    .page-nav{gap:6px}
+    .page-tab{padding:8px 12px;font-size:13px}
+    .todo-input-row input{padding:7px 10px;font-size:13px}
+    .todo-input-row button{padding:7px 12px;font-size:12px}
+    .todo-item{padding:6px 8px;gap:8px}
+    .todo-item .todo-text{font-size:13px}
+    .todo-item .box{width:18px;height:18px}
+    .todo-item .del-btn{opacity:.4;font-size:16px}
+    .todo-nav{flex-wrap:wrap;gap:4px}
+    .todo-nav .nav-label{min-width:auto;font-size:12px}
+    .todo-nav button{padding:4px 8px;font-size:12px}
+    .todo-nav input[type="date"],.todo-nav input[type="month"]{font-size:12px;padding:4px 6px}
+    .history-filter-row{gap:6px}
+    .history-filter-row select,.history-filter-row input[type="date"],.history-filter-row input[type="text"]{
+      font-size:12px;padding:5px 8px}
+    .history-filter-row .search-input{min-width:100px}
+    .todo-history-row{padding:5px 10px;font-size:11px;gap:6px}
+    .todo-history-row .h-date{min-width:70px;font-size:10px}
+    .auth-card{padding:24px 20px;width:300px}
+    .auth-card h2{font-size:18px}
+    .auth-card input{padding:10px 12px;font-size:14px}
+    .auth-card button{padding:10px;font-size:14px}
+  }
+  /* 超小屏（老旧手机） */
+  @media(max-width:360px){
+    .wrap{padding:8px 8px 50px}
+    .day-pts .chip{padding:4px 4px;font-size:10px}
+    .day-pts .chip b{font-size:14px}
+    .balance-box .val{font-size:18px}
+    .section{padding:8px 10px}
+    .task .tname{font-size:12px}
+    .task .tpts{font-size:11px;min-width:36px}
+  }
 </style>
 </head>
 <body>
@@ -269,8 +374,8 @@
       <div class="val"><span id="balVal">0</span><span class="u">G</span></div>
     </div>
     <div class="day-pts">
-      <div class="chip" id="chipRaw"><span>今日原始</span><b id="rawVal">0</b></div>
-      <div class="chip pos" id="chipDay"><span>今日到账</span><b id="dayVal">0</b></div>
+      <div class="chip" id="chipRaw"><span id="rawLbl">今日原始</span><b id="rawVal">0</b></div>
+      <div class="chip pos" id="chipDay"><span id="dayLbl">今日到账</span><b id="dayVal">0</b></div>
       <div class="chip" id="chipWeek"><span>本周周任务</span><b id="weekVal">0</b></div>
     </div>
     <div class="date-nav">
@@ -1000,6 +1105,10 @@ function renderTop(){
   const dn=Math.round(net*10)/10;
   document.getElementById('dayVal').textContent=(net>=0?'+':'')+dn;
   document.getElementById('chipDay').className='chip '+(net>=0?'pos':'neg');
+  // 动态标签：看今天显示"今日"，看其他天显示"当日"
+  const isToday=curDate===todayKey();
+  document.getElementById('rawLbl').textContent=isToday?'今日原始':'当日原始';
+  document.getElementById('dayLbl').textContent=isToday?'今日到账':'当日到账';
   document.getElementById('weekVal').textContent=Math.round(weekZonePts(curDate)*10)/10;
   // 软上限条
   const fillPct=Math.min(raw/50*50,100);
