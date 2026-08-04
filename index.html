@@ -538,17 +538,25 @@ async function idbGet(k){try{const db=await idbOpen();return new Promise((res,re
 async function scheduleBackup(){if(_backing)return;_backing=true;try{
   await idbSet('snapshot',DB);
   localStorage.setItem('lpLastBackup',new Date().toISOString());
-  if(_dirHandle){const fh=await _dirHandle.getFileHandle('life-points-backup.json',{create:true});const w=await fh.createWritable();await w.write(JSON.stringify(DB,null,2));await w.close()}
+  if(_dirHandle){const d=new Date();const fn='backup-'+d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')+'-'+String(d.getHours()).padStart(2,'0')+String(d.getMinutes()).padStart(2,'0')+'.json';const fh=await _dirHandle.getFileHandle(fn,{create:true});const w=await fh.createWritable();await w.write(JSON.stringify(DB,null,2));await w.close();await cleanOldBackups()}
 }catch(e){}finally{_backing=false;renderBackup()}}
 async function connectBackupDir(){if(!window.showDirectoryPicker){alert('当前浏览器不支持文件备份目录（需 Chrome/Edge 87+）');return}try{
   const h=await showDirectoryPicker({mode:'readwrite'});_dirHandle=h;await idbSet('dirHandle',h);await scheduleBackup();
-  alert('已连接备份目录：'+h.name+'\n之后每次改动自动写入 life-points-backup.json');
+  alert('已连接备份目录：'+h.name+'\n之后每次改动自动创建带时间的备份文件（如 backup-2026-08-04-1711.json）\n同一天多次修改会保留多个版本，历史备份保留30天');
 }catch(e){if(e.name!=='AbortError')alert('连接失败：'+e.message)}}
+async function cleanOldBackups(){if(!_dirHandle)return;try{const cutoff=Date.now()-30*86400000;for await(const entry of _dirHandle.values()){const m=entry.name.match(/^backup-(\d{4})-(\d{2})-(\d{2})-(\d{2})(\d{2})\.json$/);if(m){const ft=new Date(m[1],m[2]-1,m[3],m[4],m[5]).getTime();if(ft<cutoff){try{await _dirHandle.removeEntry(entry.name)}catch(e){}}}}}catch(e){}}
 async function restoreFromFile(){if(!_dirHandle){alert('请先连接备份目录');return}try{
-  const fh=await _dirHandle.getFileHandle('life-points-backup.json');const f=await fh.getFile();const obj=JSON.parse(await f.text());
-  if(!confirm('确认用备份文件覆盖当前数据？'))return;DB=obj;save();render();alert('已从备份文件恢复');
+  const files=[];for await(const entry of _dirHandle.values()){if(entry.name.match(/^backup-\d{4}-\d{2}-\d{2}-\d{4}\.json$/))files.push(entry.name)}
+  if(!files.length){alert('备份目录中没有找到备份文件');return}
+  files.sort().reverse();
+  const list='请选择要恢复的备份（输入序号）：\n\n'+files.map((f,i)=>(i+1)+'. '+f).join('\n');
+  const choice=prompt(list);if(!choice)return;
+  const idx=parseInt(choice)-1;if(isNaN(idx)||idx<0||idx>=files.length){alert('选择无效');return}
+  const fh=await _dirHandle.getFileHandle(files[idx]);const f=await fh.getFile();const obj=JSON.parse(await f.text());
+  if(!confirm('确认用 '+files[idx]+' 覆盖当前数据？'))return;DB=obj;save();render();alert('已从 '+files[idx]+' 恢复');
 }catch(e){alert('恢复失败：'+e.message)}}
 async function restoreFromIDB(){const snap=await idbGet('snapshot');if(!snap){alert('浏览器内无备份');return}if(!confirm('用浏览器内备份覆盖当前数据？'))return;DB=snap;save();render();alert('已恢复')}
+function restoreFromCloudHistory(){if(!DB._history||!DB._history.length){alert('云端历史版本为空');return}var list=DB._history.map(function(h,i){var d=new Date(h.ts||0);var days=Object.keys((h.data||{}).days||{}).length;return(i+1)+'. '+d.toLocaleString('zh-CN')+' ('+days+'天数据)'}).join('\n');var choice=prompt('选择要恢复的云端历史版本（输入序号）：\n\n'+list);if(!choice)return;var idx=parseInt(choice)-1;if(isNaN(idx)||idx<0||idx>=DB._history.length){alert('选择无效');return}var snap=DB._history[idx];var dStr=new Date(snap.ts||0).toLocaleString('zh-CN');if(!confirm('确认恢复到 '+dStr+' 的版本？\n当前数据将被覆盖'))return;var hist=DB._history;DB=JSON.parse(JSON.stringify(snap.data));DB._history=hist;DB._updatedAt=Date.now();save();render();alert('已恢复到 '+dStr)}
 async function loadDirHandle(){const h=await idbGet('dirHandle');if(h){try{await h.requestPermission({mode:'readwrite'});_dirHandle=h}catch(e){}}}
 function lastBackupTime(){return localStorage.getItem('lpLastBackup')}
 function needsExportReminder(){const t=localStorage.getItem(BAK_LEXPORT)||lastBackupTime();if(!t)return false;return(Date.now()-new Date(t).getTime())/86400000>7}
@@ -562,13 +570,13 @@ function renderBackup(){const el=document.getElementById('backupBar');if(!el)ret
     h+='<span>☁️ 云同步：<b style="color:var(--muted)">未配置</b></span>';
   }
   h+='<span style="display:flex;gap:6px;flex-wrap:wrap">';
-  if(cbEnv&&cbKey){h+='<button onclick="forceSync()">立即同步</button>'}
+  if(cbEnv&&cbKey){h+='<button onclick="forceSync()">立即同步</button>';h+='<button onclick="restoreFromCloudHistory()">云端历史恢复('+(DB._history?DB._history.length:0)+')</button>'}
   h+='<button onclick="configCloud()">'+(cbEnv?'同步设置':'配置云同步')+'</button></span>';
   h+='<br><span>🔒 访问密码：<b style="color:var(--skill)">已设置</b> · 同一设备当天只需输一次</span>';
   h+='<span style="display:flex;gap:6px;flex-wrap:wrap"><button onclick="changeAccessPass()">修改访问密码</button></span>';
-  h+='<br><span>💾 备份：';if(dir){h+='已连接 <b>'+dir+'</b> · 自动写 life-points-backup.json · '}else{h+='<b>浏览器内自动备份</b>（建议连接文件夹加强） · '}h+='上次 '+lbStr;if(needsExportReminder())h+=' · <b style="color:var(--neg)">超7天未导出，建议备份</b>';
+  h+='<br><span>💾 备份：';if(dir){h+='已连接 <b>'+dir+'</b> · 每次改动留存版本（保留30天） · '}else{h+='<b>浏览器内自动备份</b>（建议连接文件夹加强） · '}h+='上次 '+lbStr;if(needsExportReminder())h+=' · <b style="color:var(--neg)">超7天未导出，建议备份</b>';
   h+='</span><span style="display:flex;gap:6px;flex-wrap:wrap">';h+='<button onclick="connectBackupDir()">'+(dir?'换目录':'连接文件夹')+'</button>';if(dir)h+='<button onclick="restoreFromFile()">从文件恢复</button>';h+='<button onclick="restoreFromIDB()">从浏览器恢复</button>';h+='</span>';el.innerHTML=h}
-async function initBackup(){await loadDirHandle();renderBackup();if(!localStorage.getItem(KEY)||Object.keys(DB.days||{}).length===0){const snap=await idbGet('snapshot');if(snap){if(confirm('检测到浏览器内自动备份，但当前无数据。是否恢复？')){DB=snap;save();render()}}}}
+async function initBackup(){await loadDirHandle();if(_dirHandle){await scheduleBackup()}renderBackup();if(!localStorage.getItem(KEY)||Object.keys(DB.days||{}).length===0){const snap=await idbGet('snapshot');if(snap){if(confirm('检测到浏览器内自动备份，但当前无数据。是否恢复？')){DB=snap;save();render()}}}}
 
 /* === 云端同步模块（Supabase）=== */
 const SB_SDK_URL='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
@@ -618,19 +626,44 @@ async function cloudSync(){
     const{data:rows,error}=await _sbApp.from('life_points').select('*').eq('sync_key',syncKey);
     if(error)throw error;
     const localTime=DB._updatedAt||0;
+    const localDayCount=Object.keys(DB.days||{}).length;
     if(rows&&rows.length>0){
       const cloud=rows[0];
       const cloudTime=new Date(cloud.updated_at).getTime()||0;
+      const cloudData=JSON.parse(JSON.stringify(cloud.data));
+      const cloudDayCount=Object.keys(cloudData.days||{}).length;
       if(cloudTime>localTime){
-        DB=JSON.parse(JSON.stringify(cloud.data));
-        if(!DB._updatedAt)DB._updatedAt=cloudTime;
-        localStorage.setItem(KEY,JSON.stringify(DB));
-        render();
+        // 保护：云端数据为空但本地有数据时，不覆盖（防止空数据冲掉本地）
+        if(cloudDayCount===0&&localDayCount>0){
+          console.warn('云同步跳过：云端数据为空，本地有'+localDayCount+'天数据，改为上传本地');
+          DB._updatedAt=Date.now();
+          const{error:upErr}=await _sbApp.from('life_points').update({data:DB,updated_at:new Date().toISOString()}).eq('sync_key',syncKey);
+          if(upErr)throw upErr;
+          localStorage.setItem(KEY,JSON.stringify(DB));
+        }else{
+          DB=cloudData;
+          if(!DB._updatedAt)DB._updatedAt=cloudTime;
+          localStorage.setItem(KEY,JSON.stringify(DB));
+          render();
+        }
       }else if(localTime>cloudTime){
-        DB._updatedAt=Date.now();
-        const{error:upErr}=await _sbApp.from('life_points').update({data:DB,updated_at:new Date().toISOString()}).eq('sync_key',syncKey);
-        if(upErr)throw upErr;
-        localStorage.setItem(KEY,JSON.stringify(DB));
+        // 保护：本地数据明显少于云端时，不覆盖云端（防止空数据冲掉云端历史）
+        if(localDayCount<cloudDayCount){
+          console.warn('云同步跳过：本地仅'+localDayCount+'天数据，云端有'+cloudDayCount+'天，改为拉取云端');
+          DB=cloudData;
+          if(!DB._updatedAt)DB._updatedAt=cloudTime;
+          localStorage.setItem(KEY,JSON.stringify(DB));
+          render();
+        }else{
+          // 上传前，把云端旧版本存入历史（用于回溯恢复）
+          const baseHistory=cloudData._history||DB._history||[];
+          const exists=baseHistory.some(function(h){return h.ts===cloudTime});
+          if(!exists){const oldSnap=JSON.parse(JSON.stringify(cloudData));delete oldSnap._history;DB._history=baseHistory.concat([{data:oldSnap,updated_at:cloud.updated_at,ts:cloudTime}]);if(DB._history.length>20)DB._history=DB._history.slice(-20)}else{DB._history=baseHistory}
+          DB._updatedAt=Date.now();
+          const{error:upErr}=await _sbApp.from('life_points').update({data:DB,updated_at:new Date().toISOString()}).eq('sync_key',syncKey);
+          if(upErr)throw upErr;
+          localStorage.setItem(KEY,JSON.stringify(DB));
+        }
       }
     }else{
       DB._updatedAt=Date.now();
@@ -1931,7 +1964,6 @@ function switchPage(page){
 
 /* ============ 初始化 ============ */
 function initTodoSystem(){
-  if(!DB._todoTestDataAdded){addTodoTestData();DB._todoTestDataAdded=true;save()}
   rollDailyTodos();rollWeekTodos();rollMonthTodos();
   todoViewDate=todayKey();
   todoViewWeek=weekStart(todayKey());
