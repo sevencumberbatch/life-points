@@ -183,6 +183,81 @@
   .auth-card button.primary:hover{opacity:.9}
   .auth-card .auth-err{color:var(--neg);font-size:12px;min-height:18px;margin-top:4px}
   .auth-card .auth-set-hint{font-size:11px;color:var(--muted);margin-top:12px;line-height:1.5}
+
+  /* 折叠区块 */
+  .section h2{cursor:pointer;user-select:none}
+  .section h2 .toggle-ic{
+    margin-left:auto;width:28px;height:28px;
+    border-radius:8px;background:#f0f1f3;
+    display:flex;align-items:center;justify-content:center;
+    font-size:14px;color:#9ca3af;
+    transition:all .2s;flex-shrink:0;
+  }
+  .section h2:hover .toggle-ic{background:#e6e8eb;color:#6b7280}
+  .section.collapsed h2 .toggle-ic{transform:rotate(-90deg)}
+  .section.collapsed>*:not(h2){display:none}
+
+  /* 喝水 - 仿大扫除zone风格 */
+  .water-zone .zone-tasks .task .tpts{color:var(--fat)}
+  .water-zone .zone-tasks .task.done .box{background:var(--fat);border-color:var(--fat)}
+  .water-zone .zone-head .zstat.full{background:var(--fat-bg);color:var(--fat);font-weight:600}
+
+  /* 便签待办 */
+  .todo-input-row{display:flex;gap:8px;margin-bottom:10px}
+  .todo-input-row input{flex:1;border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:14px;outline:none;transition:border-color .2s}
+  .todo-input-row input:focus{border-color:var(--study)}
+  .todo-input-row button{background:var(--study);color:#fff;border:none;border-radius:8px;padding:8px 16px;cursor:pointer;font-size:13px;font-weight:600;white-space:nowrap}
+  .todo-input-row button:hover{opacity:.9}
+  .todo-list{}
+  .todo-item{display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:8px;transition:background .12s}
+  .todo-item:hover{background:#f7f8fa}
+  .todo-item .box{width:20px;height:20px;border:2px solid #cbd0d6;border-radius:6px;flex-shrink:0;position:relative;transition:all .15s;cursor:pointer}
+  .todo-item.done .box{background:var(--skill);border-color:var(--skill)}
+  .todo-item.done .box::after{content:"";position:absolute;left:5px;top:1px;width:5px;height:10px;border:solid #fff;border-width:0 2px 2px 0;transform:rotate(45deg)}
+  .todo-item .todo-text{flex:1;font-size:14px;cursor:pointer}
+  .todo-item.done .todo-text{color:var(--muted);text-decoration:line-through}
+  .todo-item .del-btn{background:none;border:none;color:var(--muted);cursor:pointer;font-size:18px;padding:2px 6px;opacity:0;transition:opacity .15s;line-height:1}
+  .todo-item:hover .del-btn{opacity:.6}
+  .todo-item .del-btn:hover{opacity:1;color:var(--neg)}
+  .todo-footer{display:flex;justify-content:space-between;align-items:center;margin-top:8px;font-size:11px;color:var(--muted)}
+  .todo-clear-btn{background:#f7f8fa;border:1px solid var(--border);border-radius:6px;padding:3px 8px;cursor:pointer;font-size:11px;color:var(--muted)}
+  .todo-clear-btn:hover{color:var(--neg);border-color:var(--neg)}
+
+  /* 页面导航 */
+  .page-nav{display:flex;gap:8px;margin-bottom:14px}
+  .page-tab{flex:1;padding:10px 16px;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;border:2px solid var(--border);background:var(--card);color:var(--muted);transition:all .15s}
+  .page-tab.active{background:var(--text);color:#fff;border-color:var(--text)}
+  .page-tab:hover:not(.active){background:#f0f1f3;color:var(--text)}
+
+  /* 便签 - 滚动来源标记 */
+  .todo-item .origin-tag{font-size:10px;color:var(--muted);background:#f0f1f3;padding:1px 6px;border-radius:6px;margin-left:4px;white-space:nowrap}
+  .todo-item .origin-tag:hover{color:var(--text)}
+  .todo-item .ts-tag{font-size:10px;color:var(--muted);margin-left:4px;white-space:nowrap}
+  .todo-item .ts-tag.done-ts{color:var(--skill)}
+
+  /* 便签 - 历史 */
+  .todo-nav{display:flex;align-items:center;gap:6px;margin-bottom:10px}
+  .todo-nav button{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:5px 10px;cursor:pointer;font-size:13px}
+  .todo-nav button:hover{background:#f0f1f3}
+  .todo-nav .nav-label{font-size:13px;font-weight:600;min-width:120px;text-align:center}
+  .todo-nav input[type="date"],.todo-nav input[type="month"]{border:1px solid var(--border);border-radius:8px;padding:5px 8px;font-size:13px;background:var(--card);cursor:pointer;color:var(--text);font-family:inherit}
+  .todo-nav input[type="date"]:hover,.todo-nav input[type="month"]:hover{background:#f0f1f3}
+  .todo-nav input[type="date"]:focus,.todo-nav input[type="month"]:focus{outline:none;border-color:var(--study)}
+  .todo-history{margin-top:16px}
+  .todo-history-list{max-height:300px;overflow-y:auto;border:1px solid var(--border);border-radius:8px}
+  .todo-history-row{display:flex;align-items:center;gap:8px;padding:6px 12px;font-size:12px;border-bottom:1px solid #f0f1f3}
+  .todo-history-row:last-child{border-bottom:none}
+  .todo-history-row .h-date{color:var(--muted);min-width:90px}
+  .todo-history-row .h-text{flex:1}
+  .todo-history-row .h-text.done{text-decoration:line-through;color:var(--muted)}
+  .todo-history-row .h-scope{font-size:10px;padding:1px 6px;border-radius:6px;background:#eef0f2;color:var(--muted)}
+  .history-filter-row{display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap}
+  .history-filter-row select,.history-filter-row input[type="date"],.history-filter-row input[type="text"]{
+    border:1px solid var(--border);border-radius:8px;padding:6px 10px;font-size:13px;background:var(--card);color:var(--text);font-family:inherit}
+  .history-filter-row select:hover,.history-filter-row input[type="date"]:hover,.history-filter-row input[type="text"]:hover{background:#f0f1f3}
+  .history-filter-row select:focus,.history-filter-row input[type="date"]:focus,.history-filter-row input[type="text"]:focus{outline:none;border-color:var(--study)}
+  .history-filter-row .search-input{flex:1;min-width:140px}
+  .history-filter-row .date-sep{font-size:12px;color:var(--muted)}
 </style>
 </head>
 <body>
@@ -206,6 +281,13 @@
     </div>
   </div></div>
 
+  <!-- 页面导航 -->
+  <div class="page-nav">
+    <button class="page-tab active" id="tabMain" onclick="switchPage('main')">📋 积分主页</button>
+    <button class="page-tab" id="tabTodo" onclick="switchPage('todo')">📝 便签待办</button>
+  </div>
+
+  <div id="pageMain">
   <!-- 软上限进度条 -->
   <div class="cap-bar">
     <div class="row"><span>每日软上限 50 G（超出按 50% 折算）</span><span id="capPct">0 / 50</span></div>
@@ -225,6 +307,7 @@
     <h2><span class="ic">🔥</span>主线一 · 减脂攻坚</h2>
     <div class="sub">优先级最高 · 全做 51G</div>
     <div id="fatTasks"></div>
+    <div id="waterCups"></div>
   </div>
 
   <!-- 主线二 学业 -->
@@ -329,16 +412,111 @@
     <button onclick="exportData()">导出数据</button>
     <button onclick="document.getElementById('importFile').click()">导入数据</button>
     <input type="file" id="importFile" accept=".json" class="hidden" onchange="importData(event)">
+    <button onclick="exportExcel()">导出Excel</button>
     <button class="danger" onclick="resetConfirm()">重置全部</button>
   </div>
   <div class="note" style="margin-top:14px;text-align:center">人生积分系统 V1.0 · 数据本地存储 · 星伴 ⭐ 为七白搭建</div>
+  </div><!-- /pageMain -->
+
+  <div id="pageTodo" class="hidden">
+    <!-- 日便签 -->
+    <div class="section" id="todoDailySection">
+      <h2><span class="ic" style="background:#6366f1">📝</span>日便签 · 每日待办</h2>
+      <div class="sub">未完成自动滚动到次日 · 切换日期查看不同日的待办</div>
+      <div class="todo-nav">
+        <button onclick="shiftTodoDay(-1)">‹</button>
+        <input type="date" id="todoDatePicker" onchange="onTodoDatePick(this.value)">
+        <button onclick="shiftTodoDay(1)">›</button>
+        <button onclick="goTodoToday()">今天</button>
+      </div>
+      <div class="todo-input-row">
+        <input type="text" id="todoInput" placeholder="输入待办事项，回车添加" onkeydown="if(event.key==='Enter')addTodo()">
+        <button onclick="addTodo()">添加</button>
+      </div>
+      <div class="todo-list" id="todoList"></div>
+      <div class="todo-footer" id="todoFooter"></div>
+    </div>
+
+    <!-- 周便签 -->
+    <div class="section" id="todoWeekSection">
+      <h2><span class="ic" style="background:#f59e0b">📌</span>周便签 · 本周待办</h2>
+      <div class="sub">未完成自动滚动到下周 · 按自然周（周一起）</div>
+      <div class="todo-nav">
+        <button onclick="shiftTodoWeek(-1)">‹</button>
+        <input type="date" id="todoWeekPicker" onchange="onTodoWeekPick(this.value)">
+        <span class="nav-label" id="todoWeekLabel"></span>
+        <button onclick="shiftTodoWeek(1)">›</button>
+        <button onclick="goTodoThisWeek()">本周</button>
+      </div>
+      <div class="todo-input-row">
+        <input type="text" id="weekTodoInput" placeholder="输入本周待办，回车添加" onkeydown="if(event.key==='Enter')addWeekTodo()">
+        <button onclick="addWeekTodo()">添加</button>
+      </div>
+      <div class="todo-list" id="weekTodoList"></div>
+      <div class="todo-footer" id="weekTodoFooter"></div>
+    </div>
+
+    <!-- 月便签 -->
+    <div class="section" id="todoMonthSection">
+      <h2><span class="ic" style="background:#10b981">🗓️</span>月便签 · 本月待办</h2>
+      <div class="sub">未完成自动滚动到下月</div>
+      <div class="todo-nav">
+        <button onclick="shiftTodoMonth(-1)">‹</button>
+        <input type="month" id="todoMonthPicker" onchange="onTodoMonthPick(this.value)">
+        <span class="nav-label" id="todoMonthLabel"></span>
+        <button onclick="shiftTodoMonth(1)">›</button>
+        <button onclick="goTodoThisMonth()">本月</button>
+      </div>
+      <div class="todo-input-row">
+        <input type="text" id="monthTodoInput" placeholder="输入本月待办，回车添加" onkeydown="if(event.key==='Enter')addMonthTodo()">
+        <button onclick="addMonthTodo()">添加</button>
+      </div>
+      <div class="todo-list" id="monthTodoList"></div>
+      <div class="todo-footer" id="monthTodoFooter"></div>
+    </div>
+
+    <!-- 历史便签查询 -->
+    <div class="section" id="todoHistorySection">
+      <h2><span class="ic" style="background:#0ea5e9">🔍</span>历史便签查询</h2>
+      <div class="sub">浏览所有未完成和已完成的便签记录</div>
+      <div class="history-filter-row">
+        <select id="historyScope" onchange="renderTodoHistory()">
+          <option value="all">全部</option>
+          <option value="daily">日便签</option>
+          <option value="weekly">周便签</option>
+          <option value="monthly">月便签</option>
+        </select>
+        <select id="historyStatus" onchange="renderTodoHistory()">
+          <option value="all">全部状态</option>
+          <option value="done">已完成</option>
+          <option value="undone">未完成</option>
+        </select>
+        <input type="date" id="historyDateFrom" onchange="renderTodoHistory()" title="起始日期">
+        <span class="date-sep">~</span>
+        <input type="date" id="historyDateTo" onchange="renderTodoHistory()" title="截止日期">
+        <input type="text" id="historySearch" class="search-input" placeholder="搜索便签内容…" oninput="renderTodoHistory()">
+        <span style="font-size:12px;color:var(--muted)" id="historyCount"></span>
+      </div>
+      <div class="todo-history-list" id="todoHistoryList"></div>
+    </div>
+    <div class="footer-acts" style="margin-top:16px">
+      <button onclick="exportExcel()">导出Excel（积分+便签）</button>
+    </div>
+  </div>
 </div>
 
 <script>
 /* ============ 数据层 ============ */
 const KEY='lifePointsV1';
-let DB={meta:{baselineWeight:null},days:{},weightLog:[],redeemLog:[],milestones:[],rescues:{},autoRedeem:true}; // rescues: {dateKey:{exercise:bool,zone:n}}
+let DB={meta:{baselineWeight:null},days:{},weightLog:[],redeemLog:[],milestones:[],rescues:{},autoRedeem:true,weekTodos:{},monthTodos:{},lastTodoDate:null,lastTodoWeek:null,lastTodoMonth:null};
 let curDate=todayKey();
+let todoViewDate=todayKey();
+let todoViewWeek=weekStart(todayKey());
+let todoViewMonth=todayKey().substring(0,7);
+
+function monthKeyFromDate(k){return k.substring(0,7)}
+function weekLabel(wk){return wk+' ~ '+shiftKey(wk,6)}
+function monthLabel(mk){const[y,m]=mk.split('-').map(Number);return y+'年'+m+'月'}
 
 function todayKey(){const d=new Date();return fmt(d)}
 function beijingNow(){const now=new Date();const utc=now.getTime()+now.getTimezoneOffset()*60000;return new Date(utc+8*3600000)}
@@ -497,16 +675,19 @@ function configCloud(){
 
 function forceSync(){if(_sbReady){cloudSync()}else{configCloud()}}
 function getDay(k){if(!DB.days[k])DB.days[k]=blankDay();return DB.days[k]}
-function blankDay(){return{t:{},c:{study45:0},w:{bedroom:{o:false,s:false,m:false},living:{o:false,s:false,m:false},kitchen:{o:false,s:false,m:false},bath:{o:false,s:false,m:false}},ld:{wash:false,dry:false},wt:null,r:[],resc:[]}}
+function blankDay(){return{t:{},c:{study45:0},w:{bedroom:{o:false,s:false,m:false},living:{o:false,s:false,m:false},kitchen:{o:false,s:false,m:false},bath:{o:false,s:false,m:false}},ld:{wash:false,dry:false},wt:null,r:[],resc:[],todos:[]}}
 
 /* ============ 任务定义 ============ */
 const FAT=[
   {k:'exercise',n:'运动',std:'任意形式满30分钟',pts:20},
   {k:'noSugar',n:'不喝带糖饮料',std:'全天不喝含糖饮料（奶茶算违规）',pts:10},
-  {k:'water',n:'喝水',std:'喝满2升白水',pts:8},
   {k:'earlySleep',n:'早睡',std:'23:30前放下手机',pts:8},
   {k:'earlyRise',n:'早起',std:'7:30前起床，无回笼觉',pts:5},
 ];
+const WATER_CUPS=8;
+const WATER_PTS_PER_CUP=1;
+function waterCupsDone(d){if(d.t.water===true)return WATER_CUPS;let n=0;for(let i=1;i<=WATER_CUPS;i++){if(d.t['water'+i])n++}return n}
+function waterCupsPts(d){return waterCupsDone(d)*WATER_PTS_PER_CUP}
 const STUDY=[
   {k:'studyDone',n:'完课奖励',std:'连续听完一整节课（约2小时）',pts:15},
   {k:'review',n:'复习回顾',std:'15分钟快速过前一天内容',pts:5},
@@ -562,7 +743,7 @@ const SHOP=[
 ];
 const PENALTIES=[
   {k:'noWash',n:'晚间洗漱三项全没做',pts:-5,cond:d=>!d.t.faceWash&&!d.t.brushTeeth&&!d.t.shower},
-  {k:'noMain',n:'减脂/学业/生活维护三条硬主线全空',pts:-8,cond:d=>!d.t.exercise&&!d.t.noSugar&&!d.t.water&&!d.t.earlySleep&&!d.t.earlyRise&&d.c.study45===0&&!d.t.studyDone&&!d.t.review&&!d.t.faceWash&&!d.t.brushTeeth&&!d.t.shower&&!d.t.suppMorn&&!d.t.suppEve&&!d.t.trash&&!d.t.deskClean&&!d.t.sinkClean&&!d.t.therapyLamp&&!d.t.ointment},
+  {k:'noMain',n:'减脂/学业/生活维护三条硬主线全空',pts:-8,cond:d=>!d.t.exercise&&!d.t.noSugar&&waterCupsDone(d)===0&&!d.t.earlySleep&&!d.t.earlyRise&&d.c.study45===0&&!d.t.studyDone&&!d.t.review&&!d.t.faceWash&&!d.t.brushTeeth&&!d.t.shower&&!d.t.suppMorn&&!d.t.suppEve&&!d.t.trash&&!d.t.deskClean&&!d.t.sinkClean&&!d.t.therapyLamp&&!d.t.ointment},
   {k:'drankSugar',n:'喝了带糖饮料',pts:-5,cond:d=>d.t.drankSugar===true},
   {k:'noStudy2d',n:'连续2天没有学习打卡',pts:-10,cond:d=>false}, // 单独逻辑
   {k:'noWeekly',n:'周大扫除完全没做',pts:-10,cond:(d,k)=>isSunday(k)&&weekAllDone(k)===false&&weekAnyDone(k)===false},
@@ -579,6 +760,7 @@ function dayRawPts(k){
   const d=getDay(k);let p=0;
   // 减脂
   FAT.forEach(t=>{if(d.t[t.k])p+=t.pts});
+  p+=waterCupsPts(d);
   // 学业
   p+=(d.c.study45||0)*10;
   STUDY.forEach(t=>{if(d.t[t.k])p+=t.pts});
@@ -775,6 +957,7 @@ function render(){
   renderWeekly();renderWeight();renderPenalty();renderRescue();
   renderShop();renderStats();renderDetail();
   if(typeof renderBackup==='function')renderBackup();
+  if(!document.getElementById('pageTodo').classList.contains('hidden'))renderAllTodos();
 }
 function renderTop(){
   document.getElementById('balVal').textContent=Math.round(totalBalance()*10)/10;
@@ -805,6 +988,8 @@ function taskRow(t,done,onclick,disabled,disabledMsg){
 function renderFat(){
   const d=getDay(curDate);
   const isToday=(curDate===todayKey());
+  // 旧数据迁移
+  if(d.t.water!==undefined){const old=d.t.water;delete d.t.water;for(let i=1;i<=WATER_CUPS;i++)d.t['water'+i]=old}
   document.getElementById('fatTasks').innerHTML=FAT.map(t=>{
     let disabled=false,msg='';
     if(isToday && !d.t[t.k]){
@@ -824,6 +1009,20 @@ function renderFat(){
     }
     return taskRow(t,d.t[t.k],`toggle('${t.k}')`,disabled,msg);
   }).join('');
+  // 喝水 - 仿大扫除zone风格
+  const cupsDone=waterCupsDone(d);
+  const allDone=cupsDone===WATER_CUPS;
+  let cupsHtml='<div class="zone water-zone">'
+    +'<div class="zone-head"><span class="zn">💧 喝水（每杯约250-300ml）</span>'
+    +'<span class="zstat'+(allDone?' full':'')+'">'+cupsDone+'/'+WATER_CUPS+'杯 · +'+cupsDone+'G</span></div>'
+    +'<div class="zone-tasks">';
+  for(let i=1;i<=WATER_CUPS;i++){
+    const done=!!d.t['water'+i];
+    cupsHtml+='<div class="task'+(done?' done':'')+'" onclick="toggleWater('+i+')">'
+      +'<div class="box"></div><div class="tname">第'+i+'杯</div><div class="tpts">+1G</div></div>';
+  }
+  cupsHtml+='</div></div>';
+  document.getElementById('waterCups').innerHTML=cupsHtml;
 }
 function renderStudy(){
   const d=getDay(curDate);
@@ -1034,17 +1233,18 @@ function computeSettlementDays(){
 }
 function dayEarnedLines(k){
   const d=getDay(k);const lines=[];
-  const add=(label,pts)=>lines.push({label,pts});
-  FAT.forEach(t=>{if(d.t[t.k])add(t.n,t.pts)});
-  const sc=d.c.study45||0;if(sc>0)add('专注听课 ×'+sc,sc*10);
-  if(d.t.studyDone)add('完课奖励',15);
-  if(d.t.review)add('复习回顾',5);
-  SKILL.forEach(t=>{if(d.t[t.k])add(t.n,t.pts)});
-  LIFE1.forEach(t=>{if(d.t[t.k])add(t.n,t.pts)});
-  if(LIFE1_COMBO.need.every(x=>d.t[x]))add('洗漱三项组合',LIFE1_COMBO.pts);
-  SUPP.forEach(t=>{if(d.t[t.k])add(t.n,t.pts)});
-  if(SUPP_COMBO.need.every(x=>d.t[x]))add('早晚补剂组合',SUPP_COMBO.pts);
-  LIFE2.forEach(t=>{if(d.t[t.k])add(t.n,t.pts)});
+  const add=(label,pts,cat)=>lines.push({label,pts,cat});
+  FAT.forEach(t=>{if(d.t[t.k])add(t.n,t.pts,'主线一·减脂攻坚')});
+  const wc=waterCupsDone(d);if(wc>0)add('喝水 '+wc+'/'+WATER_CUPS+'杯',wc*WATER_PTS_PER_CUP,'主线一·减脂攻坚');
+  const sc=d.c.study45||0;if(sc>0)add('专注听课 ×'+sc,sc*10,'主线二·中级经济师');
+  if(d.t.studyDone)add('完课奖励',15,'主线二·中级经济师');
+  if(d.t.review)add('复习回顾',5,'主线二·中级经济师');
+  SKILL.forEach(t=>{if(d.t[t.k])add(t.n,t.pts,'主线三·技能养成')});
+  LIFE1.forEach(t=>{if(d.t[t.k])add(t.n,t.pts,'主线四·生活维护')});
+  if(LIFE1_COMBO.need.every(x=>d.t[x]))add('洗漱三项组合',LIFE1_COMBO.pts,'主线四·生活维护');
+  SUPP.forEach(t=>{if(d.t[t.k])add(t.n,t.pts,'主线四·生活维护')});
+  if(SUPP_COMBO.need.every(x=>d.t[x]))add('早晚补剂组合',SUPP_COMBO.pts,'主线四·生活维护');
+  LIFE2.forEach(t=>{if(d.t[t.k])add(t.n,t.pts,'主线四·生活维护')});
   return lines;
 }
 function dayContribution(k){
@@ -1217,10 +1417,77 @@ function importData(e){
   const f=e.target.files[0];if(!f)return;const r=new FileReader();
   r.onload=()=>{try{DB=JSON.parse(r.result);save();render();alert('导入成功')}catch(err){alert('导入失败：文件格式错误')}};r.readAsText(f);
 }
+
+/* ============ Excel 导出 ============ */
+function xmlEsc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&apos;')}
+function shopLevelName(itemName){
+  for(const lv of SHOP){
+    if(lv.items.some(it=>it.n===itemName))return lv.name;
+  }
+  return '';
+}
+function xlsRow(cells){
+  return '<Row>'+cells.map(c=>{
+    if(typeof c==='number')return '<Cell><Data ss:Type="Number">'+c+'</Data></Cell>';
+    return '<Cell><Data ss:Type="String">'+xmlEsc(c)+'</Data></Cell>';
+  }).join('')+'</Row>';
+}
+function xlsSheet(name,rows){
+  return '<Worksheet ss:Name="'+xmlEsc(name)+'"><Table>'+rows.join('')+'</Table></Worksheet>';
+}
+function exportExcel(){
+  const sheets=[];
+  // Sheet 1: 积分明细
+  const earnRows=[xlsRow(['日期','主目录','项目','分值','类型'])];
+  const settle=computeSettlementDays();
+  Object.keys(DB.days).filter(k=>!isBlankDay(k)).sort().forEach(k=>{
+    dayEarnedLines(k).forEach(l=>earnRows.push(xlsRow([k,l.cat||'',l.label,l.pts,'获得'])));
+    (getDay(k).resc||[]).forEach(rk=>{const def=RESCUES.find(x=>x.k===rk);if(def)earnRows.push(xlsRow([k,'补救',def.n,def.pts,'补救']))});
+    dayPenalty(k).list.forEach(p=>earnRows.push(xlsRow([k,'扣分',p.n,p.pts,'扣分'])));
+    if(settle[weekStart(k)]===k){const wp=weekZonePts(k);if(wp>0)earnRows.push(xlsRow([k,'周任务','本周周任务奖励',wp,'周任务']))}
+    if(isSunday(k)){const wpt=weightDeltaPts(k);if(wpt)earnRows.push(xlsRow([k,'周任务','称重变动('+(wpt.delta>=0?'-':'+')+Math.abs(wpt.delta).toFixed(1)+'kg)',wpt.pts,'周任务']))}
+    DB.milestones.filter(m=>m.date===k).forEach(m=>earnRows.push(xlsRow([k,'里程碑',m.desc,m.pts,'里程碑'])));
+    earnRows.push(xlsRow([k,'合计','当日净积分',dayContribution(k),'合计']));
+  });
+  sheets.push(xlsSheet('积分明细',earnRows));
+  // Sheet 2: 兑换记录
+  const redeemRows=[xlsRow(['日期','等级','兑换项目','扣除积分'])];
+  DB.redeemLog.sort((a,b)=>a.date<b.date?1:-1).forEach(r=>redeemRows.push(xlsRow([r.date,shopLevelName(r.n),r.n,r.c])));
+  sheets.push(xlsSheet('兑换记录',redeemRows));
+  // Sheet 3: 日便签
+  const dailyTodoRows=[xlsRow(['日期','内容','状态','来源'])];
+  Object.keys(DB.days).sort().reverse().forEach(k=>{
+    const todos=getTodos(k);
+    todos.forEach(t=>dailyTodoRows.push(xlsRow([k,t.text,t.done?'已完成':'未完成',t.origin||''])));
+  });
+  sheets.push(xlsSheet('日便签',dailyTodoRows));
+  // Sheet 4: 周便签
+  const weekTodoRows=[xlsRow(['周起始','内容','状态','录入时间','完成时间','来源'])];
+  Object.keys(DB.weekTodos).sort().reverse().forEach(wk=>{
+    DB.weekTodos[wk].forEach(t=>weekTodoRows.push(xlsRow([wk,t.text,t.done?'已完成':'未完成',t.createdAt||'',t.completedAt||'',t.origin||''])));
+  });
+  sheets.push(xlsSheet('周便签',weekTodoRows));
+  // Sheet 5: 月便签
+  const monthTodoRows=[xlsRow(['月份','内容','状态','录入时间','完成时间','来源'])];
+  Object.keys(DB.monthTodos).sort().reverse().forEach(mk=>{
+    DB.monthTodos[mk].forEach(t=>monthTodoRows.push(xlsRow([mk,t.text,t.done?'已完成':'未完成',t.createdAt||'',t.completedAt||'',t.origin||''])));
+  });
+  sheets.push(xlsSheet('月便签',monthTodoRows));
+  // 生成文件
+  const xml='<?xml version="1.0"?>\n<?mso-application progid="Excel.Sheet"?>\n'+
+    '<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"'+
+    ' xmlns:o="urn:schemas-microsoft-com:office:office"'+
+    ' xmlns:x="urn:schemas-microsoft-com:office:excel"'+
+    ' xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"'+
+    ' xmlns:html="http://www.w3.org/TR/REC-html40">'+
+    sheets.join('')+'</Workbook>';
+  const blob=new Blob([xml],{type:'application/vnd.ms-excel;charset=utf-8'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='life-points-'+todayKey()+'.xls';a.click();
+}
 function resetConfirm(){
   if(!confirm('⚠️ 确认清空全部数据？此操作不可逆！'))return;
   if(!confirm('再次确认：所有打卡、积分、记录都将删除。'))return;
-  DB={meta:{baselineWeight:null},days:{},weightLog:[],redeemLog:[],milestones:[],rescues:{},autoRedeem:true};
+  DB={meta:{baselineWeight:null},days:{},weightLog:[],redeemLog:[],milestones:[],rescues:{},autoRedeem:true,weekTodos:{},monthTodos:{},lastTodoDate:null,lastTodoWeek:null,lastTodoMonth:null};
   save();render();
 }
 
@@ -1253,12 +1520,14 @@ function doAuth(){
     localStorage.setItem(ACCESS_PASS_KEY,hashStr(input));
     sessionStorage.setItem(ACCESS_AUTHED,'1');
     document.getElementById('authGate').classList.add('hidden');
+    initTodoSystem();
     render();initBackup();initCloud().then(()=>autoRedeemDaily());
     return;
   }
   if(hashStr(input)===stored){
     sessionStorage.setItem(ACCESS_AUTHED,'1');
     document.getElementById('authGate').classList.add('hidden');
+    initTodoSystem();
     render();initBackup();initCloud().then(()=>autoRedeemDaily());
   }else{
     document.getElementById('authErr').textContent='密码错误';
@@ -1277,11 +1546,403 @@ function changeAccessPass(){
   alert('访问密码已修改');
 }
 
+/* ============ 喝水杯子 ============ */
+function toggleWater(n){
+  const d=getDay(curDate);
+  if(d.t.water!==undefined){const old=d.t.water;delete d.t.water;for(let i=1;i<=WATER_CUPS;i++)d.t['water'+i]=old}
+  const k='water'+n;
+  d.t[k]=!d.t[k];
+  save();render();
+}
+
+/* ============ 便签待办 ============ */
+function getTodos(k){const d=getDay(k);if(!d.todos)d.todos=[];return d.todos}
+function getWeekTodos(wk){if(!DB.weekTodos[wk])DB.weekTodos[wk]=[];return DB.weekTodos[wk]}
+function getMonthTodos(mk){if(!DB.monthTodos[mk])DB.monthTodos[mk]=[];return DB.monthTodos[mk]}
+
+/* --- 滚动逻辑 --- */
+function rollDailyTodos(){
+  const today=todayKey();
+  if(DB.lastTodoDate===today)return; // 今天已滚动过
+  // 找出 lastTodoDate 到昨天之间所有未完成的日便签
+  let carry=[];
+  let checkFrom=DB.lastTodoDate?shiftKey(DB.lastTodoDate,0):null;
+  if(checkFrom && checkFrom<today){
+    let k=checkFrom;
+    while(k<today){
+      const todos=getTodos(k);
+      const undone=todos.filter(t=>!t.done);
+      if(undone.length){
+        undone.forEach(t=>{if(!t.origin)t.origin=k});
+        carry=carry.concat(undone);
+        // 从原日期删除未完成的
+        const day=getDay(k);
+        day.todos=todos.filter(t=>t.done);
+      }
+      k=shiftKey(k,1);
+    }
+  }
+  if(carry.length){
+    const todayTodos=getTodos(today);
+    carry.forEach(t=>{t.rolled=true;t.id=Date.now()+Math.random();todayTodos.push(t)});
+  }
+  DB.lastTodoDate=today;
+  save();
+}
+function rollWeekTodos(){
+  const thisWeek=weekStart(todayKey());
+  if(DB.lastTodoWeek===thisWeek)return;
+  if(DB.lastTodoWeek && DB.lastTodoWeek<thisWeek){
+    const oldTodos=getWeekTodos(DB.lastTodoWeek);
+    const undone=oldTodos.filter(t=>!t.done);
+    if(undone.length){
+      const newTodos=getWeekTodos(thisWeek);
+      undone.forEach(t=>{t.rolled=true;t.origin=DB.lastTodoWeek;t.id=Date.now()+Math.random();newTodos.push(t)});
+      DB.weekTodos[DB.lastTodoWeek]=oldTodos.filter(t=>t.done);
+    }
+  }
+  DB.lastTodoWeek=thisWeek;
+  save();
+}
+function rollMonthTodos(){
+  const thisMonth=todayKey().substring(0,7);
+  if(DB.lastTodoMonth===thisMonth)return;
+  if(DB.lastTodoMonth && DB.lastTodoMonth<thisMonth){
+    const oldTodos=getMonthTodos(DB.lastTodoMonth);
+    const undone=oldTodos.filter(t=>!t.done);
+    if(undone.length){
+      const newTodos=getMonthTodos(thisMonth);
+      undone.forEach(t=>{t.rolled=true;t.origin=DB.lastTodoMonth;t.id=Date.now()+Math.random();newTodos.push(t)});
+      DB.monthTodos[DB.lastTodoMonth]=oldTodos.filter(t=>t.done);
+    }
+  }
+  DB.lastTodoMonth=thisMonth;
+  save();
+}
+
+/* --- 渲染日便签 --- */
+function renderTodos(){
+  const todos=getTodos(todoViewDate);
+  const picker=document.getElementById('todoDatePicker');
+  if(picker)picker.value=todoViewDate;
+  const html=todos.length?todos.map(t=>
+    `<div class="todo-item${t.done?' done':''}">
+      <div class="box" onclick="toggleTodo(${t.id})"></div>
+      <div class="todo-text" onclick="toggleTodo(${t.id})">${escapeHtml(t.text)}${t.origin?`<span class="origin-tag" title="从 ${t.origin} 滚动过来">↻ ${t.origin}</span>`:''}</div>
+      <button class="del-btn" onclick="deleteTodo(${t.id})">×</button>
+    </div>`
+  ).join(''):'<div class="empty">当日暂无待办，添加一个吧</div>';
+  document.getElementById('todoList').innerHTML=html;
+  const doneCnt=todos.filter(t=>t.done).length;
+  document.getElementById('todoFooter').innerHTML=todos.length?
+    `<span>已完成 ${doneCnt}/${todos.length}</span>`+
+    (doneCnt>0?`<button class="todo-clear-btn" onclick="clearDoneTodos()">清除已完成</button>`:'')
+    :'';
+}
+
+/* --- 渲染周便签 --- */
+function renderWeekTodos(){
+  const todos=getWeekTodos(todoViewWeek);
+  document.getElementById('todoWeekLabel').textContent=weekLabel(todoViewWeek);
+  const wPicker=document.getElementById('todoWeekPicker');
+  if(wPicker)wPicker.value=todoViewWeek;
+  const html=todos.length?todos.map(t=>
+    `<div class="todo-item${t.done?' done':''}">
+      <div class="box" onclick="toggleWeekTodo(${t.id})"></div>
+      <div class="todo-text" onclick="toggleWeekTodo(${t.id})">${escapeHtml(t.text)}${t.origin?`<span class="origin-tag" title="从 ${t.origin} 周滚动过来">↻ ${t.origin}</span>`:''}${t.createdAt?`<span class="ts-tag" title="录入时间">📝 ${t.createdAt}</span>`:''}${t.done&&t.completedAt?`<span class="ts-tag done-ts" title="完成时间">✅ ${t.completedAt}</span>`:''}</div>
+      <button class="del-btn" onclick="deleteWeekTodo(${t.id})">×</button>
+    </div>`
+  ).join(''):'<div class="empty">本周暂无待办</div>';
+  document.getElementById('weekTodoList').innerHTML=html;
+  const doneCnt=todos.filter(t=>t.done).length;
+  document.getElementById('weekTodoFooter').innerHTML=todos.length?
+    `<span>已完成 ${doneCnt}/${todos.length}</span>`+
+    (doneCnt>0?`<button class="todo-clear-btn" onclick="clearDoneWeekTodos()">清除已完成</button>`:'')
+    :'';
+}
+
+/* --- 渲染月便签 --- */
+function renderMonthTodos(){
+  const todos=getMonthTodos(todoViewMonth);
+  document.getElementById('todoMonthLabel').textContent=monthLabel(todoViewMonth);
+  const mPicker=document.getElementById('todoMonthPicker');
+  if(mPicker)mPicker.value=todoViewMonth;
+  const html=todos.length?todos.map(t=>
+    `<div class="todo-item${t.done?' done':''}">
+      <div class="box" onclick="toggleMonthTodo(${t.id})"></div>
+      <div class="todo-text" onclick="toggleMonthTodo(${t.id})">${escapeHtml(t.text)}${t.origin?`<span class="origin-tag" title="从 ${t.origin} 月滚动过来">↻ ${t.origin}</span>`:''}${t.createdAt?`<span class="ts-tag" title="录入时间">📝 ${t.createdAt}</span>`:''}${t.done&&t.completedAt?`<span class="ts-tag done-ts" title="完成时间">✅ ${t.completedAt}</span>`:''}</div>
+      <button class="del-btn" onclick="deleteMonthTodo(${t.id})">×</button>
+    </div>`
+  ).join(''):'<div class="empty">本月暂无待办</div>';
+  document.getElementById('monthTodoList').innerHTML=html;
+  const doneCnt=todos.filter(t=>t.done).length;
+  document.getElementById('monthTodoFooter').innerHTML=todos.length?
+    `<span>已完成 ${doneCnt}/${todos.length}</span>`+
+    (doneCnt>0?`<button class="todo-clear-btn" onclick="clearDoneMonthTodos()">清除已完成</button>`:'')
+    :'';
+}
+
+/* --- 渲染全部便签 --- */
+function renderAllTodos(){
+  renderTodos();renderWeekTodos();renderMonthTodos();renderTodoHistory();
+}
+
+/* --- 渲染历史查询 --- */
+function renderTodoHistory(){
+  const scope=document.getElementById('historyScope').value;
+  const status=document.getElementById('historyStatus').value;
+  const dateFrom=document.getElementById('historyDateFrom').value;
+  const dateTo=document.getElementById('historyDateTo').value;
+  const search=document.getElementById('historySearch').value.trim().toLowerCase();
+  let rows=[];
+  // 日便签
+  if(scope==='all'||scope==='daily'){
+    Object.keys(DB.days).forEach(k=>{
+      const todos=getTodos(k);
+      todos.forEach(t=>{
+        if(status==='done'&&!t.done)return;
+        if(status==='undone'&&t.done)return;
+        if(dateFrom&&k<dateFrom)return;
+        if(dateTo&&k>dateTo)return;
+        if(search&&!t.text.toLowerCase().includes(search))return;
+        rows.push({date:k,text:t.text,done:t.done,scope:'日',scopeColor:'#6366f1'})
+      });
+    });
+  }
+  // 周便签
+  if(scope==='all'||scope==='weekly'){
+    Object.keys(DB.weekTodos).forEach(wk=>{
+      DB.weekTodos[wk].forEach(t=>{
+        if(status==='done'&&!t.done)return;
+        if(status==='undone'&&t.done)return;
+        if(dateFrom&&wk<dateFrom)return;
+        if(dateTo&&wk>dateTo)return;
+        if(search&&!t.text.toLowerCase().includes(search))return;
+        rows.push({date:wk,text:t.text,done:t.done,scope:'周',scopeColor:'#f59e0b'})
+      });
+    });
+  }
+  // 月便签
+  if(scope==='all'||scope==='monthly'){
+    Object.keys(DB.monthTodos).forEach(mk=>{
+      DB.monthTodos[mk].forEach(t=>{
+        if(status==='done'&&!t.done)return;
+        if(status==='undone'&&t.done)return;
+        if(dateFrom&&mk<dateFrom.substring(0,7))return;
+        if(dateTo&&mk>dateTo.substring(0,7))return;
+        if(search&&!t.text.toLowerCase().includes(search))return;
+        rows.push({date:mk,text:t.text,done:t.done,scope:'月',scopeColor:'#10b981'})
+      });
+    });
+  }
+  rows.sort((a,b)=>a.date<b.date?1:-1);
+  document.getElementById('historyCount').textContent='共 '+rows.length+' 条';
+  document.getElementById('todoHistoryList').innerHTML=rows.length?
+    rows.map(r=>{
+      let text=escapeHtml(r.text);
+      if(search){
+        const re=new RegExp('('+search.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi');
+        text=text.replace(re,'<mark style="background:#fef08a;color:inherit;padding:0 2px;border-radius:3px">$1</mark>');
+      }
+      return `<div class="todo-history-row">
+        <span class="h-date">${r.date}</span>
+        <span class="h-scope" style="background:${r.scopeColor}1a;color:${r.scopeColor}">${r.scope}</span>
+        <span class="h-text${r.done?' done':''}">${text}</span>
+        <span style="font-size:11px;color:${r.done?'var(--skill)':'var(--neg)'}">${r.done?'✓':'○'}</span>
+      </div>`;
+    }).join('')
+    :'<div class="empty" style="padding:16px">暂无匹配记录</div>';
+}
+
+/* --- 日便签 CRUD --- */
+function fmtTs(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')}
+function escapeHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+function addTodo(){
+  const input=document.getElementById('todoInput');
+  const text=input.value.trim();
+  if(!text)return;
+  const todos=getTodos(todoViewDate);
+  todos.push({id:Date.now()+Math.random(),text:text,done:false});
+  input.value='';
+  save();renderTodos();renderTodoHistory();
+}
+function toggleTodo(id){
+  const todos=getTodos(todoViewDate);
+  const t=todos.find(x=>x.id===id);
+  if(t){t.done=!t.done;save();renderTodos();renderTodoHistory();}
+}
+function deleteTodo(id){
+  const todos=getTodos(todoViewDate);
+  const idx=todos.findIndex(x=>x.id===id);
+  if(idx>=0){todos.splice(idx,1);save();renderTodos();renderTodoHistory();}
+}
+function clearDoneTodos(){
+  const d=getDay(todoViewDate);
+  d.todos=(d.todos||[]).filter(t=>!t.done);
+  save();renderTodos();renderTodoHistory();
+}
+function shiftTodoDay(n){todoViewDate=shiftKey(todoViewDate,n);renderTodos()}
+function goTodoToday(){todoViewDate=todayKey();renderTodos()}
+function onTodoDatePick(val){if(val){todoViewDate=val;renderTodos()}}
+
+/* --- 周便签 CRUD --- */
+function addWeekTodo(){
+  const input=document.getElementById('weekTodoInput');
+  const text=input.value.trim();
+  if(!text)return;
+  const todos=getWeekTodos(todoViewWeek);
+  todos.push({id:Date.now()+Math.random(),text:text,done:false,createdAt:fmtTs(new Date())});
+  input.value='';
+  save();renderWeekTodos();renderTodoHistory();
+}
+function toggleWeekTodo(id){
+  const todos=getWeekTodos(todoViewWeek);
+  const t=todos.find(x=>x.id===id);
+  if(t){t.done=!t.done;t.completedAt=t.done?fmtTs(new Date()):null;save();renderWeekTodos();renderTodoHistory();}
+}
+function deleteWeekTodo(id){
+  const todos=getWeekTodos(todoViewWeek);
+  const idx=todos.findIndex(x=>x.id===id);
+  if(idx>=0){todos.splice(idx,1);save();renderWeekTodos();renderTodoHistory();}
+}
+function clearDoneWeekTodos(){
+  DB.weekTodos[todoViewWeek]=(DB.weekTodos[todoViewWeek]||[]).filter(t=>!t.done);
+  save();renderWeekTodos();renderTodoHistory();
+}
+function shiftTodoWeek(n){
+  const d=parseKey(todoViewWeek);d.setDate(d.getDate()+n*7);todoViewWeek=fmt(d);renderWeekTodos();
+}
+function goTodoThisWeek(){todoViewWeek=weekStart(todayKey());renderWeekTodos()}
+function onTodoWeekPick(val){if(val){todoViewWeek=weekStart(val);renderWeekTodos()}}
+
+/* --- 月便签 CRUD --- */
+function addMonthTodo(){
+  const input=document.getElementById('monthTodoInput');
+  const text=input.value.trim();
+  if(!text)return;
+  const todos=getMonthTodos(todoViewMonth);
+  todos.push({id:Date.now()+Math.random(),text:text,done:false,createdAt:fmtTs(new Date())});
+  input.value='';
+  save();renderMonthTodos();renderTodoHistory();
+}
+function toggleMonthTodo(id){
+  const todos=getMonthTodos(todoViewMonth);
+  const t=todos.find(x=>x.id===id);
+  if(t){t.done=!t.done;t.completedAt=t.done?fmtTs(new Date()):null;save();renderMonthTodos();renderTodoHistory();}
+}
+function deleteMonthTodo(id){
+  const todos=getMonthTodos(todoViewMonth);
+  const idx=todos.findIndex(x=>x.id===id);
+  if(idx>=0){todos.splice(idx,1);save();renderMonthTodos();renderTodoHistory();}
+}
+function clearDoneMonthTodos(){
+  DB.monthTodos[todoViewMonth]=(DB.monthTodos[todoViewMonth]||[]).filter(t=>!t.done);
+  save();renderMonthTodos();renderTodoHistory();
+}
+function shiftTodoMonth(n){
+  const[y,m]=todoViewMonth.split('-').map(Number);
+  let ny=y,nm=m+n;
+  while(nm<1){nm+=12;ny--}
+  while(nm>12){nm-=12;ny++}
+  todoViewMonth=ny+'-'+String(nm).padStart(2,'0');renderMonthTodos();
+}
+function goTodoThisMonth(){todoViewMonth=todayKey().substring(0,7);renderMonthTodos()}
+function onTodoMonthPick(val){if(val){todoViewMonth=val;renderMonthTodos()}}
+
+/* --- 测试数据 --- */
+function addTodoTestData(){
+  const today=todayKey();
+  const yesterday=shiftKey(today,-1);
+  const dayBefore=shiftKey(today,-2);
+  const lastWeek=shiftKey(weekStart(today),-7);
+  const lastMonth=(function(){const[y,m]=today.split('-').map(Number);let ny=y,nm=m-1;if(nm<1){nm=12;ny--}return ny+'-'+String(nm).padStart(2,'0')})();
+  // 日便签测试数据
+  getTodos(yesterday).push({id:1,text:'完成项目报告初稿',done:false});
+  getTodos(yesterday).push({id:2,text:'回复张老师的邮件',done:true});
+  getTodos(dayBefore).push({id:3,text:'整理桌面文件',done:false});
+  getTodos(dayBefore).push({id:4,text:'买猫粮',done:true});
+  getTodos(today).push({id:5,text:'今天记得喝够水',done:false});
+  // 周便签测试数据
+  getWeekTodos(lastWeek).push({id:11,text:'完成中级经济师第二章',done:false,createdAt:lastWeek+' 09:30'});
+  getWeekTodos(lastWeek).push({id:12,text:'大扫除卫生间',done:true,createdAt:lastWeek+' 14:00',completedAt:lastWeek+' 16:20'});
+  getWeekTodos(todoViewWeek).push({id:13,text:'整理本周学习笔记',done:false,createdAt:fmtTs(new Date())});
+  // 月便签测试数据
+  getMonthTodos(lastMonth).push({id:21,text:'读完《薛兆丰经济学讲义》',done:false,createdAt:lastMonth+'-03 20:00'});
+  getMonthTodos(lastMonth).push({id:22,text:'完成一次短途旅行',done:true,createdAt:lastMonth+'-10 08:00',completedAt:lastMonth+'-18 19:30'});
+  getMonthTodos(todoViewMonth).push({id:23,text:'本月学会SQL基础查询',done:false,createdAt:fmtTs(new Date())});
+  // 设置滚动起点，让roll函数生效
+  DB.lastTodoDate=shiftKey(today,-2);
+  DB.lastTodoWeek=lastWeek;
+  DB.lastTodoMonth=lastMonth;
+  save();
+}
+
+/* ============ 区块折叠 ============ */
+const COLLAPSE_KEY='lpCollapsedSections';
+function loadCollapsedSet(){try{return new Set(JSON.parse(localStorage.getItem(COLLAPSE_KEY)||'[]'))}catch(e){return new Set()}}
+function saveCollapsedSet(s){localStorage.setItem(COLLAPSE_KEY,JSON.stringify([...s]))}
+function toggleSection(sec){
+  sec.classList.toggle('collapsed');
+  const set=loadCollapsedSet();
+  const sections=[...document.querySelectorAll('.section')];
+  const idx=sections.indexOf(sec);
+  if(idx>=0){
+    if(sec.classList.contains('collapsed'))set.add(idx);else set.delete(idx);
+    saveCollapsedSet(set);
+  }
+}
+function initCollapse(){
+  const sections=[...document.querySelectorAll('.section')];
+  const set=loadCollapsedSet();
+  sections.forEach((sec,i)=>{
+    const h2=sec.querySelector('h2');
+    if(h2){
+      if(!h2.querySelector('.toggle-ic')){
+        const ic=document.createElement('span');
+        ic.className='toggle-ic';ic.textContent='▾';
+        h2.appendChild(ic);
+      }
+      h2.addEventListener('click',()=>toggleSection(sec));
+    }
+    if(set.has(i))sec.classList.add('collapsed');
+  });
+}
+
+/* ============ 页面切换 ============ */
+function switchPage(page){
+  const main=document.getElementById('pageMain');
+  const todo=document.getElementById('pageTodo');
+  const tabMain=document.getElementById('tabMain');
+  const tabTodo=document.getElementById('tabTodo');
+  if(page==='todo'){
+    main.classList.add('hidden');
+    todo.classList.remove('hidden');
+    tabMain.classList.remove('active');
+    tabTodo.classList.add('active');
+    renderAllTodos();
+  }else{
+    todo.classList.add('hidden');
+    main.classList.remove('hidden');
+    tabTodo.classList.remove('active');
+    tabMain.classList.add('active');
+    render();
+  }
+}
+
 /* ============ 初始化 ============ */
+function initTodoSystem(){
+  if(!DB._todoTestDataAdded){addTodoTestData();DB._todoTestDataAdded=true;save()}
+  rollDailyTodos();rollWeekTodos();rollMonthTodos();
+  todoViewDate=todayKey();
+  todoViewWeek=weekStart(todayKey());
+  todoViewMonth=todayKey().substring(0,7);
+}
 load();
 document.getElementById('datePick').value=curDate;
 document.getElementById('datePick').addEventListener('change',e=>{curDate=e.target.value;render()});
+initCollapse();
 if(isAuthed()){
+  initTodoSystem();
   render();initBackup();initCloud().then(()=>autoRedeemDaily());
 }else{
   showAuthGate();
