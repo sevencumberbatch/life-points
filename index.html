@@ -160,6 +160,15 @@
 
   /* 每日明细 */
   #detailBody{max-height:440px;overflow-y:auto;padding-right:2px}
+  .detail-cols{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;align-items:start}
+  .detail-col{border:1px solid var(--border);border-radius:8px;overflow:hidden}
+  .detail-col .col-hd{padding:8px 12px;font-size:13px;font-weight:600;background:#f7f8fa;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+  .detail-col .col-body{max-height:380px;overflow-y:auto}
+  .detail-col .detail-row{border-bottom:1px solid #f0f1f3}
+  .detail-col .detail-row:last-child{border-bottom:none}
+  .detail-col .empty{padding:20px 8px;font-size:12px}
+  .detail-row .d-date{color:var(--muted);font-size:11px;margin-right:6px;white-space:nowrap}
+  @media(max-width:600px){.detail-cols{grid-template-columns:1fr}}
   .detail-day{border:1px solid var(--border);border-radius:8px;margin-bottom:8px;overflow:hidden}
   .detail-day-hd{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:#f7f8fa;font-weight:600;font-size:13px}
   .detail-row{display:flex;justify-content:space-between;padding:5px 12px;font-size:12px;border-top:1px solid #f0f1f3}
@@ -1061,6 +1070,37 @@ function milestonePtsOn(k){return (DB.milestones||[]).filter(m=>m.date===k).redu
 // 当日到账总额：日任务(过软上限+扣分+救赎) + 周任务 + 称重 + 里程碑（后三者不过软上限）
 function dayNetTotal(k){return dayNet(k)+weekZonePts(k)+weightPtsToday(k)+milestonePtsOn(k)}
 
+/* ============ 周任务按完成日拆分 ============ */
+function anyInWeek(ws,untilK,k1,k2){
+  for(let i=0;i<7;i++){const dk=shiftKey(ws,i);if(dk>untilK)break;const dd=getDay(dk);
+    if(k2){if(dd[k1]&&dd[k1][k2])return true}else if(dd[k1])return true}
+  return false;
+}
+function zoneTaskDoneInWeek(ws,untilK,zk,zt){
+  for(let i=0;i<7;i++){const dk=shiftKey(ws,i);if(dk>untilK)break;const dd=getDay(dk);if(dd.w&&dd.w[zk]&&dd.w[zk][zt])return true}
+  return false;
+}
+function zoneAllDoneUpTo(ws,untilK,zk){return ZONE_TASKS.every(zt=>zoneTaskDoneInWeek(ws,untilK,zk,zt))}
+// 当天完成的周任务明细（按"本周首次完成日"计分，总和与 weekZonePts 一致）
+function dayWeeklyLines(k){
+  const d=getDay(k);const ws=weekStart(k);const prev=shiftKey(k,-1);const lines=[];
+  const first=(cond,label,pts)=>{if(cond)lines.push({label,pts,cat:'每周任务'})};
+  first(d.t.scrub&&!anyInWeek(ws,prev,'t','scrub'),'搓澡',15);
+  first(d.t.blackhead&&!anyInWeek(ws,prev,'t','blackhead'),'去黑头',15);
+  first(d.ld&&d.ld.wash&&!anyInWeek(ws,prev,'ld','wash'),'洗衣服',4);
+  first(d.ld&&d.ld.dry&&!anyInWeek(ws,prev,'ld','dry'),'晾衣服',4);
+  first((d.ld&&(d.ld.wash||d.ld.dry))&&anyInWeek(ws,k,'ld','wash')&&anyInWeek(ws,k,'ld','dry')&&!(anyInWeek(ws,prev,'ld','wash')&&anyInWeek(ws,prev,'ld','dry')),'洗晾组合奖励',2);
+  ZONES.forEach(z=>{
+    ZONE_TASKS.forEach(zt=>{
+      if(d.w&&d.w[z.k]&&d.w[z.k][zt.k]&&!zoneTaskDoneInWeek(ws,prev,z.k,zt))first(true,z.n+'·'+zt.n,3);
+    });
+    first(zoneAllDoneUpTo(ws,k,z.k)&&!zoneAllDoneUpTo(ws,prev,z.k),z.n+'区域完成奖励',10);
+  });
+  first(ZONES.every(z=>zoneAllDoneUpTo(ws,k,z.k))&&!ZONES.every(z=>zoneAllDoneUpTo(ws,prev,z.k)),'四区全清奖励',20);
+  return lines;
+}
+function dayWeeklySum(k){return dayWeeklyLines(k).reduce((s,l)=>s+l.pts,0)}
+
 /* ============ 总余额 ============ */
 // 判断某天是否为完全空白（无任何打卡/计数/称重/救赎记录）
 function isBlankDay(k){
@@ -1068,9 +1108,10 @@ function isBlankDay(k){
   const hasTask=Object.values(d.t||{}).some(v=>v);
   const hasCount=(d.c&&d.c.study45)||0;
   const hasWeek=Object.values(d.w||{}).some(z=>Object.values(z).some(v=>v));
+  const hasLd=!!(d.ld&&(d.ld.wash||d.ld.dry));
   const hasResc=(d.resc||[]).length>0;
   const hasWt=!!d.wt;
-  return !hasTask&&!hasCount&&!hasWeek&&!hasResc&&!hasWt;
+  return !hasTask&&!hasCount&&!hasWeek&&!hasLd&&!hasResc&&!hasWt;
 }
 function totalBalance(){
   let bal=0;
@@ -1078,12 +1119,10 @@ function totalBalance(){
     if(isBlankDay(k))return; // 跳过空白日期
     bal+=dayNet(k);
   });
-  // 周任务：每周结算一次（取每周日的 weekZonePts，避免重复）
-  const weeksDone={};
+  // 周任务：按完成日拆分结算（每天加当天首次完成的周任务得分，总和与原每周结算一致）
   Object.keys(DB.days).forEach(k=>{
     if(isBlankDay(k))return;
-    const ws=weekStart(k);
-    if(!weeksDone[ws]){weeksDone[ws]=true;bal+=weekZonePts(k)}
+    bal+=dayWeeklySum(k);
   });
   // 称重积分（每个周日的变动）
   Object.keys(DB.days).forEach(k=>{
@@ -1437,37 +1476,57 @@ function dayEarnedLines(k){
 }
 function dayContribution(k){
   let c=dayNet(k);
-  const settle=computeSettlementDays();
-  if(settle[weekStart(k)]===k)c+=weekZonePts(k);
+  c+=dayWeeklySum(k);
   if(isSunday(k)){const wp=weightDeltaPts(k);if(wp)c+=wp.pts}
   return Math.round(c*10)/10;
 }
 function renderDetail(){
   document.getElementById('detailTabs').innerHTML=
     `<div class="shop-tab${detailTab==='earn'?' active':''}" onclick="detailTab='earn';renderDetail()">获得明细</div>`+
+    `<div class="shop-tab${detailTab==='pen'?' active':''}" onclick="detailTab='pen';renderDetail()">扣分明细</div>`+
     `<div class="shop-tab${detailTab==='redeem'?' active':''}" onclick="detailTab='redeem';renderDetail()">兑换明细</div>`;
   renderAutoRedeem();
-  if(detailTab==='earn')renderEarnDetail();else renderRedeemDetail();
+  if(detailTab==='earn')renderEarnDetail();
+  else if(detailTab==='pen')renderPenDetail();
+  else renderRedeemDetail();
 }
 function renderEarnDetail(){
   const days=Object.keys(DB.days).filter(k=>!isBlankDay(k)).sort().reverse();
   if(!days.length){document.getElementById('detailBody').innerHTML='<div class="empty">暂无打卡记录</div>';return;}
-  const settle=computeSettlementDays();
-  document.getElementById('detailBody').innerHTML=days.map(k=>{
+  const cols={daily:[],study:[],week:[]};
+  days.forEach(k=>{
     const lines=[];
-    dayEarnedLines(k).forEach(l=>lines.push({...l,type:'earn'}));
+    // 学习任务：主线二·中级经济师（专注听课/完课/复习）；其余日任务归日常
+    dayEarnedLines(k).forEach(l=>lines.push({...l,type:l.cat==='主线二·中级经济师'?'study':'earn'}));
     (getDay(k).resc||[]).forEach(rk=>{const def=RESCUES.find(x=>x.k===rk);if(def)lines.push({label:def.n,pts:def.pts,type:'earn'})});
-    dayPenalty(k).list.forEach(p=>lines.push({label:p.n,pts:p.pts,type:'pen'}));
-    if(settle[weekStart(k)]===k){const wp=weekZonePts(k);if(wp>0)lines.push({label:'本周周任务奖励',pts:wp,type:'week'})}
+    dayWeeklyLines(k).forEach(l=>lines.push({...l,type:'week'}));
     if(isSunday(k)){const wpt=weightDeltaPts(k);if(wpt)lines.push({label:'称重变动（较上周'+(wpt.delta>=0?'-':'+')+Math.abs(wpt.delta).toFixed(1)+'kg）',pts:wpt.pts,type:'week'})}
     DB.milestones.filter(m=>m.date===k).forEach(m=>lines.push({label:m.desc,pts:m.pts,type:'earn'}));
-    const net=dayContribution(k);
-    const body=lines.length?lines.map(l=>`<div class="detail-row"><span>${l.label}</span><span class="${l.type==='pen'?'neg':(l.type==='week'?'week':'pos')}">${l.pts>=0?'+':''}${l.pts}G</span></div>`).join(''):'<div class="detail-row"><span class="muted">无明细</span></div>';
+    lines.forEach(l=>{
+      const target=l.type==='study'?cols.study:(l.type==='week'?cols.week:cols.daily);
+      target.push({label:l.label,pts:l.pts,date:k});
+    });
+  });
+  const sum=a=>a.reduce((s,x)=>s+x.pts,0);
+  const colHtml=(title,color,items)=>`<div class="detail-col">
+    <div class="col-hd" style="color:${color}">${title}<span>${sum(items)>=0?'+':''}${Math.round(sum(items)*10)/10}G</span></div>
+    <div class="col-body">${items.length?items.map(x=>`<div class="detail-row"><span><span class="d-date">${x.date}</span>${x.label}</span><span style="color:${color};font-weight:600">${x.pts>=0?'+':''}${x.pts}G</span></div>`).join(''):'<div class="empty">无记录</div>'}</div>
+  </div>`;
+  document.getElementById('detailBody').innerHTML=`<div class="detail-cols">${colHtml('日常任务','var(--skill)',cols.daily)}${colHtml('学习任务','var(--study)',cols.study)}${colHtml('每周任务','var(--weekly)',cols.week)}</div>`;
+}
+function renderPenDetail(){
+  const days=Object.keys(DB.days).filter(k=>!isBlankDay(k)).sort().reverse();
+  if(!days.length){document.getElementById('detailBody').innerHTML='<div class="empty">暂无扣分记录</div>';return;}
+  document.getElementById('detailBody').innerHTML=days.map(k=>{
+    const rows=dayPenalty(k).list.map(p=>({label:p.n,pts:p.pts}));
+    if(!rows.length)return '';
+    const sum=rows.reduce((s,r)=>s+r.pts,0);
+    const capped=sum<-10?-10:sum;
     return `<div class="detail-day">
-      <div class="detail-day-hd"><span>📅 ${k}</span><span class="${net>=0?'pos':'neg'}" style="color:${net>=0?'var(--skill)':'var(--neg)'}">${net>=0?'+':''}${net}G</span></div>
-      ${body}
+      <div class="detail-day-hd"><span>📅 ${k}</span><span style="color:var(--neg)">${sum}G${sum!==capped?'（封顶后 '+capped+'G）':''}</span></div>
+      ${rows.map(r=>`<div class="detail-row"><span>${r.label}</span><span style="color:var(--neg);font-weight:600">${r.pts}G</span></div>`).join('')}
     </div>`;
-  }).join('');
+  }).join('')||'<div class="empty">暂无扣分记录</div>';
 }
 function renderRedeemDetail(){
   const byDay={};
@@ -1627,13 +1686,12 @@ function exportExcel(){
   const sheets=[];
   // Sheet 1: 积分明细
   const earnRows=[xlsRow(['日期','主目录','项目','分值','类型'])];
-  const settle=computeSettlementDays();
   Object.keys(DB.days).filter(k=>!isBlankDay(k)).sort().forEach(k=>{
     dayEarnedLines(k).forEach(l=>earnRows.push(xlsRow([k,l.cat||'',l.label,l.pts,'获得'])));
     (getDay(k).resc||[]).forEach(rk=>{const def=RESCUES.find(x=>x.k===rk);if(def)earnRows.push(xlsRow([k,'补救',def.n,def.pts,'补救']))});
     dayPenalty(k).list.forEach(p=>earnRows.push(xlsRow([k,'扣分',p.n,p.pts,'扣分'])));
-    if(settle[weekStart(k)]===k){const wp=weekZonePts(k);if(wp>0)earnRows.push(xlsRow([k,'周任务','本周周任务奖励',wp,'周任务']))}
-    if(isSunday(k)){const wpt=weightDeltaPts(k);if(wpt)earnRows.push(xlsRow([k,'周任务','称重变动('+(wpt.delta>=0?'-':'+')+Math.abs(wpt.delta).toFixed(1)+'kg)',wpt.pts,'周任务']))}
+    dayWeeklyLines(k).forEach(l=>earnRows.push(xlsRow([k,'每周任务',l.label,l.pts,'周任务'])));
+    if(isSunday(k)){const wpt=weightDeltaPts(k);if(wpt)earnRows.push(xlsRow([k,'每周任务','称重变动('+(wpt.delta>=0?'-':'+')+Math.abs(wpt.delta).toFixed(1)+'kg)',wpt.pts,'周任务']))}
     DB.milestones.filter(m=>m.date===k).forEach(m=>earnRows.push(xlsRow([k,'里程碑',m.desc,m.pts,'里程碑'])));
     earnRows.push(xlsRow([k,'合计','当日净积分',dayContribution(k),'合计']));
   });
