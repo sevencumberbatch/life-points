@@ -162,15 +162,19 @@
   #detailBody{max-height:440px;overflow-y:auto;padding-right:2px}
   .detail-cols{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;align-items:start}
   .detail-col{border:1px solid var(--border);border-radius:8px;overflow:hidden}
-  .detail-col .col-hd{padding:8px 12px;font-size:13px;font-weight:600;background:#f7f8fa;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+  .detail-col .col-hd{padding:8px 12px;font-size:13px;font-weight:600;background:#f7f8fa;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;cursor:pointer;user-select:none}
+  .detail-col.collapsed .col-body{display:none}
   .detail-col .col-body{max-height:380px;overflow-y:auto}
   .detail-col .detail-row{border-bottom:1px solid #f0f1f3}
   .detail-col .detail-row:last-child{border-bottom:none}
   .detail-col .empty{padding:20px 8px;font-size:12px}
   .detail-row .d-date{color:var(--muted);font-size:11px;margin-right:6px;white-space:nowrap}
   @media(max-width:600px){.detail-cols{grid-template-columns:1fr}}
-  .detail-day{border:1px solid var(--border);border-radius:8px;margin-bottom:8px;overflow:hidden}
-  .detail-day-hd{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:#f7f8fa;font-weight:600;font-size:13px}
+  .detail-day{border:1px solid var(--border);border-radius:8px;margin:8px;overflow:hidden}
+  .detail-day-hd{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:#f7f8fa;font-weight:600;font-size:13px;cursor:pointer;user-select:none}
+  .detail-day.collapsed .detail-row{display:none}
+  .detail-day .arr,.detail-col .arr{display:inline-block;transition:transform .15s;font-size:11px;color:var(--muted);margin-right:5px}
+  .detail-day.collapsed .arr,.detail-col.collapsed .arr{transform:rotate(-90deg)}
   .detail-row{display:flex;justify-content:space-between;padding:5px 12px;font-size:12px;border-top:1px solid #f0f1f3}
   .detail-row .pos{color:var(--skill);font-weight:600}
   .detail-row .neg{color:var(--neg);font-weight:600}
@@ -1508,7 +1512,8 @@ function renderEarnDetail(){
     });
   });
   const sum=a=>a.reduce((s,x)=>s+x.pts,0);
-  const colHtml=(title,color,items)=>{
+  const earnColKey={daily:'daily',study:'study',week:'week'};
+  const colHtml=(title,color,items,key)=>{
     const byDay={};
     items.forEach(x=>{(byDay[x.date]=byDay[x.date]||[]).push(x)});
     const dayKeys=Object.keys(byDay).sort().reverse();
@@ -1517,17 +1522,24 @@ function renderEarnDetail(){
       const rows=byDay[dk];
       const sub=sum(rows);
       return `<div class="detail-day">
-        <div class="detail-day-hd"><span>📅 ${dk}</span><span style="color:${color}">${sub>=0?'+':''}${Math.round(sub*10)/10}G</span></div>
+        <div class="detail-day-hd" onclick="this.parentElement.classList.toggle('collapsed')"><span><span class="arr">▾</span>📅 ${dk}</span><span style="color:${color}">${sub>=0?'+':''}${Math.round(sub*10)/10}G</span></div>
         ${rows.map(x=>`<div class="detail-row"><span>${x.label}</span><span style="color:${color};font-weight:600">${x.pts>=0?'+':''}${x.pts}G</span></div>`).join('')}
       </div>`;
     }).join('');
-    return `<div class="detail-col">
-      <div class="col-hd" style="color:${color}">${title}<span>${total>=0?'+':''}${Math.round(total*10)/10}G</span></div>
+    const cls=earnColState(key)?' collapsed':'';
+    return `<div class="detail-col${cls}">
+      <div class="col-hd" style="color:${color}" onclick="toggleEarnCol(this,'${key}')"><span><span class="arr">▾</span>${title}</span><span>${total>=0?'+':''}${Math.round(total*10)/10}G</span></div>
       <div class="col-body">${body||'<div class="empty">无记录</div>'}</div>
     </div>`;
   };
-  document.getElementById('detailBody').innerHTML=`<div class="detail-cols">${colHtml('日常任务','var(--skill)',cols.daily)}${colHtml('学习任务','var(--study)',cols.study)}${colHtml('每周任务','var(--weekly)',cols.week)}</div>`;
+  document.getElementById('detailBody').innerHTML=`<div class="detail-cols">${colHtml('日常任务','var(--skill)',cols.daily,'daily')}${colHtml('学习任务','var(--study)',cols.study,'study')}${colHtml('每周任务','var(--weekly)',cols.week,'week')}</div>`;
 }
+function toggleEarnCol(el,key){
+  const col=el.parentElement;
+  const collapsed=col.classList.toggle('collapsed');
+  try{const s=JSON.parse(localStorage.getItem('lpEarnCols')||'{}');s[key]=collapsed;localStorage.setItem('lpEarnCols',JSON.stringify(s))}catch(e){}
+}
+function earnColState(key){try{const s=JSON.parse(localStorage.getItem('lpEarnCols')||'{}');return !!s[key]}catch(e){return false}}
 function renderPenDetail(){
   const days=Object.keys(DB.days).filter(k=>!isBlankDay(k)).sort().reverse();
   if(!days.length){document.getElementById('detailBody').innerHTML='<div class="empty">暂无扣分记录</div>';return;}
@@ -1537,7 +1549,7 @@ function renderPenDetail(){
     const sum=rows.reduce((s,r)=>s+r.pts,0);
     const capped=sum<-10?-10:sum;
     return `<div class="detail-day">
-      <div class="detail-day-hd"><span>📅 ${k}</span><span style="color:var(--neg)">${sum}G${sum!==capped?'（封顶后 '+capped+'G）':''}</span></div>
+      <div class="detail-day-hd" onclick="this.parentElement.classList.toggle('collapsed')"><span><span class="arr">▾</span>📅 ${k}</span><span style="color:var(--neg)">${sum}G${sum!==capped?'（封顶后 '+capped+'G）':''}</span></div>
       ${rows.map(r=>`<div class="detail-row"><span>${r.label}</span><span style="color:var(--neg);font-weight:600">${r.pts}G</span></div>`).join('')}
     </div>`;
   }).join('')||'<div class="empty">暂无扣分记录</div>';
@@ -1551,7 +1563,7 @@ function renderRedeemDetail(){
     const rows=byDay[k];
     const sum=rows.reduce((s,r)=>s+r.c,0);
     return `<div class="detail-day">
-      <div class="detail-day-hd"><span>📅 ${k}</span><span class="neg" style="color:var(--neg)">-${sum}G（${rows.length}笔）</span></div>
+      <div class="detail-day-hd" onclick="this.parentElement.classList.toggle('collapsed')"><span><span class="arr">▾</span>📅 ${k}</span><span class="neg" style="color:var(--neg)">-${sum}G（${rows.length}笔）</span></div>
       ${rows.map(r=>`<div class="detail-row"><span>${r.n}</span><span class="neg" style="color:var(--neg)">-${r.c}G</span></div>`).join('')}
     </div>`;
   }).join('');
