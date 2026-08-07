@@ -1174,10 +1174,10 @@ function render(){
 function renderTop(){
   document.getElementById('balVal').textContent=Math.round(totalBalance()*10)/10;
   const taskRaw=dayRawPts(curDate);            // 本日任务：日任务原始分
-  const week=weekZonePts(curDate);             // 本周周任务
+  const weekToday=dayWeeklySum(curDate);       // 当天完成的周任务
   const ms=milestonePtsOn(curDate);            // 今日达成里程碑
   const wt=weightPtsToday(curDate);            // 今日称重
-  const rawTotal=taskRaw+week+ms+wt;           // 今日原始：所有原始分总和
+  const rawTotal=taskRaw+weekToday+ms+wt;      // 今日原始：当天获得的原始分总和（含当天周任务）
   const netTotal=dayNetTotal(curDate);         // 今日到账：所有到账分（扣软上限后）
   document.getElementById('taskVal').textContent=Math.round(taskRaw*10)/10;
   document.getElementById('rawVal').textContent=Math.round(rawTotal*10)/10;
@@ -1189,7 +1189,7 @@ function renderTop(){
   document.getElementById('taskLbl').textContent=isToday?'本日任务':'当日任务';
   document.getElementById('rawLbl').textContent=isToday?'今日原始':'当日原始';
   document.getElementById('dayLbl').textContent=isToday?'今日到账':'当日到账';
-  document.getElementById('weekVal').textContent=Math.round(week*10)/10;
+  document.getElementById('weekVal').textContent=Math.round(weekZonePts(curDate)*10)/10;
   // 三段式软上限条：结构刻度按"到账口径"(0-50全额/50-133五折/133-419冲刺)，
   // 133 = 全勤+听课3次到账；419 = 到账极限(133+周136+称重30+里程碑120)
   const CAP_THEORY=133, CAP_EXTREME=419;
@@ -1508,10 +1508,24 @@ function renderEarnDetail(){
     });
   });
   const sum=a=>a.reduce((s,x)=>s+x.pts,0);
-  const colHtml=(title,color,items)=>`<div class="detail-col">
-    <div class="col-hd" style="color:${color}">${title}<span>${sum(items)>=0?'+':''}${Math.round(sum(items)*10)/10}G</span></div>
-    <div class="col-body">${items.length?items.map(x=>`<div class="detail-row"><span><span class="d-date">${x.date}</span>${x.label}</span><span style="color:${color};font-weight:600">${x.pts>=0?'+':''}${x.pts}G</span></div>`).join(''):'<div class="empty">无记录</div>'}</div>
-  </div>`;
+  const colHtml=(title,color,items)=>{
+    const byDay={};
+    items.forEach(x=>{(byDay[x.date]=byDay[x.date]||[]).push(x)});
+    const dayKeys=Object.keys(byDay).sort().reverse();
+    const total=sum(items);
+    const body=dayKeys.map(dk=>{
+      const rows=byDay[dk];
+      const sub=sum(rows);
+      return `<div class="detail-day">
+        <div class="detail-day-hd"><span>📅 ${dk}</span><span style="color:${color}">${sub>=0?'+':''}${Math.round(sub*10)/10}G</span></div>
+        ${rows.map(x=>`<div class="detail-row"><span>${x.label}</span><span style="color:${color};font-weight:600">${x.pts>=0?'+':''}${x.pts}G</span></div>`).join('')}
+      </div>`;
+    }).join('');
+    return `<div class="detail-col">
+      <div class="col-hd" style="color:${color}">${title}<span>${total>=0?'+':''}${Math.round(total*10)/10}G</span></div>
+      <div class="col-body">${body||'<div class="empty">无记录</div>'}</div>
+    </div>`;
+  };
   document.getElementById('detailBody').innerHTML=`<div class="detail-cols">${colHtml('日常任务','var(--skill)',cols.daily)}${colHtml('学习任务','var(--study)',cols.study)}${colHtml('每周任务','var(--weekly)',cols.week)}</div>`;
 }
 function renderPenDetail(){
