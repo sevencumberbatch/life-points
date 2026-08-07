@@ -1067,8 +1067,8 @@ function weightDeltaPts(k){
 function weightPtsToday(k){const wp=weightDeltaPts(k);return wp?wp.pts:0}
 // 某天达成的里程碑积分
 function milestonePtsOn(k){return (DB.milestones||[]).filter(m=>m.date===k).reduce((s,m)=>s+m.pts,0)}
-// 当日到账总额：日任务(过软上限+扣分+救赎) + 周任务 + 称重 + 里程碑（后三者不过软上限）
-function dayNetTotal(k){return dayNet(k)+weekZonePts(k)+weightPtsToday(k)+milestonePtsOn(k)}
+// 当日到账总额：日任务(过软上限+扣分+救赎) + 当天完成的周任务 + 称重 + 里程碑（后三者不过软上限）
+function dayNetTotal(k){return dayNet(k)+dayWeeklySum(k)+weightPtsToday(k)+milestonePtsOn(k)}
 
 /* ============ 周任务按完成日拆分 ============ */
 function anyInWeek(ws,untilK,k1,k2){
