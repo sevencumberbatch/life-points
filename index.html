@@ -53,8 +53,8 @@
   .cap-bar .cap-scale span{position:absolute;top:0;white-space:nowrap}
   .cap-bar .cap-scale .c0{left:0}
   .cap-bar .cap-scale .c50{left:12%;transform:translateX(-50%)}
-  .cap-bar .cap-scale .c133{left:32%;transform:translateX(-50%)}
-  .cap-bar .cap-scale .c419{left:100%;transform:translateX(-100%)}
+  .cap-bar .cap-scale .c134{left:32%;transform:translateX(-50%)}
+  .cap-bar .cap-scale .c420{left:100%;transform:translateX(-100%)}
   .backup-bar{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:8px 14px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:12px;color:var(--muted);flex-wrap:wrap}
   .backup-bar button{background:#f7f8fa;border:1px solid var(--border);border-radius:6px;padding:4px 10px;cursor:pointer;font-size:11px;white-space:nowrap}
   .backup-bar button:hover{background:#eef0f2}
@@ -420,7 +420,7 @@
   <div id="pageMain">
   <!-- 软上限三段进度条 -->
   <div class="cap-bar">
-    <div class="row"><span>到账梯度：0-50 全额 · 50-133 五折 · 133+ 冲刺</span><span id="capPct">到账 0G / 419G</span></div>
+    <div class="row"><span>到账梯度：0-50 全额 · 50-134 五折 · 134+ 冲刺</span><span id="capPct">到账 0G / 420G</span></div>
     <div class="track">
       <div class="seg s1" style="width:12%">
         <div class="seg-fill" id="segFill1" style="width:0%"></div>
@@ -434,7 +434,7 @@
         <span class="seg-lock" id="segLock3">🔒</span>
       </div>
     </div>
-    <div class="cap-scale"><span class="c0">0G</span><span class="c50">50G 全额线</span><span class="c133">133G 日常满分</span><span class="c419">419G 极限</span></div>
+    <div class="cap-scale"><span class="c0">0G</span><span class="c50">50G 全额线</span><span class="c134">134G 日常满分</span><span class="c420">420G 极限</span></div>
   </div>
 
   <!-- 自动备份状态 -->
@@ -473,7 +473,7 @@
     <div id="lifeTasks1"></div>
     <div class="combo" id="combo-wash">晚间洗漱三项全做额外 +1G（总计10G）<span id="combo-wash-st">未达成</span></div>
     <div id="suppTasks"></div>
-    <div class="combo" id="combo-supp">早午晚睡前三补剂都吃额外 +1G（总计5G）<span id="combo-supp-st">未达成</span></div>
+    <div class="combo" id="combo-supp">早午下晚睡五补剂都吃额外 +2G（总计7G）<span id="combo-supp-st">未达成</span></div>
     <div id="lifeTasks2"></div>
   </div>
 
@@ -879,10 +879,11 @@ const LIFE1_COMBO={need:['faceWash','brushTeeth','shower'],pts:1};
 const SUPP=[
   {k:'suppMorn',n:'早补剂',std:'早上按时吃',pts:1},
   {k:'suppNoon',n:'午补剂',std:'中午按时吃',pts:1},
+  {k:'suppAfternoon',n:'下午补剂',std:'下午按时吃',pts:1},
   {k:'suppEve',n:'晚补剂',std:'晚上按时吃',pts:1},
   {k:'suppBed',n:'睡前补剂',std:'睡前按时吃',pts:1},
 ];
-const SUPP_COMBO={need:['suppMorn','suppNoon','suppEve','suppBed'],pts:1};
+const SUPP_COMBO={need:['suppMorn','suppNoon','suppAfternoon','suppEve','suppBed'],pts:2};
 const LIFE2=[
   {k:'trash',n:'丢垃圾',std:'出门顺手带下去',pts:3},
   {k:'deskClean',n:'整理桌面',std:'清理到可正常使用（5分钟）',pts:3},
@@ -916,7 +917,7 @@ const SHOP=[
 ];
 const PENALTIES=[
   {k:'noWash',n:'晚间洗漱三项全没做',pts:-5,cond:d=>!d.t.faceWash&&!d.t.brushTeeth&&!d.t.shower},
-  {k:'noMain',n:'减脂/学业/生活维护三条硬主线全空',pts:-8,cond:d=>!d.t.exercise&&!d.t.noSugar&&waterCupsDone(d)===0&&!d.t.earlySleep&&!d.t.earlyRise&&d.c.study45===0&&!d.t.studyDone&&!d.t.review&&!d.t.faceWash&&!d.t.brushTeeth&&!d.t.shower&&!d.t.suppMorn&&!d.t.suppNoon&&!d.t.suppEve&&!d.t.suppBed&&!d.t.trash&&!d.t.deskClean&&!d.t.sinkClean&&!d.t.therapyLamp&&!d.t.ointment},
+  {k:'noMain',n:'减脂/学业/生活维护三条硬主线全空',pts:-8,cond:d=>!d.t.exercise&&!d.t.noSugar&&waterCupsDone(d)===0&&!d.t.earlySleep&&!d.t.earlyRise&&d.c.study45===0&&!d.t.studyDone&&!d.t.review&&!d.t.faceWash&&!d.t.brushTeeth&&!d.t.shower&&!d.t.suppMorn&&!d.t.suppNoon&&!d.t.suppAfternoon&&!d.t.suppEve&&!d.t.suppBed&&!d.t.trash&&!d.t.deskClean&&!d.t.sinkClean&&!d.t.therapyLamp&&!d.t.ointment},
   {k:'drankSugar',n:'喝了带糖饮料',pts:-5,cond:d=>d.t.drankSugar===true},
   {k:'noStudy2d',n:'连续2天没有学习打卡',pts:-10,cond:d=>false}, // 单独逻辑
   {k:'noWeekly',n:'周大扫除完全没做',pts:-10,cond:(d,k)=>isSunday(k)&&weekAllDone(k)===false&&weekAnyDone(k)===false},
@@ -1194,9 +1195,9 @@ function renderTop(){
   document.getElementById('rawLbl').textContent=isToday?'今日原始':'当日原始';
   document.getElementById('dayLbl').textContent=isToday?'今日到账':'当日到账';
   document.getElementById('weekVal').textContent=Math.round(weekZonePts(curDate)*10)/10;
-  // 三段式软上限条：结构刻度按"到账口径"(0-50全额/50-133五折/133-419冲刺)，
-  // 133 = 全勤+听课3次到账；419 = 到账极限(133+周136+称重30+里程碑120)
-  const CAP_THEORY=133, CAP_EXTREME=419;
+  // 三段式软上限条：结构刻度按"到账口径"(0-50全额/50-134五折/134-420冲刺)，
+  // 134 = 全勤+听课3次到账(补剂5项)；420 = 到账极限(134+周136+称重30+里程碑120)
+  const CAP_THEORY=134, CAP_EXTREME=420;
   const gain=dayNetTotal(curDate);
   const segF=(st,en)=>gain<=st?0:(gain>=en?100:Math.round((gain-st)/(en-st)*100));
   document.getElementById('segFill1').style.width=segF(0,50)+'%';
@@ -1283,7 +1284,7 @@ function renderLife(){
   ).join('');
   const suppAll=SUPP_COMBO.need.every(x=>d.t[x]);
   document.getElementById('combo-supp').className='combo'+(suppAll?' active':'');
-  document.getElementById('combo-supp-st').textContent=suppAll?'已达成 +1G':'未达成';
+  document.getElementById('combo-supp-st').textContent=suppAll?'已达成 +2G':'未达成';
   document.getElementById('lifeTasks2').innerHTML=LIFE2.map(t=>
     taskRow(t,d.t[t.k],`toggle('${t.k}')`)
   ).join('');
