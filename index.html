@@ -53,8 +53,8 @@
   .cap-bar .cap-scale span{position:absolute;top:0;white-space:nowrap}
   .cap-bar .cap-scale .c0{left:0}
   .cap-bar .cap-scale .c50{left:12%;transform:translateX(-50%)}
-  .cap-bar .cap-scale .c134{left:32%;transform:translateX(-50%)}
-  .cap-bar .cap-scale .c420{left:100%;transform:translateX(-100%)}
+  .cap-bar .cap-scale .c139{left:33%;transform:translateX(-50%)}
+  .cap-bar .cap-scale .c425{left:100%;transform:translateX(-100%)}
   .backup-bar{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:8px 14px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:12px;color:var(--muted);flex-wrap:wrap}
   .backup-bar button{background:#f7f8fa;border:1px solid var(--border);border-radius:6px;padding:4px 10px;cursor:pointer;font-size:11px;white-space:nowrap}
   .backup-bar button:hover{background:#eef0f2}
@@ -420,21 +420,21 @@
   <div id="pageMain">
   <!-- 软上限三段进度条 -->
   <div class="cap-bar">
-    <div class="row"><span>到账梯度：0-50 全额 · 50-134 五折 · 134+ 冲刺</span><span id="capPct">到账 0G / 420G</span></div>
+    <div class="row"><span>到账梯度：0-50 全额 · 50-139 五折 · 139+ 冲刺</span><span id="capPct">到账 0G / 425G</span></div>
     <div class="track">
       <div class="seg s1" style="width:12%">
         <div class="seg-fill" id="segFill1" style="width:0%"></div>
       </div>
-      <div class="seg s2" style="width:20%">
+      <div class="seg s2" style="width:21%">
         <div class="seg-fill" id="segFill2" style="width:0%"></div>
         <span class="seg-lock" id="segLock2">🔒</span>
       </div>
-      <div class="seg s3" style="width:68%">
+      <div class="seg s3" style="width:67%">
         <div class="seg-fill" id="segFill3" style="width:0%"></div>
         <span class="seg-lock" id="segLock3">🔒</span>
       </div>
     </div>
-    <div class="cap-scale"><span class="c0">0G</span><span class="c50">50G 全额线</span><span class="c134">134G 日常满分</span><span class="c420">420G 极限</span></div>
+    <div class="cap-scale"><span class="c0">0G</span><span class="c50">50G 全额线</span><span class="c139">139G 日常满分</span><span class="c425">425G 极限</span></div>
   </div>
 
   <!-- 自动备份状态 -->
@@ -890,6 +890,8 @@ const LIFE2=[
   {k:'sinkClean',n:'清空水池',std:'清洗当日锅碗瓢盆',pts:3},
   {k:'therapyLamp',n:'理疗灯照射',std:'照射15-20分钟（可边照边做别的）',pts:5},
   {k:'ointment',n:'擦药膏',std:'每日任务，不做扣分',pts:10},
+  {k:'neckExercise',n:'颈椎操',std:'每天做一组',pts:5},
+  {k:'ulnarNerve',n:'尺神经操',std:'每天做一组',pts:5},
 ];
 const ZONES=[
   {k:'bedroom',n:'卧室'},
@@ -917,7 +919,7 @@ const SHOP=[
 ];
 const PENALTIES=[
   {k:'noWash',n:'晚间洗漱三项全没做',pts:-5,cond:d=>!d.t.faceWash&&!d.t.brushTeeth&&!d.t.shower},
-  {k:'noMain',n:'减脂/学业/生活维护三条硬主线全空',pts:-8,cond:d=>!d.t.exercise&&!d.t.noSugar&&waterCupsDone(d)===0&&!d.t.earlySleep&&!d.t.earlyRise&&d.c.study45===0&&!d.t.studyDone&&!d.t.review&&!d.t.faceWash&&!d.t.brushTeeth&&!d.t.shower&&!d.t.suppMorn&&!d.t.suppNoon&&!d.t.suppAfternoon&&!d.t.suppEve&&!d.t.suppBed&&!d.t.trash&&!d.t.deskClean&&!d.t.sinkClean&&!d.t.therapyLamp&&!d.t.ointment},
+  {k:'noMain',n:'减脂/学业/生活维护三条硬主线全空',pts:-8,cond:d=>!d.t.exercise&&!d.t.noSugar&&waterCupsDone(d)===0&&!d.t.earlySleep&&!d.t.earlyRise&&d.c.study45===0&&!d.t.studyDone&&!d.t.review&&!d.t.faceWash&&!d.t.brushTeeth&&!d.t.shower&&!d.t.suppMorn&&!d.t.suppNoon&&!d.t.suppAfternoon&&!d.t.suppEve&&!d.t.suppBed&&!d.t.trash&&!d.t.deskClean&&!d.t.sinkClean&&!d.t.therapyLamp&&!d.t.ointment&&!d.t.neckExercise&&!d.t.ulnarNerve},
   {k:'drankSugar',n:'喝了带糖饮料',pts:-5,cond:d=>d.t.drankSugar===true},
   {k:'noStudy2d',n:'连续2天没有学习打卡',pts:-10,cond:d=>false}, // 单独逻辑
   {k:'noWeekly',n:'周大扫除完全没做',pts:-10,cond:(d,k)=>isSunday(k)&&weekAllDone(k)===false&&weekAnyDone(k)===false},
@@ -1195,9 +1197,9 @@ function renderTop(){
   document.getElementById('rawLbl').textContent=isToday?'今日原始':'当日原始';
   document.getElementById('dayLbl').textContent=isToday?'今日到账':'当日到账';
   document.getElementById('weekVal').textContent=Math.round(weekZonePts(curDate)*10)/10;
-  // 三段式软上限条：结构刻度按"到账口径"(0-50全额/50-134五折/134-420冲刺)，
-  // 134 = 全勤+听课3次到账(补剂5项)；420 = 到账极限(134+周136+称重30+里程碑120)
-  const CAP_THEORY=134, CAP_EXTREME=420;
+  // 三段式软上限条：结构刻度按"到账口径"(0-50全额/50-139五折/139-425冲刺)，
+  // 139 = 全勤+听课3次到账(含颈椎操/尺神经操各5G)；425 = 到账极限(139+周136+称重30+里程碑120)
+  const CAP_THEORY=139, CAP_EXTREME=425;
   const gain=dayNetTotal(curDate);
   const segF=(st,en)=>gain<=st?0:(gain>=en?100:Math.round((gain-st)/(en-st)*100));
   document.getElementById('segFill1').style.width=segF(0,50)+'%';
