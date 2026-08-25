@@ -783,7 +783,7 @@ function renderBackup(){const el=document.getElementById('backupBar');if(!el)ret
     h+='<span>☁️ 云同步：<b style="color:var(--muted)">未配置</b></span>';
   }
   h+='<span style="display:flex;gap:6px;flex-wrap:wrap">';
-  if(cbEnv&&cbKey){h+='<button onclick="forceSync()">立即同步</button>';h+='<button onclick="restoreFromCloudHistory()">云端历史恢复('+(DB._history?DB._history.length:0)+')</button>'}
+  if(cbEnv&&cbKey){h+='<button onclick="forceSync()">立即同步</button>';h+='<button onclick="restoreLocalFromCloud()">从云端恢复(以云为准)</button>';h+='<button onclick="overwriteCloudFromLocal()">覆盖云端(以本机为准)</button>';h+='<button onclick="restoreFromCloudHistory()">云端历史恢复('+(DB._history?DB._history.length:0)+')</button>'}
   h+='<button onclick="configCloud()">'+(cbEnv?'同步设置':'配置云同步')+'</button></span>';
   h+='<br><span>🔒 访问密码：<b style="color:var(--skill)">已设置</b> · 同一设备当天只需输一次</span>';
   h+='<span style="display:flex;gap:6px;flex-wrap:wrap"><button onclick="changeAccessPass()">修改访问密码</button></span>';
@@ -990,6 +990,53 @@ function configCloud(){
 }
 
 function forceSync(){if(_sbReady){cloudSync()}else{configCloud()}}
+// 显式同步（以本机为准）：用本机数据直接覆盖云端，不做并集合并
+async function overwriteCloudFromLocal(){
+  if(!_sbReady){alert('请先配置并连接云同步');return}
+  const syncKey=getSbSyncKey();if(!syncKey){alert('未设置同步密码');return}
+  if(!confirm('确定用【本机数据】覆盖云端？\n\n云端当前内容将被替换为你的本机数据。\n（旧云端会自动存入「云端历史」，日后可经「云端历史恢复」找回）'))return;
+  try{
+    const{data:rows,error}=await _sbApp.from('life_points').select('*').eq('sync_key',syncKey);
+    if(error)throw error;
+    if(rows&&rows.length>0){
+      const oldData=JSON.parse(JSON.stringify(rows[0].data));delete oldData._history;
+      const hist=DB._history||[];
+      hist.push({data:oldData,updated_at:rows[0].updated_at,ts:(new Date(rows[0].updated_at).getTime())||Date.now()});
+      if(hist.length>20)hist=hist.slice(-20);
+      DB._history=hist;
+    }
+    DB._updatedAt=Date.now();
+    const{error:upErr}=await _sbApp.from('life_points').update({data:DB,updated_at:new Date().toISOString()}).eq('sync_key',syncKey);
+    if(upErr)throw upErr;
+    localStorage.setItem(SB_LASTSYNC,new Date().toISOString());_sbLastErr='';
+    localStorage.setItem(KEY,JSON.stringify(DB));await scheduleBackup();render();
+    alert('已用本机数据覆盖云端。');
+  }catch(e){_sbLastErr=(e&&e.message)?e.message:String(e);alert('覆盖失败：'+_sbLastErr);renderBackup()}
+}
+// 显式同步（以云为准）：用云端数据直接覆盖本机，不做并集合并
+async function restoreLocalFromCloud(){
+  if(!_sbReady){alert('请先配置并连接云同步');return}
+  const syncKey=getSbSyncKey();if(!syncKey){alert('未设置同步密码');return}
+  if(!confirm('确定用【云端数据】覆盖本机？\n\n本机当前内容将被云端替代。\n（本机旧数据会先存入浏览器内备份，可经「从浏览器恢复」找回）'))return;
+  try{
+    const{data:rows,error}=await _sbApp.from('life_points').select('*').eq('sync_key',syncKey);
+    if(error)throw error;
+    if(!rows||rows.length===0){alert('云端暂无数据，无法恢复');return}
+    const cloudData=JSON.parse(JSON.stringify(rows[0].data));
+    try{localStorage.setItem('lpSyncPreMergeBackup',JSON.stringify(DB))}catch(e){}
+    const oldLocal=JSON.parse(JSON.stringify(DB));delete oldLocal._history;
+    const hist=cloudData._history||DB._history||[];
+    hist.push({data:oldLocal,updated_at:new Date().toISOString(),ts:Date.now()});
+    if(hist.length>20)hist=hist.slice(-20);
+    cloudData._history=hist;cloudData._updatedAt=Date.now();
+    DB=cloudData;
+    localStorage.setItem(KEY,JSON.stringify(DB));await scheduleBackup();render();
+    const{error:upErr}=await _sbApp.from('life_points').update({data:DB,updated_at:new Date().toISOString()}).eq('sync_key',syncKey);
+    if(upErr)throw upErr;
+    localStorage.setItem(SB_LASTSYNC,new Date().toISOString());_sbLastErr='';
+    alert('已用云端数据覆盖本机。');
+  }catch(e){_sbLastErr=(e&&e.message)?e.message:String(e);alert('恢复失败：'+_sbLastErr);renderBackup()}
+}
 function getDay(k){if(!DB.days[k])DB.days[k]=blankDay();return DB.days[k]}
 // 标记某天被修改（供按天合并同步使用）
 function touchDay(k){const d=getDay(k);d._ts=Date.now();return d}
