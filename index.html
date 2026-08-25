@@ -80,29 +80,20 @@
   .focus-carry .fc-label #fcHint{font-weight:500;opacity:.7;font-size:11px}
   .focus-carry .fc-bar{height:7px;background:var(--card);border-radius:4px;overflow:hidden;box-shadow:inset 0 1px 2px rgba(0,0,0,.06);display:flex;align-items:center}
   .focus-carry .fc-fill{height:3px;width:0;background:linear-gradient(90deg,var(--study),var(--btn));border-radius:3px;transition:width .35s ease}
-  #focusPill{position:fixed;right:10px;top:50%;transform:translateY(-50%);z-index:999;cursor:pointer;background:var(--card);border:1px solid var(--btn);border-radius:999px;padding:8px 16px;display:flex;align-items:center;gap:8px}
-  #focusPill .fp-timer{font-size:14px;font-weight:600;color:var(--btn);font-variant-numeric:tabular-nums}
-  #focusPill .fp-expanded{display:none;text-align:center;min-width:140px}
-  #focusPill.expanded{border-radius:14px;padding:14px 20px}
-  #focusPill.expanded .fp-collapsed{display:none}
-  #focusPill.expanded .fp-expanded{display:block}
-  #focusPill .fp-name{font-size:13px;color:var(--muted);margin-bottom:4px}
-  #focusPill .fp-time{font-size:30px;font-weight:600;color:var(--btn);font-variant-numeric:tabular-nums;margin-bottom:10px;line-height:1.1}
+  #focusPill{position:fixed;right:10px;top:50%;transform:translateY(-50%);z-index:999;cursor:pointer;background:var(--card);border:1px solid var(--btn);border-radius:14px;padding:14px 20px;display:flex;align-items:center;gap:8px;min-width:150px}
+  #focusPill .fp-name{font-size:13px;color:var(--muted);margin-bottom:4px;text-align:center}
+  #focusPill .fp-time{font-size:30px;font-weight:600;color:var(--btn);font-variant-numeric:tabular-nums;margin-bottom:10px;line-height:1.1;text-align:center}
   #focusPill .fp-bar{height:6px;background:var(--card);border:1px solid var(--border);border-radius:4px;overflow:hidden;margin-bottom:8px;display:none}
   #focusPill.carry .fp-bar{display:block}
   #focusPill .fp-bar-fill{height:100%;width:0;background:var(--study);transition:width .3s linear}
-  #focusPill .fp-hint{font-size:11px;color:var(--muted);margin-bottom:10px;min-height:14px;line-height:1.3}
-  #focusPill .fp-actions button{background:var(--neg);border:none;color:#fff;border-radius:6px;padding:5px 16px;font-size:12px;cursor:pointer;font-weight:600}
+  #focusPill .fp-hint{font-size:11px;color:var(--muted);margin-bottom:10px;min-height:14px;line-height:1.3;text-align:center}
+  #focusPill .fp-total{font-size:13px;color:var(--btn);font-weight:600;margin-bottom:12px;text-align:center}
+  #focusPill .fp-actions{display:flex;gap:8px;justify-content:center}
+  #focusPill .fp-actions button{background:var(--neg);border:none;color:#fff;border-radius:6px;padding:5px 16px;font-size:12px;cursor:pointer;font-weight:600;margin:0}
+  #focusPill .fp-actions button.fp-save{background:var(--btn);color:#fff}
+  #focusPill .fp-actions button.fp-sync{background:transparent;color:var(--btn);border:1px solid var(--btn)}
   #focusPill.hidden{display:none}
-  #focusPill .fp-remote{display:none;text-align:center;min-width:150px}
-  #focusPill.remote{border-radius:14px;padding:14px 20px;border-color:var(--btn)}
-  #focusPill.remote .fp-collapsed{display:none}
-  #focusPill.remote .fp-expanded{display:none}
-  #focusPill .fp-actions{display:flex;gap:8px;justify-content:center;margin-top:10px}
-  #focusPill .fp-actions button{margin:0}
-  #focusPill .fp-actions button.fp-adopt{background:var(--btn);color:#fff}
-  #focusPill .fp-actions button.fp-ignore{background:transparent;color:var(--muted);border:1px solid var(--border)}
-  @media(max-width:600px){#focusPill{top:auto;bottom:26px;transform:none}#focusPill.expanded{transform:none}#focusPill.remote{transform:none}}
+  @media(max-width:600px){#focusPill{top:auto;bottom:26px;transform:none}}
   .backup-bar{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:8px 14px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:12px;color:var(--muted);flex-wrap:wrap}
   .backup-bar button{background:var(--panel);border:1px solid var(--btn);color:var(--text);border-radius:6px;padding:4px 10px;cursor:pointer;font-size:11px;white-space:nowrap;font-weight:600}
   .backup-bar button:hover{background:var(--btn);color:#fff}
@@ -934,11 +925,6 @@ function mergeSyncData(local,cloud){
     });
     out[field]=loc;
   });
-  // 顶层 _focus：全局唯一专注会话，按 updatedAt 的 last-writer-wins（结束态也用 updatedAt 比较）
-  if(cloud._focus){
-    const cu=cloud._focus.updatedAt||0, lu=out._focus?out._focus.updatedAt||0:0;
-    if(cu>=lu)out._focus=cloud._focus;
-  }
   return out;
 }
 async function cloudSync(){
@@ -971,7 +957,6 @@ async function cloudSync(){
       localStorage.setItem(KEY,JSON.stringify(DB));
       const{error:upErr}=await _sbApp.from('life_points').update({data:DB,updated_at:new Date().toISOString()}).eq('sync_key',syncKey);
       if(upErr)throw upErr;
-      reconcileFocus();
       render();
     }else{
       DB._updatedAt=Date.now();
@@ -1066,7 +1051,7 @@ async function restoreLocalFromCloud(){
 function getDay(k){if(!DB.days[k])DB.days[k]=blankDay();return DB.days[k]}
 // 标记某天被修改（供按天合并同步使用）
 function touchDay(k){const d=getDay(k);d._ts=Date.now();return d}
-function blankDay(){return{t:{},c:{study45:0,study45Dev:{},studyDone:0,studyDoneDev:{}},w:{bedroom:{o:false,s:false,m:false},living:{o:false,s:false,m:false},kitchen:{o:false,s:false,m:false},bath:{o:false,s:false,m:false}},ld:{wash:false,dry:false},wt:null,r:[],resc:[],todos:[]}}
+function blankDay(){return{t:{},c:{study45:0,study45Dev:{},studyDone:0,studyDoneDev:{},focusMinDev:{}},w:{bedroom:{o:false,s:false,m:false},living:{o:false,s:false,m:false},kitchen:{o:false,s:false,m:false},bath:{o:false,s:false,m:false}},ld:{wash:false,dry:false},wt:null,r:[],resc:[],todos:[]}}
 
 /* ============ 任务定义 ============ */
 const FAT=[
@@ -1893,12 +1878,12 @@ function fmtFocus(ms){ms=Math.max(0,Math.round(ms/1000));return String(Math.floo
 function startFocus(k){
   const f=FOCUS_TASKS[k];if(!f)return;
   const cur=getFocus();
-  if(cur){alert('已有专注进行中：'+cur.n+'，请先取消再开始新的');return}
+  if(cur){alert('已有专注进行中：'+cur.n+'，请先保存时间再开始新的');return}
   const d=getDay(todayKey());
   if(f.type==='once'&&d.t[k]){alert('今天已完成：'+f.n);return}
-  // carry 型（专注听课）不设结束时间：正计时、不强制停，由用户手动取消结算
-  const sess={id:Math.random().toString(36).slice(2,10),k,n:f.n,min:f.min,type:f.type,pts:f.pts,start:Date.now(),end:f.type==='once'?Date.now()+f.min*60000:null,expanded:false,owner:myDev(),updatedAt:Date.now()};
-  writeFocus(sess);DB._focus=sess;
+  // carry 型（专注听课）正计时、不强制停，由用户手动「保存时间」结算
+  const sess={id:Math.random().toString(36).slice(2,10),k,n:f.n,min:f.min,type:f.type,pts:f.pts,start:Date.now(),end:f.type==='once'?Date.now()+f.min*60000:null,expanded:false};
+  writeFocus(sess);
   renderFocusPill();render();save();
 }
 function addCarry(m){
@@ -1911,40 +1896,38 @@ function addCarry(m){
   }
   save();
 }
-function cancelFocus(){
-  const st=getFocus();
-  if(st){
-    if(st.type==='carry'){
-      // 取消时结算：按已专注分钟存入全局池（每满45自动+1，零头跨天攒着）
-      const el=Math.round((Date.now()-st.start)/60000);
-      if(el>0)addCarry(el);
-    }
-    clearFocus();endFocusSession();save();render();
-  }
+function focusMinAdd(d,m){if(!d.c.focusMinDev)d.c.focusMinDev={};d.c.focusMinDev[myDev()]=(d.c.focusMinDev[myDev()]||0)+m;}
+function saveFocusTime(){
+  const st=getFocus();if(!st)return;
+  const el=Math.max(0,Math.round((Date.now()-st.start)/60000));
+  if(el>0)focusMinAdd(touchDay(todayKey()),el);
+  if(st.type==='carry')addCarry(el);
+  clearFocus();save();if(_sbReady)cloudSync();render();
+  if(el>0)alert('已保存专注 '+el+' 分钟，并同步到云端');
 }
 function completeFocus(){
   const st=getFocus();if(!st)return;
   let msg=st.n+'完成 +'+st.pts+'G';
+  const el=Math.round((Date.now()-st.start)/60000);
+  if(el>0)focusMinAdd(touchDay(todayKey()),el);
   if(st.type==='carry'){
-    const el=Math.round((Date.now()-st.start)/60000);
     if(el>0)addCarry(el);
   }else{
     const d=touchDay(todayKey());
     d.t[st.k]=true;save();
   }
-  clearFocus();endFocusSession();save();render();alert(msg);
+  clearFocus();save();render();alert(msg);
 }
 function focusRemainMs(st){return (st.end||0)-Date.now()}
 function focusElapsedMs(st){return Date.now()-(st.start||Date.now())}
 function renderFocusPill(){
   const pill=document.getElementById('focusPill');if(!pill)return;
   const st=getFocus();
-  const rf=DB._focus;
-  const remoteActive=rf&&!rf.ended&&rf.owner&&rf.owner!==myDev()&&!isRemoteDismissed(rf.id);
-  const coll=pill.querySelector('.fp-collapsed'),exp=pill.querySelector('.fp-expanded'),rem=pill.querySelector('.fp-remote');
+  const total=todayFocusMinTotal();
+  const run=pill.querySelector('.fp-running'), idle=pill.querySelector('.fp-idle');
   if(st){
-    pill.classList.remove('hidden','remote');
-    if(coll)coll.style.display='';if(exp)exp.style.display='';if(rem)rem.style.display='none';
+    pill.classList.remove('hidden');
+    if(run)run.style.display=''; if(idle)idle.style.display='none';
     pill.classList.toggle('expanded',!!st.expanded);
     pill.classList.toggle('carry',st.type==='carry');
     const nm=document.getElementById('fpName');if(nm)nm.textContent=st.n;
@@ -1953,34 +1936,26 @@ function renderFocusPill(){
       const elMin=focusElapsedMs(st)/60000;
       timerTxt=fmtFocus(focusElapsedMs(st));
       const seg=elMin%45;barW=Math.min(100,seg/45*100);
-      hint=elMin<45?'还差 '+Math.ceil(45-elMin)+' 分钟到 +1（零头会攒着）':'已达成 45min！现在取消即 +1，超出部分继续攒';
+      hint=elMin<45?'还差 '+Math.ceil(45-elMin)+' 分钟到 +1（零头会攒着）':'已达成 45min！现在保存即 +1，超出继续攒';
     }else{timerTxt=fmtFocus(focusRemainMs(st));}
-    const tc=document.getElementById('fpTimerC'),te=document.getElementById('fpTimerE');
-    if(tc)tc.textContent=timerTxt;if(te)te.textContent=timerTxt;
+    const te=document.getElementById('fpTimerE');if(te)te.textContent=timerTxt;
     const bar=document.getElementById('fpBarFill');if(bar)bar.style.width=barW+'%';
     const h=document.getElementById('fpHint');if(h)h.textContent=hint;
+    const tr=document.getElementById('fpTotalRun');if(tr)tr.textContent='今日专注 '+total+' 分钟';
     return;
   }
-  if(remoteActive){
-    pill.classList.remove('hidden');pill.classList.add('remote');
-    if(coll)coll.style.display='none';if(exp)exp.style.display='none';if(rem)rem.style.display='';
-    const rn=document.getElementById('fpRemoteName'),rt=document.getElementById('fpRemoteTimer'),rh=document.getElementById('fpRemoteHint');
-    if(rn)rn.textContent=rf.n+'（进行中）';
-    if(rt)rt.textContent=fmtFocus(rf.type==='carry'?focusElapsedMs(rf):focusRemainMs(rf));
-    if(rh)rh.textContent='来自其他设备 · 点「接管继续」可在本机续上';
+  if(total>0){
+    pill.classList.remove('hidden');
+    if(run)run.style.display='none'; if(idle)idle.style.display='';
+    const ti=document.getElementById('fpTotalIdle');if(ti)ti.textContent='今日专注 '+total+' 分钟';
     return;
   }
-  pill.classList.add('hidden');pill.classList.remove('remote');
-  if(coll)coll.style.display='none';if(exp)exp.style.display='none';if(rem)rem.style.display='none';
+  pill.classList.add('hidden');
+  if(run)run.style.display='none'; if(idle)idle.style.display='none';
 }
 function focusTick(){
   const st=getFocus();
-  if(!st){
-    // 本机无会话，但云端可能有其他设备的进行中会话（远端横幅），刷新其计时
-    const rf=DB._focus;
-    if(rf&&!rf.ended&&rf.owner&&rf.owner!==myDev()&&!isRemoteDismissed(rf.id))renderFocusPill();
-    return;
-  }
+  if(!st)return;
   // carry 型正计时、不自动结束；once 型到点自动打卡
   if(st.type!=='carry' && focusRemainMs(st)<=0){completeFocus();return}
   renderFocusPill();
@@ -1995,19 +1970,9 @@ function initFocus(){
   const st=getFocus();
   if(st&&focusRemainMs(st)<=0){completeFocus()}
   else{renderFocusPill()}
-  reconcileFocus();
 }
-function isRemoteDismissed(id){try{return localStorage.getItem('lpRemoteDismiss')===id}catch(e){return false}}
-function dismissRemoteFocus(){try{const rf=DB._focus;if(rf)localStorage.setItem('lpRemoteDismiss',rf.id||'')}catch(e){}renderFocusPill()}
-function adoptRemoteFocus(){const rf=DB._focus;if(!rf||rf.ended||rf.owner===myDev())return;const sess=Object.assign({},rf);sess.owner=myDev();sess.updatedAt=Date.now();writeFocus(sess);DB._focus=sess;try{localStorage.removeItem('lpRemoteDismiss')}catch(e){}save();renderFocusPill();render()}
-function endFocusSession(){DB._focus={ended:true,updatedAt:Date.now(),owner:myDev()}}
-// 专注会话跨设备协调：根据云端 _focus 状态，恢复/接管/停止本机会话
-function reconcileFocus(){
-  const st=getFocus();const rf=DB._focus;
-  if(rf&&rf.ended){if(st)clearFocus();return}
-  if(rf&&rf.owner===myDev()){if(!st)writeFocus(rf);return}
-  if(rf&&rf.owner&&rf.owner!==myDev()){if(st&&(!st.updatedAt||rf.updatedAt>st.updatedAt))clearFocus();return}
-}
+function todayFocusMinTotal(){const d=getDay(todayKey());return sumDev(d.c&&d.c.focusMinDev)}
+function syncFocusTime(){if(_sbReady)cloudSync();else renderFocusPill()}
 function toggleWeekly(zk,tk){const d=touchDay(curDate);if(!d.w[zk])d.w[zk]={o:false,s:false,m:false};d.w[zk][tk]=!d.w[zk][tk];save();render()}
 function toggleLaundry(tk){const d=touchDay(curDate);if(!d.ld)d.ld={wash:false,dry:false};d.ld[tk]=!d.ld[tk];save();render()}
 function shiftDay(n){curDate=shiftKey(curDate,n);document.getElementById('datePick').value=curDate;render()}
@@ -2730,21 +2695,21 @@ if(isAuthed()){
 }
 </script>
 <div id="focusPill" class="hidden" onclick="toggleFocusPill()">
-  <div class="fp-collapsed"><span class="fp-timer" id="fpTimerC">25:00</span></div>
-  <div class="fp-expanded">
+  <div class="fp-running">
     <div class="fp-name" id="fpName">专注中</div>
     <div class="fp-time" id="fpTimerE">00:00</div>
     <div class="fp-bar"><div class="fp-bar-fill" id="fpBarFill"></div></div>
     <div class="fp-hint" id="fpHint"></div>
-    <div class="fp-actions"><button onclick="event.stopPropagation();cancelFocus()">取消专注</button></div>
-  </div>
-  <div class="fp-remote" style="display:none">
-    <div class="fp-name" id="fpRemoteName">其他设备专注中</div>
-    <div class="fp-time" id="fpRemoteTimer">00:00</div>
-    <div class="fp-hint" id="fpRemoteHint"></div>
+    <div class="fp-total" id="fpTotalRun">今日专注 0 分钟</div>
     <div class="fp-actions">
-      <button class="fp-adopt" onclick="event.stopPropagation();adoptRemoteFocus()">接管继续</button>
-      <button class="fp-ignore" onclick="event.stopPropagation();dismissRemoteFocus()">忽略</button>
+      <button class="fp-save" onclick="event.stopPropagation();saveFocusTime()">保存时间</button>
+      <button class="fp-sync" onclick="event.stopPropagation();syncFocusTime()">同步时间</button>
+    </div>
+  </div>
+  <div class="fp-idle">
+    <div class="fp-total" id="fpTotalIdle">今日专注 0 分钟</div>
+    <div class="fp-actions">
+      <button class="fp-sync" onclick="event.stopPropagation();syncFocusTime()">同步时间</button>
     </div>
   </div>
 </div>
