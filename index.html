@@ -739,6 +739,10 @@ function focusDevAdd(d,kind,n){const mk=kind+'Dev';if(!d.c[mk])d.c[mk]={};d.c[mk
 function load(){try{const r=localStorage.getItem(KEY);if(r){DB=JSON.parse(r);
   // 迁移：旧版「完课奖励」为勾选布尔 → 转为计数（每次15G）
   if(DB.days)Object.values(DB.days).forEach(d=>{if(d&&d.t&&d.t.studyDone){d.c.studyDone=(d.c.studyDone||0)+1;delete d.t.studyDone}normalizeDev(d,myDev())});
+  // 迁移：旧版专注零头为顶层数字 _focusCarry → 改为按设备记账 focusCarryDev
+  if(typeof DB._focusCarry==='number'&&!DB.focusCarryDev){DB.focusCarryDev={};DB.focusCarryDev[myDev()]=DB._focusCarry;delete DB._focusCarry;}
+  if(!DB.focusCarryDev)DB.focusCarryDev={};
+  if(!DB.carryConvertedTotal)DB.carryConvertedTotal=0;
 }}catch(e){}}
 function save(){DB._updatedAt=DB._updatedAt||Date.now();localStorage.setItem(KEY,JSON.stringify(DB));scheduleBackup();ensureCloud();if(_sbReady){clearTimeout(_syncTimer);_syncTimer=setTimeout(()=>{DB._updatedAt=Date.now();localStorage.setItem(KEY,JSON.stringify(DB));cloudSync()},2000)}}
 
@@ -925,6 +929,22 @@ function mergeSyncData(local,cloud){
     });
     out[field]=loc;
   });
+  // 6) 专注零头跨设备合并：按设备维度记账，同设备取较大值（不丢、不重复）
+  if(cloud.focusCarryDev&&typeof cloud.focusCarryDev==='object'){
+    out.focusCarryDev=out.focusCarryDev||{};
+    Object.keys(cloud.focusCarryDev).forEach(k=>{
+      const cv=cloud.focusCarryDev[k];
+      if(typeof cv==='number')out.focusCarryDev[k]=Math.max(out.focusCarryDev[k]||0,cv);
+    });
+  }
+  // 兼容旧版顶层数字 _focusCarry（过渡期云端数据）→ 折入本机桶
+  if(typeof cloud._focusCarry==='number'&&cloud._focusCarry>0){
+    out.focusCarryDev=out.focusCarryDev||{};
+    out.focusCarryDev[myDev()]=Math.max(out.focusCarryDev[myDev()]||0,cloud._focusCarry);
+  }
+  if(typeof cloud.carryConvertedTotal==='number'){
+    out.carryConvertedTotal=Math.max(out.carryConvertedTotal||0,cloud.carryConvertedTotal);
+  }
   return out;
 }
 async function cloudSync(){
@@ -954,6 +974,7 @@ async function cloudSync(){
       }else{merged._history=baseHistory}
       merged._updatedAt=Date.now();
       DB=merged;
+      settleCarry();
       localStorage.setItem(KEY,JSON.stringify(DB));
       const{error:upErr}=await _sbApp.from('life_points').update({data:DB,updated_at:new Date().toISOString()}).eq('sync_key',syncKey);
       if(upErr)throw upErr;
@@ -1482,7 +1503,7 @@ function renderStudy(){
   const cnt=d.c.study45||0;
   document.getElementById('cnt-study45').textContent=cnt;
   document.getElementById('pts-study45').textContent='+'+(cnt*10)+'G';
-  const carry=DB._focusCarry||0;
+  const carry=carryTotal();
   const st=document.getElementById('study45Std');
   if(st)st.textContent='每 45 分钟 +10G';
   const box=document.getElementById('focusCarry');
@@ -1886,15 +1907,28 @@ function startFocus(k){
   writeFocus(sess);
   renderFocusPill();render();save();
 }
-function addCarry(m){
-  if(!DB._focusCarry)DB._focusCarry=0;
-  DB._focusCarry+=m;
-  while(DB._focusCarry>=45){
-    DB._focusCarry-=45;
-    const d=touchDay(todayKey());
-    focusDevAdd(d,'study45',1);
+function carryTotal(){
+  const raw=sumDev(DB.focusCarryDev)-(DB.carryConvertedTotal||0)*45;
+  return raw>0?raw:0;
+}
+// 按累计值结算 +1（专注听课每满45分钟 +10G）：用累计桶总数而非「扣减桶」，避免云同步把已扣零头加回来导致重复 +1
+function settleCarry(){
+  const total=sumDev(DB.focusCarryDev||{});
+  const target=Math.floor(total/45);
+  const conv=DB.carryConvertedTotal||0;
+  if(target>conv){
+    DB.carryConvertedTotal=target;
+    for(let i=conv;i<target;i++){
+      const d=touchDay(todayKey());
+      focusDevAdd(d,'study45',1);
+    }
+    save();
   }
-  save();
+}
+function addCarry(m){
+  if(!DB.focusCarryDev)DB.focusCarryDev={};
+  DB.focusCarryDev[myDev()]=(DB.focusCarryDev[myDev()]||0)+m;
+  settleCarry();
 }
 function focusMinAdd(d,m){if(!d.c.focusMinDev)d.c.focusMinDev={};d.c.focusMinDev[myDev()]=(d.c.focusMinDev[myDev()]||0)+m;}
 function saveFocusTime(){
