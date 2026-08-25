@@ -737,7 +737,7 @@ function load(){try{const r=localStorage.getItem(KEY);if(r){DB=JSON.parse(r);
   // 迁移：旧版「完课奖励」为勾选布尔 → 转为计数（每次15G）
   if(DB.days)Object.values(DB.days).forEach(d=>{if(d&&d.t&&d.t.studyDone){d.c.studyDone=(d.c.studyDone||0)+1;delete d.t.studyDone}});
 }}catch(e){}}
-function save(){DB._updatedAt=DB._updatedAt||Date.now();localStorage.setItem(KEY,JSON.stringify(DB));scheduleBackup();if(_sbReady){clearTimeout(_syncTimer);_syncTimer=setTimeout(()=>{DB._updatedAt=Date.now();localStorage.setItem(KEY,JSON.stringify(DB));cloudSync()},2000)}}
+function save(){DB._updatedAt=DB._updatedAt||Date.now();localStorage.setItem(KEY,JSON.stringify(DB));scheduleBackup();ensureCloud();if(_sbReady){clearTimeout(_syncTimer);_syncTimer=setTimeout(()=>{DB._updatedAt=Date.now();localStorage.setItem(KEY,JSON.stringify(DB));cloudSync()},2000)}}
 
 /* === 自动备份层（零云依赖）=== */
 const BAK_LEXPORT='lpLastExport';
@@ -794,21 +794,41 @@ const SB_URL_KEY='lpSbUrl';
 const SB_ANONKEY_KEY='lpSbAnonKey';
 const SB_SYNCKEY='lpSbSyncKey';
 const SB_LASTSYNC='lpLastSbSync';
-let _sbApp=null,_sbReady=false,_sbSyncing=false,_syncTimer=null;
+let _sbApp=null,_sbReady=false,_sbSyncing=false,_syncTimer=null,_sbInterval=null;
 
 function getSbUrl(){return localStorage.getItem(SB_URL_KEY)||''}
 function getSbAnonKey(){return localStorage.getItem(SB_ANONKEY_KEY)||''}
 function getSbSyncKey(){return localStorage.getItem(SB_SYNCKEY)||''}
 function lastCloudSync(){return localStorage.getItem(SB_LASTSYNC)||''}
 
+// 云自动重连：只要配置存在且未连接，就尝试初始化（网络恢复后自动续传）
+let _sbInitTrying=false;
+async function ensureCloud(){
+  const url=getSbUrl(),anonKey=getSbAnonKey();
+  if(!url||!anonKey||_sbReady||_sbInitTrying)return;
+  _sbInitTrying=true;
+  try{await initCloud()}catch(e){console.error('云初始化重试失败:',e)}
+  finally{_sbInitTrying=false}
+}
+
 function loadSbSDK(){
   if(window.supabase)return Promise.resolve(true);
   return new Promise(res=>{
-    const s=document.createElement('script');
-    s.src=SB_SDK_URL;
-    s.onload=()=>res(true);
-    s.onerror=()=>res(false);
-    document.head.appendChild(s);
+    const urls=[
+      SB_SDK_URL,
+      'https://unpkg.com/@supabase/supabase-js@2',
+      'https://cdnjs.cloudflare.com/ajax/libs/supabase-js/2.45.4/umd/supabase.min.js',
+    ];
+    let i=0;
+    function tryNext(){
+      if(i>=urls.length){res(false);return}
+      const s=document.createElement('script');
+      s.src=urls[i++];
+      s.onload=()=>res(true);
+      s.onerror=()=>{s.remove();tryNext()};
+      document.head.appendChild(s);
+    }
+    tryNext();
   });
 }
 
@@ -821,8 +841,8 @@ async function initCloud(){
   try{
     _sbApp=supabase.createClient(url,anonKey);
     _sbReady=true;
+    if(!_sbInterval){_sbInterval=setInterval(()=>cloudSync(),30000)}
     await cloudSync();
-    setInterval(()=>cloudSync(),30000);
   }catch(e){console.error('Supabase init error:',e)}
   renderBackup();
 }
