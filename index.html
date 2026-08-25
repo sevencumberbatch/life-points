@@ -71,8 +71,30 @@
   .cap-bar .cap-scale span{position:absolute;top:0;white-space:nowrap}
   .cap-bar .cap-scale .c0{left:0}
   .cap-bar .cap-scale .c50{left:12%;transform:translateX(-50%)}
-  .cap-bar .cap-scale .c154{left:35%;transform:translateX(-50%)}
-  .cap-bar .cap-scale .c440{left:100%;transform:translateX(-100%)}
+  .cap-bar .cap-scale .c169{left:37%;transform:translateX(-50%)}
+  .cap-bar .cap-scale .c455{left:100%;transform:translateX(-100%)}
+  .focus-btn{background:var(--card);border:1px solid var(--btn);color:var(--study);border-radius:7px;padding:4px 12px;font-size:12px;cursor:pointer;font-weight:600;white-space:nowrap;flex-shrink:0;line-height:1.5}
+  .focus-btn:hover{background:var(--btn);color:#fff}
+  .focus-carry{margin:0 10px 10px;padding:6px 12px;background:var(--study-bg);border:1px solid color-mix(in srgb,var(--study) 25%,transparent);border-radius:9px}
+  .focus-carry .fc-label{display:flex;justify-content:space-between;align-items:center;font-size:12px;font-weight:700;color:var(--study);margin-bottom:4px}
+  .focus-carry .fc-label #fcHint{font-weight:500;opacity:.7;font-size:11px}
+  .focus-carry .fc-bar{height:7px;background:var(--card);border-radius:4px;overflow:hidden;box-shadow:inset 0 1px 2px rgba(0,0,0,.06);display:flex;align-items:center}
+  .focus-carry .fc-fill{height:3px;width:0;background:linear-gradient(90deg,var(--study),var(--btn));border-radius:3px;transition:width .35s ease}
+  #focusPill{position:fixed;right:10px;top:50%;transform:translateY(-50%);z-index:999;cursor:pointer;background:var(--card);border:1px solid var(--btn);border-radius:999px;padding:8px 16px;display:flex;align-items:center;gap:8px}
+  #focusPill .fp-timer{font-size:14px;font-weight:600;color:var(--btn);font-variant-numeric:tabular-nums}
+  #focusPill .fp-expanded{display:none;text-align:center;min-width:140px}
+  #focusPill.expanded{border-radius:14px;padding:14px 20px}
+  #focusPill.expanded .fp-collapsed{display:none}
+  #focusPill.expanded .fp-expanded{display:block}
+  #focusPill .fp-name{font-size:13px;color:var(--muted);margin-bottom:4px}
+  #focusPill .fp-time{font-size:30px;font-weight:600;color:var(--btn);font-variant-numeric:tabular-nums;margin-bottom:10px;line-height:1.1}
+  #focusPill .fp-bar{height:6px;background:var(--card);border:1px solid var(--border);border-radius:4px;overflow:hidden;margin-bottom:8px;display:none}
+  #focusPill.carry .fp-bar{display:block}
+  #focusPill .fp-bar-fill{height:100%;width:0;background:var(--study);transition:width .3s linear}
+  #focusPill .fp-hint{font-size:11px;color:var(--muted);margin-bottom:10px;min-height:14px;line-height:1.3}
+  #focusPill .fp-actions button{background:var(--neg);border:none;color:#fff;border-radius:6px;padding:5px 16px;font-size:12px;cursor:pointer;font-weight:600}
+  #focusPill.hidden{display:none}
+  @media(max-width:600px){#focusPill{top:auto;bottom:26px;transform:none}#focusPill.expanded{transform:none}}
   .backup-bar{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:8px 14px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:12px;color:var(--muted);flex-wrap:wrap}
   .backup-bar button{background:var(--panel);border:1px solid var(--btn);color:var(--text);border-radius:6px;padding:4px 10px;cursor:pointer;font-size:11px;white-space:nowrap;font-weight:600}
   .backup-bar button:hover{background:var(--btn);color:#fff}
@@ -110,7 +132,7 @@
   .counter .tname{flex:1;font-size:14px}
   .counter .tstd{font-size:11px;color:var(--muted)}
   .counter .ctrl{display:flex;align-items:center;gap:8px}
-  .counter button{width:28px;height:28px;border-radius:7px;border:1px solid var(--border);background:var(--card);cursor:pointer;font-size:16px;color:var(--study);font-weight:600}
+  .counter .ctrl button{width:28px;height:28px;border-radius:7px;border:1px solid var(--border);background:var(--card);cursor:pointer;font-size:16px;color:var(--study);font-weight:600}
   .counter button:hover{background:var(--study-bg)}
   .counter .cnt{min-width:24px;text-align:center;font-weight:600;font-size:15px}
   .counter .tpts{font-size:13px;font-weight:600;color:var(--skill);min-width:48px;text-align:right}
@@ -357,7 +379,7 @@
     .task .box{width:20px;height:20px}
     .counter{padding:7px 6px;gap:8px}
     .counter .tname{font-size:13px}
-    .counter button{width:26px;height:26px;font-size:15px}
+    .counter .ctrl button{width:26px;height:26px;font-size:15px}
     .counter .tpts{font-size:12px;min-width:40px}
     .combo{padding:6px 10px;font-size:11px}
     .zone{padding:8px 10px}
@@ -453,7 +475,7 @@
   <div id="pageMain">
   <!-- 软上限三段进度条 -->
   <div class="cap-bar">
-    <div class="row"><span>到账梯度：0-50 全额 · 50-154 五折 · 154+ 冲刺</span><span id="capPct">到账 0G / 440G</span></div>
+    <div class="row"><span>到账梯度：0-50 全额 · 50-169 五折 · 169+ 冲刺</span><span id="capPct">到账 0G / 455G</span></div>
     <div class="track">
       <div class="seg s1" style="width:12%">
         <div class="seg-fill" id="segFill1" style="width:0%"></div>
@@ -467,7 +489,7 @@
         <span class="seg-lock" id="segLock3">🔒</span>
       </div>
     </div>
-    <div class="cap-scale"><span class="c0">0G</span><span class="c50">50G 全额线</span><span class="c154">154G 日常满分</span><span class="c440">440G 极限</span></div>
+    <div class="cap-scale"><span class="c0">0G</span><span class="c50">50G 全额线</span><span class="c169">169G 日常满分</span><span class="c455">455G 极限</span></div>
   </div>
 
   <!-- 自动备份状态 -->
@@ -484,11 +506,21 @@
   <!-- 主线二 学业 -->
   <div class="section sec-study">
     <h2><span class="ic">📘</span>主线二 · 中级经济师</h2>
-    <div class="sub">每 45 分钟专注 +10G，连续听完一整节额外 +15G</div>
+    <div class="sub">每 45 分钟专注 +10G · 完课每次 +15G（均不受软上限）</div>
     <div class="counter">
-      <div style="flex:1"><div class="tname">专注听课</div><div class="tstd">每 45 分钟 +10G</div></div>
+      <div style="flex:1"><div class="tname">专注听课</div><div class="tstd" id="study45Std">每 45 分钟 +10G</div></div>
       <div class="ctrl"><button onclick="adjCount('study45',-1)">−</button><span class="cnt" id="cnt-study45">0</span><button onclick="adjCount('study45',1)">+</button></div>
+      <button class="focus-btn" onclick="startFocus('study45')">开始</button>
       <div class="tpts" id="pts-study45">0</div>
+    </div>
+    <div class="focus-carry" id="focusCarry" style="display:none">
+      <div class="fc-label"><span id="fcText">专注零头 0/45</span><span id="fcHint">距下次 +10G</span></div>
+      <div class="fc-bar"><div class="fc-fill" id="fcFill"></div></div>
+    </div>
+    <div class="counter">
+      <div style="flex:1"><div class="tname">完课奖励</div><div class="tstd">每听完一整节课 +15G（不受软上限）</div></div>
+      <div class="ctrl"><button onclick="adjCount('studyDone',-1)">−</button><span class="cnt" id="cnt-studyDone">0</span><button onclick="adjCount('studyDone',1)">+</button></div>
+      <div class="tpts" id="pts-studyDone">0</div>
     </div>
     <div id="studyTasks"></div>
   </div>
@@ -701,7 +733,10 @@ function parseKey(k){const [y,m,d]=k.split('-').map(Number);return new Date(y,m-
 function weekStart(k){const d=parseKey(k);const day=(d.getDay()||7);d.setDate(d.getDate()-day+1);return fmt(d)} // 周一
 function isSunday(k){return parseKey(k).getDay()===0}
 
-function load(){try{const r=localStorage.getItem(KEY);if(r)DB=JSON.parse(r)}catch(e){}}
+function load(){try{const r=localStorage.getItem(KEY);if(r){DB=JSON.parse(r);
+  // 迁移：旧版「完课奖励」为勾选布尔 → 转为计数（每次15G）
+  if(DB.days)Object.values(DB.days).forEach(d=>{if(d&&d.t&&d.t.studyDone){d.c.studyDone=(d.c.studyDone||0)+1;delete d.t.studyDone}});
+}}catch(e){}}
 function save(){DB._updatedAt=DB._updatedAt||Date.now();localStorage.setItem(KEY,JSON.stringify(DB));scheduleBackup();if(_sbReady){clearTimeout(_syncTimer);_syncTimer=setTimeout(()=>{DB._updatedAt=Date.now();localStorage.setItem(KEY,JSON.stringify(DB));cloudSync()},2000)}}
 
 /* === 自动备份层（零云依赖）=== */
@@ -938,7 +973,7 @@ function blankDay(){return{t:{},c:{study45:0},w:{bedroom:{o:false,s:false,m:fals
 
 /* ============ 任务定义 ============ */
 const FAT=[
-  {k:'exercise',n:'运动',std:'任意形式满30分钟',pts:20},
+  {k:'exercise',n:'运动',std:'任意形式满30分钟',pts:20,focusMin:30},
   {k:'noSugar',n:'不喝带糖饮料',std:'全天不喝含糖饮料（奶茶算违规）',pts:10},
   {k:'earlySleep',n:'早睡',std:'23:30前放下手机',pts:8},
   {k:'earlyRise',n:'早起',std:'7:30前起床，无回笼觉',pts:5},
@@ -953,16 +988,15 @@ const LAMP_PTS=5;
 function lampDone(d){let n=0;for(let i=1;i<=LAMP_CUPS;i++){if(d.t['lamp'+i])n++}return n}
 function lampPts(d){return lampDone(d)*LAMP_PTS}
 const STUDY=[
-  {k:'studyDone',n:'完课奖励',std:'连续听完一整节课（约2小时）',pts:15},
-  {k:'review',n:'复习回顾',std:'15分钟快速过前一天内容',pts:5},
+  {k:'review',n:'复习回顾',std:'15分钟快速过前一天内容',pts:5,focusMin:15},
 ];
 const SKILL=[
   {k:'duolingo',n:'多邻国',std:'完成每日练习',pts:5},
-  {k:'skillPrac',n:'SQL / Markdown / 阅读',std:'学习/练习30分钟',pts:8},
+  {k:'skillPrac',n:'SQL / Markdown / 阅读',std:'学习/练习30分钟',pts:8,focusMin:30},
   {k:'accounting',n:'当日记账',std:'记下当天支出',pts:3},
   {k:'budget',n:'日常消费≤60',std:'全天日常消费≤60元（不含房租/水电网/话费）',pts:10,full:true},
   {k:'vocab',n:'背单词 10 个',std:'任意记忆卡 App',pts:5},
-  {k:'meditate',n:'冥想',std:'安静坐 5 分钟',pts:5},
+  {k:'meditate',n:'冥想',std:'安静坐 5 分钟',pts:5,focusMin:5},
 ];
 const LIFE1=[
   {k:'faceWash',n:'洗脸',pts:3},
@@ -1012,7 +1046,7 @@ const SHOP=[
 ];
 const PENALTIES=[
   {k:'noWash',n:'晚间洗漱三项全没做',pts:-5,cond:d=>!d.t.faceWash&&!d.t.brushTeeth&&!d.t.shower},
-  {k:'noMain',n:'减脂/学业/生活维护三条硬主线全空',pts:-8,cond:d=>!d.t.exercise&&!d.t.noSugar&&waterCupsDone(d)===0&&!d.t.earlySleep&&!d.t.earlyRise&&d.c.study45===0&&!d.t.studyDone&&!d.t.review&&!d.t.faceWash&&!d.t.brushTeeth&&!d.t.shower&&!d.t.suppMorn&&!d.t.suppNoon&&!d.t.suppAfternoon&&!d.t.suppEve&&!d.t.suppBed&&!d.t.trash&&!d.t.deskClean&&!d.t.sinkClean&&!d.t.ointment&&!d.t.neckExercise&&!d.t.ulnarNerve&&lampDone(d)===0},
+  {k:'noMain',n:'减脂/学业/生活维护三条硬主线全空',pts:-8,cond:d=>!d.t.exercise&&!d.t.noSugar&&waterCupsDone(d)===0&&!d.t.earlySleep&&!d.t.earlyRise&&d.c.study45===0&&(d.c.studyDone||0)===0&&!d.t.review&&!d.t.faceWash&&!d.t.brushTeeth&&!d.t.shower&&!d.t.suppMorn&&!d.t.suppNoon&&!d.t.suppAfternoon&&!d.t.suppEve&&!d.t.suppBed&&!d.t.trash&&!d.t.deskClean&&!d.t.sinkClean&&!d.t.ointment&&!d.t.neckExercise&&!d.t.ulnarNerve&&lampDone(d)===0},
   {k:'drankSugar',n:'喝了带糖饮料',pts:-5,cond:d=>d.t.drankSugar===true},
   {k:'noStudy2d',n:'连续2天没有学习打卡',pts:-10,cond:d=>false}, // 单独逻辑
   {k:'noWeekly',n:'周大扫除完全没做',pts:-10,cond:(d,k)=>isSunday(k)&&weekAllDone(k)===false&&weekAnyDone(k)===false},
@@ -1032,6 +1066,7 @@ function dayRawPts(k){
   p+=waterCupsPts(d);
   // 学业
   p+=(d.c.study45||0)*10;
+  p+=(d.c.studyDone||0)*15; // 完课每次15G（计数，计入raw，最终在full中不受软上限）
   STUDY.forEach(t=>{if(d.t[t.k])p+=t.pts});
   // 技能
   SKILL.forEach(t=>{if(d.t[t.k])p+=t.pts});
@@ -1048,7 +1083,8 @@ function dayRawPts(k){
 function dayStudyPts(k){
   const d=getDay(k);let p=0;
   p+=(d.c.study45||0)*10;
-  STUDY.forEach(t=>{if(d.t[t.k])p+=t.pts});
+  p+=(d.c.studyDone||0)*15; // 完课每次15G（计数）
+  if(d.t.review)p+=5;
   return p;
 }
 function dayCapPts(k){
@@ -1075,8 +1111,8 @@ function dayPenalty(k){
       // 其余均为"未完成"类，仅对已过去的日期结算
       if(pe.k==='noStudy2d'){
         const prev=shiftKey(k,-1);const pd=getDay(prev);
-        const noStudyNow=(d.c.study45||0)===0&&!d.t.studyDone&&!d.t.review;
-        const noStudyPrev=(pd.c.study45||0)===0&&!pd.t.studyDone&&!pd.t.review;
+        const noStudyNow=(d.c.study45||0)===0&&(d.c.studyDone||0)===0&&!d.t.review;
+        const noStudyPrev=(pd.c.study45||0)===0&&(pd.c.studyDone||0)===0&&!pd.t.review;
         trigger=noStudyNow&&noStudyPrev;
       }else{
         trigger=pe.cond(d,k);
@@ -1296,9 +1332,9 @@ function renderTop(){
   document.getElementById('rawLbl').textContent=isToday?'今日原始':'当日原始';
   document.getElementById('dayLbl').textContent=isToday?'今日到账':'当日到账';
   document.getElementById('weekVal').textContent=Math.round(weekZonePts(curDate)*10)/10;
-  // 三段式软上限条：结构刻度按"到账口径"(0-50全额/50-154五折/154-440冲刺)，
-  // 154 = 全勤+听课3次到账(含照灯3格×5G + 日常消费≤60元×10G全额渠道)；440 = 到账极限(154+周136+称重30+里程碑120)
-  const CAP_THEORY=154, CAP_EXTREME=440;
+  // 三段式软上限条：结构刻度按"到账口径"(0-50全额/50-169五折/169-455冲刺)，
+  // 169 = 全勤+听课3次到账(含照灯3格×5G + 日常消费≤60元×10G全额渠道 + 完课按2次目标计15G)；455 = 到账极限(169+周136+称重30+里程碑120)
+  const CAP_THEORY=169, CAP_EXTREME=455;
   const gain=dayNetTotal(curDate);
   const segF=(st,en)=>gain<=st?0:(gain>=en?100:Math.round((gain-st)/(en-st)*100));
   document.getElementById('segFill1').style.width=segF(0,50)+'%';
@@ -1309,6 +1345,7 @@ function renderTop(){
   document.getElementById('capPct').textContent='到账 '+Math.round(gain*10)/10+'G / '+CAP_EXTREME+'G';
 }
 function taskRow(t,done,onclick,disabled,disabledMsg){
+  const fb=(t.focusMin&&!done)?`<button class="focus-btn" onclick="event.stopPropagation();startFocus('${t.k}')">开始</button>`:'';
   if(disabled && !done){
     return `<div class="task disabled" title="${disabledMsg||''}">
     <div class="box"></div><div class="tname">${t.n}<div class="tstd">${t.std||''}</div>${disabledMsg?`<div class="lock-msg">${disabledMsg}</div>`:''}</div>
@@ -1316,7 +1353,7 @@ function taskRow(t,done,onclick,disabled,disabledMsg){
   }
   return `<div class="task${done?' done':''}" onclick="${onclick}">
     <div class="box"></div><div class="tname">${t.n}<div class="tstd">${t.std||''}</div></div>
-    <div class="tpts">+${t.pts}G</div></div>`;
+    ${fb}<div class="tpts">+${t.pts}G</div></div>`;
 }
 function renderFat(){
   const d=getDay(curDate);
@@ -1362,6 +1399,22 @@ function renderStudy(){
   const cnt=d.c.study45||0;
   document.getElementById('cnt-study45').textContent=cnt;
   document.getElementById('pts-study45').textContent='+'+(cnt*10)+'G';
+  const carry=DB._focusCarry||0;
+  const st=document.getElementById('study45Std');
+  if(st)st.textContent='每 45 分钟 +10G';
+  const box=document.getElementById('focusCarry');
+  if(box){
+    if(carry>0){
+      box.style.display='block';
+      document.getElementById('fcText').textContent='专注零头 '+carry+'/45 分钟';
+      document.getElementById('fcFill').style.width=Math.min(100,carry/45*100)+'%';
+    }else{
+      box.style.display='none';
+    }
+  }
+  const dc=d.c.studyDone||0;
+  const cEl=document.getElementById('cnt-studyDone'); if(cEl)cEl.textContent=dc;
+  const pEl=document.getElementById('pts-studyDone'); if(pEl)pEl.textContent='+'+(dc*15)+'G';
   document.getElementById('studyTasks').innerHTML=STUDY.map(t=>
     taskRow(t,d.t[t.k],`toggle('${t.k}')`)
   ).join('');
@@ -1483,8 +1536,8 @@ function renderPenalty(){
     let triggered=false;
     if(pe.k==='noStudy2d'){
       const prev=shiftKey(curDate,-1);const pd=getDay(prev);
-      const noStudyNow=(d.c.study45||0)===0&&!d.t.studyDone&&!d.t.review;
-      const noStudyPrev=(pd.c.study45||0)===0&&!pd.t.studyDone&&!pd.t.review;
+      const noStudyNow=(d.c.study45||0)===0&&(d.c.studyDone||0)===0&&!d.t.review;
+      const noStudyPrev=(pd.c.study45||0)===0&&(pd.c.studyDone||0)===0&&!pd.t.review;
       triggered=noStudyNow&&noStudyPrev;
     }else if(pe.k==='drankSugar'){
       triggered=d.t.drankSugar===true;
@@ -1588,7 +1641,7 @@ function dayEarnedLines(k){
   FAT.forEach(t=>{if(d.t[t.k])add(t.n,t.pts,'主线一·减脂攻坚')});
   const wc=waterCupsDone(d);if(wc>0)add('喝水 '+wc+'/'+WATER_CUPS+'杯',wc*WATER_PTS_PER_CUP,'主线一·减脂攻坚');
   const sc=d.c.study45||0;if(sc>0)add('专注听课 ×'+sc,sc*10,'主线二·中级经济师');
-  if(d.t.studyDone)add('完课奖励',15,'主线二·中级经济师');
+  const dc=d.c.studyDone||0;if(dc>0)add('完课奖励 ×'+dc,dc*15,'主线二·中级经济师');
   if(d.t.review)add('复习回顾',5,'主线二·中级经济师');
   SKILL.forEach(t=>{if(d.t[t.k])add(t.n,t.pts,'主线三·技能养成')});
   LIFE1.forEach(t=>{if(d.t[t.k])add(t.n,t.pts,'主线四·生活维护')});
@@ -1723,6 +1776,112 @@ function toggleDrankSugar(){const d=touchDay(curDate);d.t.drankSugar=!d.t.drankS
 function toggleScrub(){const d=touchDay(curDate);d.t.scrub=!d.t.scrub;save();render()}
 function toggleBlackhead(){const d=touchDay(curDate);d.t.blackhead=!d.t.blackhead;save();render()}
 function adjCount(k,n){const d=touchDay(curDate);d.c[k]=Math.max(0,(d.c[k]||0)+n);save();render()}
+
+/* ============ 专注计时（开始按钮，侧边折叠胶囊） ============ */
+// carry=累计型（零头进全局池，每满45折算1次）；once=倒计时结束直接打卡
+const FOCUS_TASKS={
+  study45:{n:'专注听课',min:45,type:'carry',pts:10},
+  review:{n:'复习回顾',min:15,type:'once',pts:5},
+  exercise:{n:'运动',min:30,type:'once',pts:20},
+  skillPrac:{n:'SQL / Markdown / 阅读',min:30,type:'once',pts:8},
+  meditate:{n:'冥想',min:5,type:'once',pts:5},
+};
+const FOCUS_KEY='lpFocus';
+function readFocus(){try{return JSON.parse(localStorage.getItem(FOCUS_KEY))}catch(e){return null}}
+function getFocus(){return readFocus()}
+function writeFocus(st){localStorage.setItem(FOCUS_KEY,JSON.stringify(st))}
+function clearFocus(){localStorage.removeItem(FOCUS_KEY);renderFocusPill()}
+function fmtFocus(ms){ms=Math.max(0,Math.round(ms/1000));return String(Math.floor(ms/60)).padStart(2,'0')+':'+String(ms%60).padStart(2,'0')}
+function startFocus(k){
+  const f=FOCUS_TASKS[k];if(!f)return;
+  const cur=getFocus();
+  if(cur){alert('已有专注进行中：'+cur.n+'，请先取消再开始新的');return}
+  const d=getDay(todayKey());
+  if(f.type==='once'&&d.t[k]){alert('今天已完成：'+f.n);return}
+  // carry 型（专注听课）不设结束时间：正计时、不强制停，由用户手动取消结算
+  writeFocus({k,n:f.n,min:f.min,type:f.type,pts:f.pts,start:Date.now(),end:f.type==='once'?Date.now()+f.min*60000:null,expanded:false});
+  renderFocusPill();render();
+}
+function addCarry(m){
+  if(!DB._focusCarry)DB._focusCarry=0;
+  DB._focusCarry+=m;
+  while(DB._focusCarry>=45){
+    DB._focusCarry-=45;
+    const d=touchDay(todayKey());
+    d.c.study45=(d.c.study45||0)+1;
+  }
+  save();
+}
+function cancelFocus(){
+  const st=getFocus();
+  if(st){
+    if(st.type==='carry'){
+      // 取消时结算：按已专注分钟存入全局池（每满45自动+1，零头跨天攒着）
+      const el=Math.round((Date.now()-st.start)/60000);
+      if(el>0)addCarry(el);
+    }
+    clearFocus();render();
+  }
+}
+function completeFocus(){
+  const st=getFocus();if(!st)return;
+  let msg=st.n+'完成 +'+st.pts+'G';
+  if(st.type==='carry'){
+    const el=Math.round((Date.now()-st.start)/60000);
+    if(el>0)addCarry(el);
+  }else{
+    const d=touchDay(todayKey());
+    d.t[st.k]=true;save();
+  }
+  clearFocus();render();
+  alert(msg);
+}
+function focusRemainMs(st){return (st.end||0)-Date.now()}
+function focusElapsedMs(st){return Date.now()-(st.start||Date.now())}
+function renderFocusPill(){
+  const pill=document.getElementById('focusPill');if(!pill)return;
+  const st=getFocus();
+  if(!st){pill.classList.add('hidden');return}
+  pill.classList.remove('hidden');
+  pill.classList.toggle('expanded',!!st.expanded);
+  pill.classList.toggle('carry',st.type==='carry');
+  const nm=document.getElementById('fpName');if(nm)nm.textContent=st.n;
+  let timerTxt, barW=0, hint='';
+  if(st.type==='carry'){
+    // 正计时：显示已专注时长，进度条按当前 45 分钟段推进（每满 45 自动 +1）
+    const elMin=focusElapsedMs(st)/60000;
+    timerTxt=fmtFocus(focusElapsedMs(st));
+    const seg=elMin%45;                  // 当前段内已过分钟（0~45）
+    barW=Math.min(100,seg/45*100);
+    hint = elMin<45
+      ? '还差 '+Math.ceil(45-elMin)+' 分钟到 +1（零头会攒着）'
+      : '已达成 45min！现在取消即 +1，超出部分继续攒';
+  }else{
+    timerTxt=fmtFocus(focusRemainMs(st)); // once 型仍倒计时
+  }
+  const tc=document.getElementById('fpTimerC'),te=document.getElementById('fpTimerE');
+  if(tc)tc.textContent=timerTxt;
+  if(te)te.textContent=timerTxt;
+  const bar=document.getElementById('fpBarFill');if(bar)bar.style.width=barW+'%';
+  const h=document.getElementById('fpHint');if(h)h.textContent=hint;
+}
+function focusTick(){
+  const st=getFocus();if(!st)return;
+  // carry 型正计时、不自动结束；once 型到点自动打卡
+  if(st.type!=='carry' && focusRemainMs(st)<=0){completeFocus();return}
+  renderFocusPill();
+}
+function toggleFocusPill(){
+  const st=getFocus();if(!st)return;
+  st.expanded=!st.expanded;writeFocus(st);renderFocusPill();
+}
+let _focusTimerStarted=false;
+function initFocus(){
+  if(!_focusTimerStarted){setInterval(focusTick,1000);_focusTimerStarted=true}
+  const st=getFocus();
+  if(st&&focusRemainMs(st)<=0){completeFocus()}
+  else{renderFocusPill()}
+}
 function toggleWeekly(zk,tk){const d=touchDay(curDate);if(!d.w[zk])d.w[zk]={o:false,s:false,m:false};d.w[zk][tk]=!d.w[zk][tk];save();render()}
 function toggleLaundry(tk){const d=touchDay(curDate);if(!d.ld)d.ld={wash:false,dry:false};d.ld[tk]=!d.ld[tk];save();render()}
 function shiftDay(n){curDate=shiftKey(curDate,n);document.getElementById('datePick').value=curDate;render()}
@@ -1916,6 +2075,7 @@ function doAuth(){
     document.getElementById('authGate').classList.add('hidden');
     initTodoSystem();
     render();initBackup();initCloud().then(()=>autoRedeemDaily());
+    initFocus();
     return;
   }
   if(hashStr(input)===stored){
@@ -1923,6 +2083,7 @@ function doAuth(){
     document.getElementById('authGate').classList.add('hidden');
     initTodoSystem();
     render();initBackup();initCloud().then(()=>autoRedeemDaily());
+    initFocus();
   }else{
     document.getElementById('authErr').textContent='密码错误（密码存在当前设备浏览器，各设备独立）';
     document.getElementById('authInput').value='';
@@ -2437,9 +2598,20 @@ initCollapse();
 if(isAuthed()){
   initTodoSystem();
   render();initBackup();initCloud().then(()=>autoRedeemDaily());
+  initFocus();
 }else{
   showAuthGate();
 }
 </script>
+<div id="focusPill" class="hidden" onclick="toggleFocusPill()">
+  <div class="fp-collapsed"><span class="fp-timer" id="fpTimerC">25:00</span></div>
+  <div class="fp-expanded">
+    <div class="fp-name" id="fpName">专注中</div>
+    <div class="fp-time" id="fpTimerE">00:00</div>
+    <div class="fp-bar"><div class="fp-bar-fill" id="fpBarFill"></div></div>
+    <div class="fp-hint" id="fpHint"></div>
+    <div class="fp-actions"><button onclick="event.stopPropagation();cancelFocus()">取消专注</button></div>
+  </div>
+</div>
 </body>
 </html>
