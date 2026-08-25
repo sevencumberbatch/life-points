@@ -1929,10 +1929,14 @@ function addCarry(m){
   DB.focusCarryDev[myDev()]=(DB.focusCarryDev[myDev()]||0)+m;
   settleCarry();
 }
-// 清空专注零头（自愈入口）：旧版过渡逻辑可能把云端零头算重，清空后两端各同步一次即可重新收敛
+// 清空专注零头（自愈入口）：旧版过渡逻辑可能把云端零头算重。
+// 关键：清零后必须【直接覆盖云端】（overwriteCloudFromLocal），不能走 cloudSync 合并——
+// 合并是「取较大值」，会把云端残留的污染值拉回本机，等于白清。
 function resetCarry(){
-  if(!confirm('确定清空专注零头吗？\n\n会把所有设备的零头分钟清零（已折算入账的 +10G 保留，不受影响）。\n请两台设备都各点一次，再各点一次「同步时间」，云端才会完全干净。'))return;
-  DB.focusCarryDev={};DB.carryConvertedTotal=0;save();if(_sbReady)cloudSync();render();
+  if(!confirm('确定清空专注零头吗？\n\n会把所有设备的零头分钟清零（已折算入账的 +10G 保留，不受影响）。\n每台设备都要各点一次；点完会自动把「清零结果」直接覆盖到云端。'))return;
+  DB.focusCarryDev={};DB.carryConvertedTotal=0;render();
+  if(_sbReady){overwriteCloudFromLocal();}
+  else{save();alert('未连接云同步，已清零本机。请先连接云，再到设置里点「本机覆盖云端」同步一次。');}
 }
 function focusMinAdd(d,m){if(!d.c.focusMinDev)d.c.focusMinDev={};d.c.focusMinDev[myDev()]=(d.c.focusMinDev[myDev()]||0)+m;}
 function saveFocusTime(){
