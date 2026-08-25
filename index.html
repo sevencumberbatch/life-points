@@ -94,6 +94,7 @@
   #focusPill .fp-actions button{background:var(--neg);border:none;color:#fff;border-radius:6px;padding:5px 16px;font-size:12px;cursor:pointer;font-weight:600;margin:0}
   #focusPill .fp-actions button.fp-save{background:var(--btn);color:#fff}
   #focusPill .fp-actions button.fp-sync{background:transparent;color:var(--btn);border:1px solid var(--btn)}
+  #focusPill .fp-actions button.fp-reset{background:transparent;color:var(--muted);border:1px solid var(--border)}
   #focusPill.hidden{display:none}
   @media(max-width:600px){#focusPill{top:auto;bottom:26px;transform:none}}
   .backup-bar{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:8px 14px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:12px;color:var(--muted);flex-wrap:wrap}
@@ -1943,6 +1944,15 @@ function resetCarry(){
   if(_sbReady){overwriteCloudFromLocal();}
   else{save();alert('未连接云同步，已清零本机。请先连接云，再到设置里点「本机覆盖云端」同步一次。');}
 }
+// 清空今日专注时长（仅展示用，不影响积分/折算）：同样走覆盖云端，防止合并拉回
+function resetTodayFocus(){
+  if(!confirm('确定清空今日专注时长吗？\n\n会把今天所有设备的专注分钟清零（不影响积分和已折算的 +10G）。\n每台设备都要各点一次，点完自动覆盖云端。'))return;
+  const d=getDay(todayKey());
+  if(d&&d.c)d.c.focusMinDev={};
+  render();renderFocusPill();
+  if(_sbReady){overwriteCloudFromLocal();}
+  else{save();alert('未连接云同步，已清空本机。请连接云后到设置里点「本机覆盖云端」。');}
+}
 function focusMinAdd(d,m){if(!d.c.focusMinDev)d.c.focusMinDev={};d.c.focusMinDev[myDev()]=(d.c.focusMinDev[myDev()]||0)+m;}
 function saveFocusTime(){
   const st=getFocus();if(!st)return;
@@ -2757,6 +2767,7 @@ if(isAuthed()){
     <div class="fp-total" id="fpTotalIdle">今日专注 0 分钟</div>
     <div class="fp-actions">
       <button class="fp-sync" onclick="event.stopPropagation();syncFocusTime()">同步时间</button>
+      <button class="fp-reset" onclick="event.stopPropagation();resetTodayFocus()">清空今日</button>
     </div>
   </div>
 </div>
