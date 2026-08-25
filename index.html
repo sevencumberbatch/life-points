@@ -80,6 +80,8 @@
   .focus-carry .fc-label #fcHint{font-weight:500;opacity:.7;font-size:11px}
   .focus-carry .fc-bar{height:7px;background:var(--card);border-radius:4px;overflow:hidden;box-shadow:inset 0 1px 2px rgba(0,0,0,.06);display:flex;align-items:center}
   .focus-carry .fc-fill{height:3px;width:0;background:linear-gradient(90deg,var(--study),var(--btn));border-radius:3px;transition:width .35s ease}
+  .focus-carry .fc-reset{margin-left:8px;background:transparent;border:1px solid color-mix(in srgb,var(--study) 40%,transparent);color:var(--study);font-size:10px;font-weight:600;border-radius:5px;padding:1px 7px;cursor:pointer;opacity:.75;line-height:1.4}
+  .focus-carry .fc-reset:hover{opacity:1;background:color-mix(in srgb,var(--study) 12%,transparent)}
   #focusPill{position:fixed;right:10px;top:50%;transform:translateY(-50%);z-index:999;cursor:pointer;background:var(--card);border:1px solid var(--btn);border-radius:14px;padding:14px 20px;display:flex;align-items:center;gap:8px;min-width:150px}
   #focusPill .fp-name{font-size:13px;color:var(--muted);margin-bottom:4px;text-align:center}
   #focusPill .fp-time{font-size:30px;font-weight:600;color:var(--btn);font-variant-numeric:tabular-nums;margin-bottom:10px;line-height:1.1;text-align:center}
@@ -513,7 +515,7 @@
       <div class="tpts" id="pts-study45">0</div>
     </div>
     <div class="focus-carry" id="focusCarry" style="display:none">
-      <div class="fc-label"><span id="fcText">专注零头 0/45</span><span id="fcHint">距下次 +10G</span></div>
+      <div class="fc-label"><span id="fcText">专注零头 0/45</span><span id="fcHint">距下次 +10G</span><button class="fc-reset" onclick="resetCarry()">清零</button></div>
       <div class="fc-bar"><div class="fc-fill" id="fcFill"></div></div>
     </div>
     <div class="counter">
@@ -937,11 +939,8 @@ function mergeSyncData(local,cloud){
       if(typeof cv==='number')out.focusCarryDev[k]=Math.max(out.focusCarryDev[k]||0,cv);
     });
   }
-  // 兼容旧版顶层数字 _focusCarry（过渡期云端数据）→ 折入本机桶
-  if(typeof cloud._focusCarry==='number'&&cloud._focusCarry>0){
-    out.focusCarryDev=out.focusCarryDev||{};
-    out.focusCarryDev[myDev()]=Math.max(out.focusCarryDev[myDev()]||0,cloud._focusCarry);
-  }
+  // 旧版顶层数字 _focusCarry 不参与云端合并：每台设备各自在 load() 时迁移进本机桶，
+  // 云端旧值无法判断归属，折入任何设备都可能吞值或双计，直接忽略（过渡期数据，一两轮同步即被新格式覆盖）
   if(typeof cloud.carryConvertedTotal==='number'){
     out.carryConvertedTotal=Math.max(out.carryConvertedTotal||0,cloud.carryConvertedTotal);
   }
@@ -1929,6 +1928,11 @@ function addCarry(m){
   if(!DB.focusCarryDev)DB.focusCarryDev={};
   DB.focusCarryDev[myDev()]=(DB.focusCarryDev[myDev()]||0)+m;
   settleCarry();
+}
+// 清空专注零头（自愈入口）：旧版过渡逻辑可能把云端零头算重，清空后两端各同步一次即可重新收敛
+function resetCarry(){
+  if(!confirm('确定清空专注零头吗？\n\n会把所有设备的零头分钟清零（已折算入账的 +10G 保留，不受影响）。\n请两台设备都各点一次，再各点一次「同步时间」，云端才会完全干净。'))return;
+  DB.focusCarryDev={};DB.carryConvertedTotal=0;save();if(_sbReady)cloudSync();render();
 }
 function focusMinAdd(d,m){if(!d.c.focusMinDev)d.c.focusMinDev={};d.c.focusMinDev[myDev()]=(d.c.focusMinDev[myDev()]||0)+m;}
 function saveFocusTime(){
