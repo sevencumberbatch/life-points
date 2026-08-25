@@ -736,8 +736,9 @@ function isSunday(k){return parseKey(k).getDay()===0}
 
 function myDev(){let id=localStorage.getItem('lpDevId');if(!id){id='d'+Math.random().toString(36).slice(2,10);localStorage.setItem('lpDevId',id)}return id}
 function sumDev(m){if(!m)return 0;let s=0;for(const k in m)s+=(m[k]||0);return s}
-function normalizeDev(d,devId){if(!d||!d.c)return;['study45','studyDone'].forEach(kind=>{const mk=kind+'Dev';if(!d.c[mk])d.c[mk]={};if(Object.keys(d.c[mk]).length===0&&typeof d.c[kind]==='number'&&d.c[kind]>0)d.c[mk][devId]=d.c[kind];d.c[kind]=sumDev(d.c[mk])})}
-function focusDevAdd(d,kind,n){const mk=kind+'Dev';if(!d.c[mk])d.c[mk]={};d.c[mk][myDev()]=(d.c[mk][myDev()]||0)+n;d.c[kind]=sumDev(d.c[mk])}
+function recalcCount(d,kind){const fk=kind+'FixDev';d.c[kind]=Math.max(0,sumDev(d.c[kind+'Dev'])-sumDev(d.c[fk]||{}))}
+function normalizeDev(d,devId){if(!d||!d.c)return;['study45','studyDone'].forEach(kind=>{const mk=kind+'Dev',fk=kind+'FixDev';if(!d.c[mk])d.c[mk]={};if(!d.c[fk])d.c[fk]={};if(Object.keys(d.c[mk]).length===0&&typeof d.c[kind]==='number'&&d.c[kind]>0)d.c[mk][devId]=d.c[kind];recalcCount(d,kind)})}
+function focusDevAdd(d,kind,n){const mk=kind+'Dev';if(!d.c[mk])d.c[mk]={};d.c[mk][myDev()]=(d.c[mk][myDev()]||0)+n;recalcCount(d,kind)}
 function load(){try{const r=localStorage.getItem(KEY);if(r){DB=JSON.parse(r);
   // 迁移：旧版「完课奖励」为勾选布尔 → 转为计数（每次15G）
   if(DB.days)Object.values(DB.days).forEach(d=>{if(d&&d.t&&d.t.studyDone){d.c.studyDone=(d.c.studyDone||0)+1;delete d.t.studyDone}normalizeDev(d,myDev())});
@@ -888,12 +889,12 @@ function mergeDay(l,c){
   out.todos=lt;
   if(c.wt!==undefined&&c.wt!==null&&out.wt===undefined)out.wt=c.wt;
   if(!out.c)out.c={};
-  // 专注计数跨设备累加：按设备维度记账，合并时求和（不覆盖、不丢）
+  // 专注计数跨设备累加：按设备维度记账，合并时求和（不覆盖、不丢）；显示值扣除「手动撤销」FixDev
   ['study45','studyDone'].forEach(kind=>{
     const mk=kind+'Dev';
     if(!out.c[mk])out.c[mk]={};
     [l,c].forEach(side=>{if(side&&side.c&&typeof side.c[kind]==='number'&&side.c[kind]>0&&(!side.c[mk]||Object.keys(side.c[mk]).length===0)){out.c[mk]._legacy=(out.c[mk]._legacy||0)+side.c[kind];}});
-    out.c[kind]=sumDev(out.c[mk]);
+    recalcCount(out,kind);
   });
   out._ts=Math.max(l._ts||0,c._ts||0);
   return out;
@@ -1071,7 +1072,7 @@ async function restoreLocalFromCloud(){
 function getDay(k){if(!DB.days[k])DB.days[k]=blankDay();return DB.days[k]}
 // 标记某天被修改（供按天合并同步使用）
 function touchDay(k){const d=getDay(k);d._ts=Date.now();return d}
-function blankDay(){return{t:{},c:{study45:0,study45Dev:{},studyDone:0,studyDoneDev:{},focusMinDev:{}},w:{bedroom:{o:false,s:false,m:false},living:{o:false,s:false,m:false},kitchen:{o:false,s:false,m:false},bath:{o:false,s:false,m:false}},ld:{wash:false,dry:false},wt:null,r:[],resc:[],todos:[]}}
+function blankDay(){return{t:{},c:{study45:0,study45Dev:{},study45FixDev:{},studyDone:0,studyDoneDev:{},studyDoneFixDev:{},focusMinDev:{}},w:{bedroom:{o:false,s:false,m:false},living:{o:false,s:false,m:false},kitchen:{o:false,s:false,m:false},bath:{o:false,s:false,m:false}},ld:{wash:false,dry:false},wt:null,r:[],resc:[],todos:[]}}
 
 /* ============ 任务定义 ============ */
 const FAT=[
@@ -1878,7 +1879,11 @@ function toggle(k){
 function toggleDrankSugar(){const d=touchDay(curDate);d.t.drankSugar=!d.t.drankSugar;save();render()}
 function toggleScrub(){const d=touchDay(curDate);d.t.scrub=!d.t.scrub;save();render()}
 function toggleBlackhead(){const d=touchDay(curDate);d.t.blackhead=!d.t.blackhead;save();render()}
-function adjCount(k,n){const d=touchDay(curDate);if(k==='study45'||k==='studyDone'){focusDevAdd(d,k,n);save();render();return}d.c[k]=Math.max(0,(d.c[k]||0)+n);save();render()}
+function adjCount(k,n){const d=touchDay(curDate);if(k==='study45'||k==='studyDone'){
+  if(n>0){focusDevAdd(d,k,n);}
+  else if(n<0){const fk=k+'FixDev';if(!d.c[fk])d.c[fk]={};d.c[fk][myDev()]=(d.c[fk][myDev()]||0)+(-n);recalcCount(d,k);}
+  save();render();return;
+}d.c[k]=Math.max(0,(d.c[k]||0)+n);save();render()}
 
 /* ============ 专注计时（开始按钮，侧边折叠胶囊） ============ */
 // carry=累计型（零头进全局池，每满45折算1次）；once=倒计时结束直接打卡
