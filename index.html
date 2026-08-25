@@ -775,7 +775,10 @@ function renderBackup(){const el=document.getElementById('backupBar');if(!el)ret
   // 云同步状态
   const cbEnv=getSbUrl();const cbKey=getSbAnonKey();const cbSync=lastCloudSync();const cbStr=cbSync?new Date(cbSync).toLocaleString('zh-CN'):'从未';
   if(cbEnv&&cbKey){
-    h+='<span>☁️ 云同步：<b style="color:'+( _sbReady?'var(--skill)':'var(--neg)')+'">'+(_sbReady?'已连接':'连接中')+'</b> · 上次同步 '+cbStr+'</span>';
+    let stColor=_sbReady?'var(--skill)':'var(--neg)', stText=_sbReady?'已连接':'连接中…';
+    h+='<span>☁️ 云同步：<b style="color:'+stColor+'">'+stText+'</b> · 上次同步 '+cbStr;
+    if(_sbLastErr)h+=' · <b style="color:var(--neg)">失败：'+_sbLastErr+'</b>';
+    h+='</span>';
   }else{
     h+='<span>☁️ 云同步：<b style="color:var(--muted)">未配置</b></span>';
   }
@@ -794,7 +797,7 @@ const SB_URL_KEY='lpSbUrl';
 const SB_ANONKEY_KEY='lpSbAnonKey';
 const SB_SYNCKEY='lpSbSyncKey';
 const SB_LASTSYNC='lpLastSbSync';
-let _sbApp=null,_sbReady=false,_sbSyncing=false,_syncTimer=null,_sbInterval=null;
+let _sbApp=null,_sbReady=false,_sbSyncing=false,_syncTimer=null,_sbInterval=null,_sbLastErr='';
 
 function getSbUrl(){return localStorage.getItem(SB_URL_KEY)||''}
 function getSbAnonKey(){return localStorage.getItem(SB_ANONKEY_KEY)||''}
@@ -837,7 +840,7 @@ async function initCloud(){
   const anonKey=getSbAnonKey();
   if(!url||!anonKey){renderBackup();return}
   const ok=await loadSbSDK();
-  if(!ok||!window.supabase){console.error('Supabase SDK 加载失败');renderBackup();return}
+  if(!ok||!window.supabase){_sbLastErr='Supabase SDK 加载失败（CDN 可能被网络拦截）';console.error('Supabase SDK 加载失败');renderBackup();return}
   try{
     _sbApp=supabase.createClient(url,anonKey);
     _sbReady=true;
@@ -951,7 +954,8 @@ async function cloudSync(){
       localStorage.setItem(KEY,JSON.stringify(DB));
     }
     localStorage.setItem(SB_LASTSYNC,new Date().toISOString());
-  }catch(e){console.error('Sync error:',e)}
+    _sbLastErr='';
+  }catch(e){_sbLastErr=(e&&e.message)?e.message:String(e);console.error('Sync error:',e)}
   finally{_sbSyncing=false;renderBackup()}
 }
 
