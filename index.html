@@ -71,8 +71,8 @@
   .cap-bar .cap-scale span{position:absolute;top:0;white-space:nowrap}
   .cap-bar .cap-scale .c0{left:0}
   .cap-bar .cap-scale .c50{left:12%;transform:translateX(-50%)}
-  .cap-bar .cap-scale .c144{left:34%;transform:translateX(-50%)}
-  .cap-bar .cap-scale .c430{left:100%;transform:translateX(-100%)}
+  .cap-bar .cap-scale .c154{left:35%;transform:translateX(-50%)}
+  .cap-bar .cap-scale .c440{left:100%;transform:translateX(-100%)}
   .backup-bar{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:8px 14px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:12px;color:var(--muted);flex-wrap:wrap}
   .backup-bar button{background:var(--panel);border:1px solid var(--btn);color:var(--text);border-radius:6px;padding:4px 10px;cursor:pointer;font-size:11px;white-space:nowrap;font-weight:600}
   .backup-bar button:hover{background:var(--btn);color:#fff}
@@ -453,7 +453,7 @@
   <div id="pageMain">
   <!-- 软上限三段进度条 -->
   <div class="cap-bar">
-    <div class="row"><span>到账梯度：0-50 全额 · 50-144 五折 · 144+ 冲刺</span><span id="capPct">到账 0G / 430G</span></div>
+    <div class="row"><span>到账梯度：0-50 全额 · 50-154 五折 · 154+ 冲刺</span><span id="capPct">到账 0G / 440G</span></div>
     <div class="track">
       <div class="seg s1" style="width:12%">
         <div class="seg-fill" id="segFill1" style="width:0%"></div>
@@ -467,7 +467,7 @@
         <span class="seg-lock" id="segLock3">🔒</span>
       </div>
     </div>
-    <div class="cap-scale"><span class="c0">0G</span><span class="c50">50G 全额线</span><span class="c144">144G 日常满分</span><span class="c430">430G 极限</span></div>
+    <div class="cap-scale"><span class="c0">0G</span><span class="c50">50G 全额线</span><span class="c154">154G 日常满分</span><span class="c440">440G 极限</span></div>
   </div>
 
   <!-- 自动备份状态 -->
@@ -960,6 +960,7 @@ const SKILL=[
   {k:'duolingo',n:'多邻国',std:'完成每日练习',pts:5},
   {k:'skillPrac',n:'SQL / Markdown / 阅读',std:'学习/练习30分钟',pts:8},
   {k:'accounting',n:'当日记账',std:'记下当天支出',pts:3},
+  {k:'budget',n:'日常消费≤60',std:'全天日常消费≤60元（不含房租/水电网/话费）',pts:10,full:true},
   {k:'vocab',n:'背单词 10 个',std:'任意记忆卡 App',pts:5},
   {k:'meditate',n:'冥想',std:'安静坐 5 分钟',pts:5},
 ];
@@ -1051,10 +1052,14 @@ function dayStudyPts(k){
   return p;
 }
 function dayCapPts(k){
+  const d=getDay(k);
   const study=dayStudyPts(k);
-  const raw=dayRawPts(k)-study; // 非学习任务原始分（受软上限）
-  if(raw<=50)return raw+study;
-  return 50+(raw-50)*0.5+study;
+  // 全额渠道 = 学习类 + 标记 full 的任务（如「日常消费≤60」）
+  let full=study;
+  SKILL.forEach(t=>{if(t.full&&d.t[t.k])full+=t.pts});
+  const raw=dayRawPts(k)-full; // 其余任务原始分（受软上限）
+  if(raw<=50)return raw+full;
+  return 50+(raw-50)*0.5+full;
 }
 function dayPenalty(k){
   const d=getDay(k);let p=0;const list=[];
@@ -1291,9 +1296,9 @@ function renderTop(){
   document.getElementById('rawLbl').textContent=isToday?'今日原始':'当日原始';
   document.getElementById('dayLbl').textContent=isToday?'今日到账':'当日到账';
   document.getElementById('weekVal').textContent=Math.round(weekZonePts(curDate)*10)/10;
-  // 三段式软上限条：结构刻度按"到账口径"(0-50全额/50-144五折/144-430冲刺)，
-  // 144 = 全勤+听课3次到账(含照灯3格×5G，替代原单任务理疗灯照射)；430 = 到账极限(144+周136+称重30+里程碑120)
-  const CAP_THEORY=144, CAP_EXTREME=430;
+  // 三段式软上限条：结构刻度按"到账口径"(0-50全额/50-154五折/154-440冲刺)，
+  // 154 = 全勤+听课3次到账(含照灯3格×5G + 日常消费≤60元×10G全额渠道)；440 = 到账极限(154+周136+称重30+里程碑120)
+  const CAP_THEORY=154, CAP_EXTREME=440;
   const gain=dayNetTotal(curDate);
   const segF=(st,en)=>gain<=st?0:(gain>=en?100:Math.round((gain-st)/(en-st)*100));
   document.getElementById('segFill1').style.width=segF(0,50)+'%';
