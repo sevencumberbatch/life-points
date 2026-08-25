@@ -1409,6 +1409,7 @@ function render(){
   if(typeof renderBackup==='function')renderBackup();
   if(!document.getElementById('pageTodo').classList.contains('hidden'))renderAllTodos();
   if(!document.getElementById('pageStats').classList.contains('hidden'))renderStats();
+  renderFocusPill();
 }
 function renderTop(){
   document.getElementById('balVal').textContent=Math.round(totalBalance()*10)/10;
@@ -1973,7 +1974,13 @@ function renderFocusPill(){
   if(coll)coll.style.display='none';if(exp)exp.style.display='none';if(rem)rem.style.display='none';
 }
 function focusTick(){
-  const st=getFocus();if(!st)return;
+  const st=getFocus();
+  if(!st){
+    // 本机无会话，但云端可能有其他设备的进行中会话（远端横幅），刷新其计时
+    const rf=DB._focus;
+    if(rf&&!rf.ended&&rf.owner&&rf.owner!==myDev()&&!isRemoteDismissed(rf.id))renderFocusPill();
+    return;
+  }
   // carry 型正计时、不自动结束；once 型到点自动打卡
   if(st.type!=='carry' && focusRemainMs(st)<=0){completeFocus();return}
   renderFocusPill();
