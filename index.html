@@ -1031,7 +1031,7 @@ async function overwriteCloudFromLocal(){
     if(error)throw error;
     if(rows&&rows.length>0){
       const oldData=JSON.parse(JSON.stringify(rows[0].data));delete oldData._history;
-      const hist=DB._history||[];
+      let hist=DB._history||[];
       hist.push({data:oldData,updated_at:rows[0].updated_at,ts:(new Date(rows[0].updated_at).getTime())||Date.now()});
       if(hist.length>20)hist=hist.slice(-20);
       DB._history=hist;
@@ -1056,7 +1056,7 @@ async function restoreLocalFromCloud(){
     const cloudData=JSON.parse(JSON.stringify(rows[0].data));
     try{localStorage.setItem('lpSyncPreMergeBackup',JSON.stringify(DB))}catch(e){}
     const oldLocal=JSON.parse(JSON.stringify(DB));delete oldLocal._history;
-    const hist=cloudData._history||DB._history||[];
+    let hist=cloudData._history||DB._history||[];
     hist.push({data:oldLocal,updated_at:new Date().toISOString(),ts:Date.now()});
     if(hist.length>20)hist=hist.slice(-20);
     cloudData._history=hist;cloudData._updatedAt=Date.now();
