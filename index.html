@@ -754,6 +754,18 @@ function load(){try{const r=localStorage.getItem(KEY);if(r){DB=JSON.parse(r);
   if(!DB.focusCarryDev)DB.focusCarryDev={};
   if(!DB.carryConvertedTotal)DB.carryConvertedTotal=0;
 }}catch(e){}}
+/* === 版本检测：代码更新后提示用户完全关闭重开 ===
+   背景：曾因手机 PWA/浏览器缓存了旧 index.html，导致统计区渲染异常（兑换记录"对不上"）。
+   此后每次发布新版本递增 APP_VERSION；用户打开时若发现版本变化，提示完全关闭重开，
+   确保跑的是最新代码，避免旧缓存残留造成同类显示问题。 */
+const APP_VERSION='2026-08-26-3';
+try{
+  const lastVer=localStorage.getItem('lpVer');
+  if(lastVer&&lastVer!==APP_VERSION){
+    setTimeout(()=>{alert('检测到应用已更新（版本 '+APP_VERSION+'）。\n为确保新版生效、避免旧缓存导致的数据显示异常，请完全关闭本页面/应用后重新打开一次。')},600);
+  }
+  localStorage.setItem('lpVer',APP_VERSION);
+}catch(e){}
 function save(){DB._updatedAt=DB._updatedAt||Date.now();localStorage.setItem(KEY,JSON.stringify(DB));scheduleBackup();ensureCloud();if(_sbReady){clearTimeout(_syncTimer);_syncTimer=setTimeout(()=>{DB._updatedAt=Date.now();localStorage.setItem(KEY,JSON.stringify(DB));cloudSync()},2000)}}
 
 /* === PWA：可安装成 App（manifest.webmanifest 静态引用 + Service Worker 离线缓存）=== */
