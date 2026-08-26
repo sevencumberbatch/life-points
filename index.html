@@ -820,7 +820,7 @@ async function restoreApply(snap,label){
     localStorage.setItem(KEY,JSON.stringify(DB));
     render();
     await overwriteCloudFromLocal(true);
-    alert(label+'，并已上传云端成为最新版（🔒 已固定，可点余额旁「解除固定」或点选完成项目解锁）');
+    alert(label+'，并已上传云端成为最新版。其他设备下次同步后会自动更新为该版本。');
   }else{
     save();render();
     alert(label+'（未连接云同步，云端未变）');
