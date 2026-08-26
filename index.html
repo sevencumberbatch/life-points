@@ -808,6 +808,24 @@ async function connectBackupDir(){if(!window.showDirectoryPicker){alert('当前�
   alert('已连接备份目录：'+h.name+'\n之后每次改动自动创建带时间的备份文件（如 backup-2026-08-04-1711.json）\n同一天多次修改会保留多个版本，历史备份保留30天');
 }catch(e){if(e.name!=='AbortError')alert('连接失败：'+e.message)}}
 async function cleanOldBackups(){if(!_dirHandle)return;try{const cutoff=Date.now()-30*86400000;for await(const entry of _dirHandle.values()){const m=entry.name.match(/^backup-(\d{4})-(\d{2})-(\d{2})-(\d{2})(\d{2})\.json$/);if(m){const ft=new Date(m[1],m[2]-1,m[3],m[4],m[5]).getTime();if(ft<cutoff){try{await _dirHandle.removeEntry(entry.name)}catch(e){}}}}}catch(e){}}
+// 手动恢复的统一落地：生成权威版本标记（_forced）+ 立即上传云端成为最新；其他设备同步时整包覆盖一次，之后系统照常自动运行
+async function restoreApply(snap,label){
+  const hist=DB._history;
+  DB=JSON.parse(JSON.stringify(snap));
+  if(!DB||typeof DB!=='object'||!DB.days||typeof DB.days!=='object'){DB={days:{}}}
+  DB._history=hist||[];
+  DB._updatedAt=Date.now();
+  DB._forced={ver:Date.now().toString(36)+Math.random().toString(36).slice(2,7),at:new Date().toISOString()}; // 权威版本标记：其他设备同步时整包覆盖一次，之后系统照常自动运行
+  if(_sbReady){
+    localStorage.setItem(KEY,JSON.stringify(DB));
+    render();
+    await overwriteCloudFromLocal(true);
+    alert(label+'，并已上传云端成为最新版（🔒 已固定，可点余额旁「解除固定」或点选完成项目解锁）');
+  }else{
+    save();render();
+    alert(label+'（未连接云同步，云端未变）');
+  }
+}
 async function restoreFromFile(){if(!_dirHandle){alert('请先连接备份目录');return}try{
   const files=[];for await(const entry of _dirHandle.values()){if(entry.name.match(/^backup-\d{4}-\d{2}-\d{2}-\d{4}\.json$/))files.push(entry.name)}
   if(!files.length){alert('备份目录中没有找到备份文件');return}
@@ -816,10 +834,15 @@ async function restoreFromFile(){if(!_dirHandle){alert('请先连接备份目录
   const choice=prompt(list);if(!choice)return;
   const idx=parseInt(choice)-1;if(isNaN(idx)||idx<0||idx>=files.length){alert('选择无效');return}
   const fh=await _dirHandle.getFileHandle(files[idx]);const f=await fh.getFile();const obj=JSON.parse(await f.text());
-  if(!confirm('确认用 '+files[idx]+' 覆盖当前数据？'))return;DB=obj;save();render();alert('已从 '+files[idx]+' 恢复');
+  if(!confirm('确认用 '+files[idx]+' 覆盖当前数据？'))return;restoreApply(obj,'已从 '+files[idx]+' 恢复');
 }catch(e){alert('恢复失败：'+e.message)}}
-async function restoreFromIDB(){const snap=await idbGet('snapshot');if(!snap){alert('浏览器内无备份');return}if(!confirm('用浏览器内备份覆盖当前数据？'))return;DB=snap;save();render();alert('已恢复')}
-function restoreFromCloudHistory(){if(!DB._history||!DB._history.length){alert('云端历史版本为空');return}var list=DB._history.map(function(h,i){var d=new Date(h.ts||0);var days=Object.keys((h.data||{}).days||{}).length;return(i+1)+'. '+d.toLocaleString('zh-CN')+' ('+days+'天数据)'}).join('\n');var choice=prompt('选择要恢复的云端历史版本（输入序号）：\n\n'+list);if(!choice)return;var idx=parseInt(choice)-1;if(isNaN(idx)||idx<0||idx>=DB._history.length){alert('选择无效');return}var snap=DB._history[idx];var dStr=new Date(snap.ts||0).toLocaleString('zh-CN');if(!confirm('确认恢复到 '+dStr+' 的版本？\n当前数据将被覆盖'))return;var hist=DB._history;DB=JSON.parse(JSON.stringify(snap.data));DB._history=hist;DB._updatedAt=Date.now();save();render();alert('已恢复到 '+dStr)}
+async function restoreFromIDB(){
+  const snap=await idbGet('snapshot');
+  if(!snap){alert('浏览器内无备份');return}
+  if(!confirm('用浏览器内备份覆盖当前数据？\n\n恢复后会固定该版本并上传云端成为最新（旧云端存入云端历史）。'))return;
+  restoreApply(snap,'已从浏览器恢复');
+}
+function restoreFromCloudHistory(){if(!DB._history||!DB._history.length){alert('云端历史版本为空');return}var list=DB._history.map(function(h,i){var d=new Date(h.ts||0);var days=Object.keys((h.data||{}).days||{}).length;return(i+1)+'. '+d.toLocaleString('zh-CN')+' ('+days+'天数据)'}).join('\n');var choice=prompt('选择要恢复的云端历史版本（输入序号）：\n\n'+list);if(!choice)return;var idx=parseInt(choice)-1;if(isNaN(idx)||idx<0||idx>=DB._history.length){alert('选择无效');return}var snap=DB._history[idx];var dStr=new Date(snap.ts||0).toLocaleString('zh-CN');if(!confirm('确认恢复到 '+dStr+' 的版本？\n当前数据将被覆盖'))return;restoreApply(snap.data,'已恢复到 '+dStr)}
 async function loadDirHandle(){const h=await idbGet('dirHandle');if(h){try{await h.requestPermission({mode:'readwrite'});_dirHandle=h}catch(e){}}}
 function lastBackupTime(){return localStorage.getItem('lpLastBackup')}
 function needsExportReminder(){const t=localStorage.getItem(BAK_LEXPORT)||lastBackupTime();if(!t)return false;return(Date.now()-new Date(t).getTime())/86400000>7}
@@ -1014,6 +1037,24 @@ async function cloudSync(){
       const cloud=rows[0];
       const cloudTime=new Date(cloud.updated_at).getTime()||0;
       const cloudData=JSON.parse(JSON.stringify(cloud.data));
+      // —— 权威版本机制（手动恢复强制）：云端带 _forced 且本机不是该版本时，整包覆盖、不做合并 ——
+      const cf=cloudData._forced&&cloudData._forced.ver;
+      const lf=DB._forced&&DB._forced.ver;
+      if(cf&&lf!==cf){
+        try{localStorage.setItem('lpSyncPreMergeBackup',JSON.stringify(DB))}catch(e){}
+        DB=cloudData;
+        DB._updatedAt=Date.now();
+        localStorage.setItem(KEY,JSON.stringify(DB));
+        render();
+        const{error:upErr}=await _sbApp.from('life_points').update({data:DB,updated_at:new Date().toISOString()}).eq('sync_key',syncKey);
+        if(upErr)throw upErr;
+        localStorage.setItem(SB_LASTSYNC,new Date().toISOString());_sbLastErr='';
+        return;
+      }
+      if(!cf&&lf){
+        // 云端已无权威标记（本机遗留）→ 清除，恢复正常合并
+        DB._forced=null;
+      }
       // 安全：合并前把本地整包留一个快照（升级保护，防止任何意外）
       try{localStorage.setItem('lpSyncPreMergeBackup',JSON.stringify(DB))}catch(e){}
       // 合并：基于本地，补入云端新内容（days 按 _ts 逐天合并 + 集合去重并集）
@@ -1076,11 +1117,11 @@ function configCloud(){
 }
 
 function forceSync(){if(_sbReady){cloudSync()}else{configCloud()}}
-// 显式同步（以本机为准）：用本机数据直接覆盖云端，不做并集合并
-async function overwriteCloudFromLocal(){
+// 显式同步（以本机为准）：用本机数据直接覆盖云端，不做并集合并。skipConfirm=true 时静默执行（供恢复/清零等内部流程调用）
+async function overwriteCloudFromLocal(skipConfirm){
   if(!_sbReady){alert('请先配置并连接云同步');return}
   const syncKey=getSbSyncKey();if(!syncKey){alert('未设置同步密码');return}
-  if(!confirm('确定用【本机数据】覆盖云端？\n\n云端当前内容将被替换为你的本机数据。\n（旧云端会自动存入「云端历史」，日后可经「云端历史恢复」找回）'))return;
+  if(!skipConfirm){if(!confirm('确定用【本机数据】覆盖云端？\n\n云端当前内容将被替换为你的本机数据。\n（旧云端会自动存入「云端历史」，日后可经「云端历史恢复」找回）'))return;}
   try{
     const{data:rows,error}=await _sbApp.from('life_points').select('*').eq('sync_key',syncKey);
     if(error)throw error;
@@ -1096,7 +1137,7 @@ async function overwriteCloudFromLocal(){
     if(upErr)throw upErr;
     localStorage.setItem(SB_LASTSYNC,new Date().toISOString());_sbLastErr='';
     localStorage.setItem(KEY,JSON.stringify(DB));await scheduleBackup();render();
-    alert('已用本机数据覆盖云端。');
+    if(!skipConfirm)alert('已用本机数据覆盖云端。');
   }catch(e){_sbLastErr=(e&&e.message)?e.message:String(e);alert('覆盖失败：'+_sbLastErr);renderBackup()}
 }
 // 显式同步（以云为准）：用云端数据直接覆盖本机，不做并集合并
@@ -1115,7 +1156,7 @@ async function restoreLocalFromCloud(){
     hist.push({data:oldLocal,updated_at:new Date().toISOString(),ts:Date.now()});
     if(hist.length>20)hist=hist.slice(-20);
     cloudData._history=hist;cloudData._updatedAt=Date.now();
-    DB=cloudData;
+    DB=cloudData;DB._forced={ver:Date.now().toString(36)+Math.random().toString(36).slice(2,7),at:new Date().toISOString()}; // 以云为准恢复 → 权威版本
     localStorage.setItem(KEY,JSON.stringify(DB));await scheduleBackup();render();
     const{error:upErr}=await _sbApp.from('life_points').update({data:DB,updated_at:new Date().toISOString()}).eq('sync_key',syncKey);
     if(upErr)throw upErr;
