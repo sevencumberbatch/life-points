@@ -4,6 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>人生积分系统 · 星伴版</title>
+<meta name="theme-color" content="#2563eb">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="积分生活">
 <style>
   :root{
     --bg:#f5f6f8; --card:#ffffff; --border:#e6e8eb; --text:#1a1d21; --muted:#6b7280;
@@ -750,6 +754,24 @@ function load(){try{const r=localStorage.getItem(KEY);if(r){DB=JSON.parse(r);
 }}catch(e){}}
 function save(){DB._updatedAt=DB._updatedAt||Date.now();localStorage.setItem(KEY,JSON.stringify(DB));scheduleBackup();ensureCloud();if(_sbReady){clearTimeout(_syncTimer);_syncTimer=setTimeout(()=>{DB._updatedAt=Date.now();localStorage.setItem(KEY,JSON.stringify(DB));cloudSync()},2000)}}
 
+/* === PWA：可安装成 App（manifest 动态注入 + Service Worker 离线缓存）=== */
+function installPWA(){
+  try{
+    if(!location.protocol.startsWith('http'))return; // file:// 本地预览时跳过
+    const iconSvg='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" rx="100" fill="#2563eb"/><text x="256" y="350" font-family="Arial,sans-serif" font-size="300" font-weight="bold" fill="#ffffff" text-anchor="middle">G</text></svg>';
+    const manifest={
+      name:'人生积分系统',short_name:'积分生活',start_url:'./',display:'standalone',
+      background_color:'#f5f6f8',theme_color:'#2563eb',
+      icons:[{src:'data:image/svg+xml,'+encodeURIComponent(iconSvg),sizes:'any',type:'image/svg+xml',purpose:'any'}]
+    };
+    const blob=new Blob([JSON.stringify(manifest)],{type:'application/manifest+json'});
+    const link=document.createElement('link');link.rel='manifest';link.href=URL.createObjectURL(blob);document.head.appendChild(link);
+    if('serviceWorker' in navigator){
+      window.addEventListener('load',()=>{navigator.serviceWorker.register('./sw.js').catch(()=>{})});
+    }
+  }catch(e){}
+}
+
 /* === 自动备份层（零云依赖）=== */
 const BAK_LEXPORT='lpLastExport';
 let _dirHandle=null,_backing=false;
@@ -1415,7 +1437,7 @@ function render(){
   renderShop();renderStats();renderDetail();
   if(typeof renderBackup==='function')renderBackup();
   if(!document.getElementById('pageTodo').classList.contains('hidden'))renderAllTodos();
-  if(!document.getElementById('pageStats').classList.contains('hidden'))renderStats();
+  if(!document.getElementById('pageStats').classList.contains('hidden'))renderStatsPage();
   renderFocusPill();
 }
 function renderTop(){
@@ -2116,7 +2138,33 @@ function exportData(){
 }
 function importData(e){
   const f=e.target.files[0];if(!f)return;const r=new FileReader();
-  r.onload=()=>{try{DB=JSON.parse(r.result);save();render();alert('导入成功')}catch(err){alert('导入失败：文件格式错误')}};r.readAsText(f);
+  r.onload=()=>{
+    let obj;
+    try{obj=JSON.parse(r.result)}catch(err){alert('导入失败：文件不是有效的 JSON 格式（原数据未动）');return}
+    if(!obj||typeof obj!=='object'||Array.isArray(obj)){alert('导入失败：文件内容不是数据对象（原数据未动）');return}
+    if(!obj.days||typeof obj.days!=='object'||Array.isArray(obj.days)){alert('导入失败：缺少 days 数据，这不是本系统的备份文件（原数据未动）');return}
+    let n=0;
+    for(const k of Object.keys(obj.days)){
+      const d=obj.days[k];
+      if(!d||typeof d!=='object'||!d.c||typeof d.c!=='object'||Array.isArray(d.c)||(d.t!==undefined&&(typeof d.t!=='object'||Array.isArray(d.t)))){alert('导入失败：'+k+' 那天的记录格式不对（原数据未动）');return}
+      n++;
+    }
+    if(!n){alert('导入失败：文件中没有任何天数记录（原数据未动）');return}
+    for(const key of ['redeemLog','weightLog','milestones']){
+      if(obj[key]!==undefined&&!Array.isArray(obj[key])){alert('导入失败：'+key+' 字段格式不对（原数据未动）');return}
+    }
+    for(const key of ['weekTodos','monthTodos']){
+      if(obj[key]!==undefined&&(typeof obj[key]!=='object'||Array.isArray(obj[key]))){alert('导入失败：'+key+' 字段格式不对（原数据未动）');return}
+    }
+    if(obj.meta!==undefined&&(typeof obj.meta!=='object'||Array.isArray(obj.meta))){alert('导入失败：meta 字段格式不对（原数据未动）');return}
+    try{
+      localStorage.setItem(KEY,JSON.stringify(obj));
+      load(); // 复用统一的旧版数据迁移逻辑
+      save();render();
+      alert('导入成功：'+n+' 天数据');
+    }catch(err){alert('导入失败：'+err.message)}
+  };
+  r.readAsText(f);
 }
 
 /* ============ Excel 导出 ============ */
@@ -2635,7 +2683,7 @@ function switchPage(page){
     renderAllTodos();
   }else if(page==='stats'){
     stats.classList.remove('hidden');tabStats.classList.add('active');
-    renderStats();
+    renderStatsPage();
   }else{
     main.classList.remove('hidden');tabMain.classList.add('active');
     render();
@@ -2653,7 +2701,7 @@ function applyTheme(t){
 function toggleTheme(){applyTheme(getTheme()==='dark'?'light':'dark')}
 
 /* ============ 统计看板 ============ */
-function renderStats(){
+function renderStatsPage(){
   const el=document.getElementById('statsBody');
   if(!el)return;
   const days=Object.keys(DB.days).filter(k=>!isBlankDay(k)).sort();
@@ -2738,6 +2786,7 @@ function initTodoSystem(){
   todoViewWeek=weekStart(todayKey());
   todoViewMonth=todayKey().substring(0,7);
 }
+installPWA();
 load();
 applyTheme(getTheme());
 document.getElementById('datePick').value=curDate;
