@@ -624,6 +624,7 @@
     <input type="file" id="importFile" accept=".json" class="hidden" onchange="importData(event)">
     <button onclick="exportExcel()">导出Excel</button>
     <button class="danger" onclick="resetConfirm()">重置全部</button>
+    <button id="pwaInstallBtn" class="hidden" onclick="installAppNow()">安装应用</button>
   </div>
   <div class="note" style="margin-top:14px;text-align:center">人生积分系统 V1.0 · 数据本地存储 · 星伴 ⭐ 为七白搭建</div>
   </div><!-- /pageMain -->
@@ -757,20 +758,18 @@ function save(){DB._updatedAt=DB._updatedAt||Date.now();localStorage.setItem(KEY
 
 /* === PWA：可安装成 App（manifest.webmanifest 静态引用 + Service Worker 离线缓存）=== */
 let _deferredPrompt=null;
-function showInstallBtn(){
-  if(document.getElementById('pwaInstallBtn'))return;
-  const b=document.createElement('button');
-  b.id='pwaInstallBtn';
-  b.textContent='安装应用';
-  b.style.cssText='position:fixed;right:14px;bottom:14px;z-index:9999;padding:10px 16px;border:0;border-radius:12px;background:#2563eb;color:#fff;font-size:14px;font-family:inherit;box-shadow:0 4px 14px rgba(37,99,235,.4);cursor:pointer';
-  b.onclick=async()=>{if(!_deferredPrompt)return;_deferredPrompt.prompt();try{await _deferredPrompt.userChoice;}catch(e){}_deferredPrompt=null;hideInstallBtn();};
-  document.body.appendChild(b);
+function showInstallBtn(){const b=document.getElementById('pwaInstallBtn');if(b)b.classList.remove('hidden');}
+function hideInstallBtn(){const b=document.getElementById('pwaInstallBtn');if(b)b.classList.add('hidden');}
+async function installAppNow(){
+  if(!_deferredPrompt)return;
+  _deferredPrompt.prompt();
+  try{await _deferredPrompt.userChoice;}catch(e){}
+  _deferredPrompt=null;hideInstallBtn();
 }
-function hideInstallBtn(){const b=document.getElementById('pwaInstallBtn');if(b)b.remove();}
 function installPWA(){
   try{
     if(!location.protocol.startsWith('http'))return; // file:// 本地预览时跳过
-    // 捕获安装时机，提供页面内一键安装按钮（比等地址栏图标更快更稳）
+    // 捕获安装时机，显示固定「安装应用」按钮（在重置全部那一行），点按即安装
     window.addEventListener('beforeinstallprompt',(e)=>{
       e.preventDefault();_deferredPrompt=e;showInstallBtn();
     });
@@ -905,11 +904,22 @@ function mergeDay(l,c){
       else if(av===undefined){a[k]=bv}
     });
   };
-  ['t','c','w','ld'].forEach(f=>{
+  // c：跨设备计数累加，保持原 truthy 合并（配合下方 recalcCount）
+  ['c'].forEach(f=>{
     const cf=c[f];
     if(cf&&typeof cf==='object'){
       if(!out[f]||typeof out[f]!=='object')out[f]={};
       truthyMerge(out[f],cf);
+    }
+  });
+  // t/w/ld：日常任务/状态（如喝水杯、运动、洗衣、卧室整理等）——本机优先。
+  // 只补入云端有而本机没有的 key；本机已设的值（含主动取消的 false）绝不被云端旧 true 覆盖，
+  // 否则会出现「取消勾选后被云端旧状态自动重新勾上」的回弹。
+  ['t','w','ld'].forEach(f=>{
+    const cf=c[f];
+    if(cf&&typeof cf==='object'){
+      if(!out[f]||typeof out[f]!=='object')out[f]={};
+      Object.keys(cf).forEach(k=>{ if(out[f][k]===undefined) out[f][k]=cf[k]; });
     }
   });
   const lr=out.resc||[];

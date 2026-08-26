@@ -1,10 +1,11 @@
 /* 人生积分系统 · Service Worker
    策略：network-first（仅同源请求）
-   - 在线：始终从网络拿最新版（线上更新立即生效，不会被缓存挡住）
+   - 在线：强制绕过浏览器 HTTP 缓存（cache:'no-cache'）取网络最新版，
+     线上改完立刻生效，绝不会被旧 index.html 挡住（防止新旧代码分裂 / 改了看不到）
    - 离线：用上次成功加载的缓存兜底
    - 跨域请求（Supabase 等）一律不拦截
    更新：新 sw.js 部署后自动接管（skipWaiting），旧缓存版本在激活时清理 */
-const CACHE = 'lp-cache-v1';
+const CACHE = 'lp-cache-v2';
 self.addEventListener('install', e => { self.skipWaiting(); });
 self.addEventListener('activate', e => {
   e.waitUntil((async () => {
@@ -20,7 +21,8 @@ self.addEventListener('fetch', e => {
   if (url.origin !== self.location.origin) return;
   e.respondWith((async () => {
     try {
-      const res = await fetch(req);
+      // 关键：cache:'no-cache' 绕过浏览器/CDN 缓存，永远拿最新 index.html，避免旧代码残留
+      const res = await fetch(req, { cache: 'no-cache' });
       if (res && res.ok) {
         const copy = res.clone();
         caches.open(CACHE).then(c => c.put(req, copy)).catch(() => {});
