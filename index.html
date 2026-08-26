@@ -2001,8 +2001,8 @@ function startFocus(k){
   if(cur){alert('已有专注进行中：'+cur.n+'，请先保存时间再开始新的');return}
   const d=getDay(todayKey());
   if(f.type==='once'&&d.t[k]){alert('今天已完成：'+f.n);return}
-  // carry 型（专注听课）正计时、不强制停，由用户手动「保存时间」结算
-  const sess={id:Math.random().toString(36).slice(2,10),k,n:f.n,min:f.min,type:f.type,pts:f.pts,start:Date.now(),end:f.type==='once'?Date.now()+f.min*60000:null,expanded:false};
+  // carry 型（专注听课）正计时：每满 45 分钟自动折算 +1，不用等保存时间；lastCarryMin 记录已实时累计进零头池的分钟
+  const sess={id:Math.random().toString(36).slice(2,10),k,n:f.n,min:f.min,type:f.type,pts:f.pts,start:Date.now(),end:f.type==='once'?Date.now()+f.min*60000:null,expanded:false,lastCarryMin:0};
   writeFocus(sess);
   renderFocusPill();render();save();
 }
@@ -2028,6 +2028,7 @@ function addCarry(m){
   if(!DB.focusCarryDev)DB.focusCarryDev={};
   DB.focusCarryDev[myDev()]=(DB.focusCarryDev[myDev()]||0)+m;
   settleCarry();
+  save(); // 零头增量也持久化：进行中实时累计每分钟落盘，关页面不丢
 }
 // 清空专注零头（自愈入口）：旧版过渡逻辑可能把云端零头算重。
 // 关键：清零后必须【直接覆盖云端】（overwriteCloudFromLocal），不能走 cloudSync 合并——
@@ -2051,8 +2052,11 @@ function focusMinAdd(d,m){if(!d.c.focusMinDev)d.c.focusMinDev={};d.c.focusMinDev
 function saveFocusTime(){
   const st=getFocus();if(!st)return;
   const el=Math.max(0,Math.round((Date.now()-st.start)/60000));
+  if(st.type==='carry'){
+    const last=st.lastCarryMin||0;
+    if(el>last)addCarry(el-last); // 进行中已实时累计（floor），这里补齐最后不足 1 分钟的零头，不重复折算
+  }
   if(el>0)focusMinAdd(touchDay(todayKey()),el);
-  if(st.type==='carry')addCarry(el);
   clearFocus();save();if(_sbReady)cloudSync();render();
   if(el>0)alert('已保存专注 '+el+' 分钟，并同步到云端');
 }
@@ -2062,7 +2066,8 @@ function completeFocus(){
   const el=Math.round((Date.now()-st.start)/60000);
   if(el>0)focusMinAdd(touchDay(todayKey()),el);
   if(st.type==='carry'){
-    if(el>0)addCarry(el);
+    const last=st.lastCarryMin||0;
+    if(el>last)addCarry(el-last); // 补齐最后零头，不重复折算
   }else{
     const d=touchDay(todayKey());
     d.t[st.k]=true;save();
@@ -2087,7 +2092,7 @@ function renderFocusPill(){
       const elMin=focusElapsedMs(st)/60000;
       timerTxt=fmtFocus(focusElapsedMs(st));
       const seg=elMin%45;barW=Math.min(100,seg/45*100);
-      hint=elMin<45?'还差 '+Math.ceil(45-elMin)+' 分钟到 +1（零头会攒着）':'已达成 45min！现在保存即 +1，超出继续攒';
+      hint=elMin<45?'还差 '+Math.ceil(45-elMin)+' 分钟到 +1（零头自动累计，不用点保存）':'已达成 45min，已自动 +1！继续每满 45 分钟再 +1';
     }else{timerTxt=fmtFocus(focusRemainMs(st));}
     const te=document.getElementById('fpTimerE');if(te)te.textContent=timerTxt;
     const bar=document.getElementById('fpBarFill');if(bar)bar.style.width=barW+'%';
@@ -2105,10 +2110,23 @@ function renderFocusPill(){
   if(run)run.style.display='none'; if(idle)idle.style.display='none';
 }
 function focusTick(){
-  const st=getFocus();
-  if(!st)return;
-  // carry 型正计时、不自动结束；once 型到点自动打卡
-  if(st.type!=='carry' && focusRemainMs(st)<=0){completeFocus();return}
+  const st=getFocus();if(!st)return;
+  // carry 型（专注听课）：实时把新增分钟累计进零头池，每满 45 分钟自动折算 +1（不用等保存时间）
+  if(st.type==='carry'){
+    const el=Math.floor(focusElapsedMs(st)/60000);
+    const last=st.lastCarryMin||0;
+    if(el>last){
+      st.lastCarryMin=el;
+      writeFocus(st);
+      const before=DB.carryConvertedTotal||0;
+      addCarry(el-last);
+      if((DB.carryConvertedTotal||0)!==before)render(); // 刚折算 +1，刷新零头框/计数/余额
+    }
+    renderFocusPill();
+    return;
+  }
+  // once 型：到点自动打卡
+  if(focusRemainMs(st)<=0){completeFocus();return}
   renderFocusPill();
 }
 function toggleFocusPill(){
