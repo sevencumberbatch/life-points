@@ -15,6 +15,7 @@
     --fat:#e74c3c; --fat-bg:#fdf2f2; --study:#3b82f6; --study-bg:#eff6ff;
     --skill:#10b981; --skill-bg:#ecfdf5; --life:#8b5cf6; --life-bg:#f5f3ff;
     --weekly:#f59e0b; --weekly-bg:#fffbeb; --gold:#d4a017; --neg:#dc2626;
+    --full:#b45309; --full-bg:#fef3c7; --full-badge-bg:#fde68a;
     --shadow:0 1px 3px rgba(0,0,0,.06),0 1px 2px rgba(0,0,0,.04);
     --panel:#f7f8fa; --hover:#f0f1f3; --topbar-bg:rgba(245,246,248,.92);
     --seg1-bg:#e8f8ef; --seg2-bg:#fdf3e0; --seg3-bg:#f2effc;
@@ -26,6 +27,7 @@
     --fat:#f87171; --fat-bg:#2a1e1e; --study:#60a5fa; --study-bg:#16233b;
     --skill:#34d399; --skill-bg:#132a21; --life:#a78bfa; --life-bg:#231c3a;
     --weekly:#fbbf24; --weekly-bg:#2b2416; --gold:#eab308; --neg:#f87171;
+    --full:#fbbf24; --full-bg:#2f2410; --full-badge-bg:#4a3a18;
     --shadow:0 1px 3px rgba(0,0,0,.4);
     --panel:#23262c; --hover:#2a2e35; --topbar-bg:rgba(18,20,23,.92);
     --seg1-bg:#123026; --seg2-bg:#33291a; --seg3-bg:#272138;
@@ -75,8 +77,8 @@
   .cap-bar .cap-scale{position:relative;font-size:10px;color:var(--muted);margin-top:4px;height:14px}
   .cap-bar .cap-scale span{position:absolute;top:0;white-space:nowrap}
   .cap-bar .cap-scale .c0{left:0}
-  .cap-bar .cap-scale .c50{left:12%;transform:translateX(-50%)}
-  .cap-bar .cap-scale .c169{left:37%;transform:translateX(-50%)}
+  .cap-bar .cap-scale .c50{left:11%;transform:translateX(-50%)}
+  .cap-bar .cap-scale .c169{left:40%;transform:translateX(-50%)}
   .cap-bar .cap-scale .c455{left:100%;transform:translateX(-100%)}
   .focus-btn{background:var(--card);border:1px solid var(--btn);color:var(--study);border-radius:7px;padding:4px 12px;font-size:12px;cursor:pointer;font-weight:600;white-space:nowrap;flex-shrink:0;line-height:1.5}
   .focus-btn:hover{background:var(--btn);color:#fff}
@@ -134,6 +136,17 @@
   .task.disabled .box{border-color:var(--border)}
   .task .lock-msg{font-size:11px;color:var(--neg);margin-top:2px}
 
+  /* 不受软上限标记（金色 = 全额到账） */
+  .full-badge{display:inline-block;margin-left:6px;padding:0 6px;border-radius:8px;font-size:10px;font-weight:600;line-height:1.6;background:var(--full-badge-bg);color:var(--full);vertical-align:1px}
+  .cnt{display:inline-block;margin-left:4px;padding:0 5px;border-radius:8px;font-size:10px;font-weight:700;line-height:1.6;background:var(--full-badge-bg);color:var(--full);vertical-align:1px}
+  .task-full .tname{color:var(--full)}
+  .task-full .tpts{color:var(--full)}
+  .task-full.done .tname{color:var(--full);text-decoration:line-through;opacity:.7}
+  /* 周任务区（zone-tasks 内 tpts 默认橙色）同样标金 */
+  .zone-tasks .task-full .tpts{color:var(--full)}
+  .cap-legend{font-size:11px;color:var(--muted);margin:6px 2px 0;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .cap-legend .lg-full{font-weight:600;color:var(--full)}
+
   /* 计数任务 */
   .counter{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:8px}
   .counter .tname{flex:1;font-size:14px}
@@ -143,6 +156,9 @@
   .counter button:hover{background:var(--study-bg)}
   .counter .cnt{min-width:24px;text-align:center;font-weight:600;font-size:15px}
   .counter .tpts{font-size:13px;font-weight:600;color:var(--skill);min-width:48px;text-align:right}
+  /* 学习类计数任务：金色（不受软上限），双类提高优先级盖过上方 .counter .tpts 的绿色 */
+  .counter.counter-full .tname{color:var(--full)}
+  .counter.counter-full .tpts{color:var(--full)}
 
   .combo{margin-top:6px;padding:8px 12px;background:var(--panel);border-radius:8px;font-size:12px;color:var(--muted);display:flex;justify-content:space-between}
   .combo.active{background:var(--skill-bg);color:var(--skill);font-weight:600}
@@ -285,6 +301,14 @@
   .water-zone .zone-tasks .task .tpts{color:var(--skill)}
   .water-zone .zone-tasks .task.done .box{background:var(--skill);border-color:var(--skill)}
   .water-zone .zone-head .zstat.full{background:var(--skill-bg);color:var(--skill);font-weight:600}
+
+  /* 步行步数输入区（全额渠道金色） */
+  .step-zone .step-row{display:flex;align-items:center;gap:10px;padding:4px 0;width:100%}
+  .step-zone .step-row input{flex:1;min-width:0;background:var(--input-bg);border:1px solid var(--box-border);border-radius:8px;padding:7px 10px;font-size:14px;color:var(--text);outline:none;transition:border-color .2s}
+  .step-zone .step-row input:focus{border-color:var(--full)}
+  .step-zone .step-row input::placeholder{color:var(--muted)}
+  .step-status{font-size:12px;color:var(--muted);white-space:nowrap}
+  .step-status.ok{color:var(--skill);font-weight:600}
 
   /* 便签待办 */
   .todo-input-row{display:flex;gap:8px;margin-bottom:10px}
@@ -482,21 +506,22 @@
   <div id="pageMain">
   <!-- 软上限三段进度条 -->
   <div class="cap-bar">
-    <div class="row"><span>到账梯度：0-50 全额 · 50-169 五折 · 169+ 冲刺</span><span id="capPct">到账 0G / 455G</span></div>
+    <div class="row"><span>到账梯度：0-50 全额 · 50-195 五折 · 195+ 冲刺</span><span id="capPct">到账 0G / 481G</span></div>
     <div class="track">
-      <div class="seg s1" style="width:12%">
+      <div class="seg s1" style="width:11%">
         <div class="seg-fill" id="segFill1" style="width:0%"></div>
       </div>
-      <div class="seg s2" style="width:22%">
+      <div class="seg s2" style="width:29%">
         <div class="seg-fill" id="segFill2" style="width:0%"></div>
         <span class="seg-lock" id="segLock2">🔒</span>
       </div>
-      <div class="seg s3" style="width:66%">
+      <div class="seg s3" style="width:60%">
         <div class="seg-fill" id="segFill3" style="width:0%"></div>
         <span class="seg-lock" id="segLock3">🔒</span>
       </div>
     </div>
-    <div class="cap-scale"><span class="c0">0G</span><span class="c50">50G 全额线</span><span class="c169">169G 日常满分</span><span class="c455">455G 极限</span></div>
+    <div class="cap-scale"><span class="c0">0G</span><span class="c50">50G 全额线</span><span class="c169">195G 日常满分</span><span class="c455">481G 极限</span></div>
+    <div class="cap-legend"><span class="lg-full">🟡 金色项目 = 不受软上限</span><span>学习类 / 日常消费≤60 / 每周任务 / 称重 / 里程碑 全额到账 · 不吃外卖的连击奖励同样全额（基础+5G 仍受上限）</span></div>
   </div>
 
   <!-- 自动备份状态 -->
@@ -505,8 +530,9 @@
   <!-- 主线一 减脂 -->
   <div class="section sec-fat">
     <h2><span class="ic">🔥</span>主线一 · 减脂攻坚</h2>
-    <div class="sub">优先级最高 · 全做 51G</div>
+    <div class="sub">优先级最高 · 全做 51G · 步行达标再加 8G</div>
     <div id="fatTasks"></div>
+    <div id="stepInput"></div>
     <div id="waterCups"></div>
   </div>
 
@@ -514,8 +540,8 @@
   <div class="section sec-study">
     <h2><span class="ic">📘</span>主线二 · 中级经济师</h2>
     <div class="sub">每 45 分钟专注 +10G · 完课每次 +15G（均不受软上限）</div>
-    <div class="counter">
-      <div style="flex:1"><div class="tname">专注听课</div><div class="tstd" id="study45Std">每 45 分钟 +10G</div></div>
+    <div class="counter counter-full">
+      <div style="flex:1"><div class="tname">专注听课<span class="full-badge">全额</span></div><div class="tstd" id="study45Std">每 45 分钟 +10G</div></div>
       <div class="ctrl"><button onclick="adjCount('study45',-1)">−</button><span class="cnt" id="cnt-study45">0</span><button onclick="adjCount('study45',1)">+</button></div>
       <button class="focus-btn" onclick="startFocus('study45')">开始</button>
       <div class="tpts" id="pts-study45">0</div>
@@ -524,8 +550,8 @@
       <div class="fc-label"><span id="fcText">专注零头 0/45</span><span id="fcHint">距下次 +10G</span><button class="fc-reset" onclick="resetCarry()">清零</button></div>
       <div class="fc-bar"><div class="fc-fill" id="fcFill"></div></div>
     </div>
-    <div class="counter">
-      <div style="flex:1"><div class="tname">完课奖励</div><div class="tstd">每听完一整节课 +15G（不受软上限）</div></div>
+    <div class="counter counter-full">
+      <div style="flex:1"><div class="tname">完课奖励<span class="full-badge">全额</span></div><div class="tstd">每听完一整节课 +15G（不受软上限）</div></div>
       <div class="ctrl"><button onclick="adjCount('studyDone',-1)">−</button><span class="cnt" id="cnt-studyDone">0</span><button onclick="adjCount('studyDone',1)">+</button></div>
       <div class="tpts" id="pts-studyDone">0</div>
     </div>
@@ -552,7 +578,7 @@
   <!-- 周任务 -->
   <div class="section sec-weekly">
     <h2><span class="ic">📅</span>每周任务</h2>
-    <div class="sub">按自然周累计，周日结算区域奖励 · 四区全清额外 +20G</div>
+    <div class="sub">按自然周累计 · 大扫除与洗晾衣<b>按次计分</b>（做几次得几次）· 区域完成 +10G / 四区全清 +20G 每周最多一次（周任务不走软上限，全额到账）</div>
     <div style="font-size:13px;font-weight:600;margin-bottom:6px">🧼 每周清洁</div>
     <div id="scrubRow"></div>
     <div id="blackheadRow"></div>
@@ -758,7 +784,7 @@ function load(){try{const r=localStorage.getItem(KEY);if(r){DB=JSON.parse(r);
    背景：曾因手机 PWA/浏览器缓存了旧 index.html，导致统计区渲染异常（兑换记录"对不上"）。
    此后每次发布新版本递增 APP_VERSION；用户打开时若发现版本变化，提示完全关闭重开，
    确保跑的是最新代码，避免旧缓存残留造成同类显示问题。 */
-const APP_VERSION='2026-08-26-3';
+const APP_VERSION='2026-09-01-9';
 try{
   const lastVer=localStorage.getItem('lpVer');
   if(lastVer&&lastVer!==APP_VERSION){
@@ -766,7 +792,7 @@ try{
   }
   localStorage.setItem('lpVer',APP_VERSION);
 }catch(e){}
-function save(){DB._updatedAt=DB._updatedAt||Date.now();localStorage.setItem(KEY,JSON.stringify(DB));scheduleBackup();ensureCloud();if(_sbReady){clearTimeout(_syncTimer);_syncTimer=setTimeout(()=>{DB._updatedAt=Date.now();localStorage.setItem(KEY,JSON.stringify(DB));cloudSync()},2000)}}
+function save(){clearNtStreakCache();DB._updatedAt=DB._updatedAt||Date.now();localStorage.setItem(KEY,JSON.stringify(DB));scheduleBackup();ensureCloud();if(_sbReady){clearTimeout(_syncTimer);_syncTimer=setTimeout(()=>{DB._updatedAt=Date.now();localStorage.setItem(KEY,JSON.stringify(DB));cloudSync()},2000)}}
 
 /* === PWA：可安装成 App（manifest.webmanifest 静态引用 + Service Worker 离线缓存）=== */
 let _deferredPrompt=null;
@@ -1167,15 +1193,19 @@ async function restoreLocalFromCloud(){
 function getDay(k){if(!DB.days[k])DB.days[k]=blankDay();return DB.days[k]}
 // 标记某天被修改（供按天合并同步使用）
 function touchDay(k){const d=getDay(k);d._ts=Date.now();return d}
-function blankDay(){return{t:{},c:{study45:0,study45Dev:{},study45FixDev:{},studyDone:0,studyDoneDev:{},studyDoneFixDev:{},focusMinDev:{}},w:{bedroom:{o:false,s:false,m:false},living:{o:false,s:false,m:false},kitchen:{o:false,s:false,m:false},bath:{o:false,s:false,m:false}},ld:{wash:false,dry:false},wt:null,r:[],resc:[],todos:[]}}
+function blankDay(){return{t:{},c:{study45:0,study45Dev:{},study45FixDev:{},studyDone:0,studyDoneDev:{},studyDoneFixDev:{},focusMinDev:{},steps:0},w:{bedroom:{o:false,s:false,m:false},living:{o:false,s:false,m:false},kitchen:{o:false,s:false,m:false},bath:{o:false,s:false,m:false}},ld:{wash:false,dry:false},wt:null,r:[],resc:[],todos:[]}}
 
 /* ============ 任务定义 ============ */
 const FAT=[
-  {k:'exercise',n:'运动',std:'任意形式满30分钟',pts:20,focusMin:30},
+  {k:'exercise15',n:'运动·基础档',std:'任意形式满15分钟',pts:8,focusMin:15},
+  {k:'exercise30',n:'运动·进阶档',std:'再坚持满30分钟（含基础档）',pts:12,focusMin:30},
   {k:'noSugar',n:'不喝带糖饮料',std:'全天不喝含糖饮料（奶茶算违规）',pts:10},
   {k:'earlySleep',n:'早睡',std:'23:30前放下手机',pts:8},
   {k:'earlyRise',n:'早起',std:'7:30前起床，无回笼觉',pts:5},
 ];
+/* 步行步数：输入数字自动判档，走全额渠道不受软上限（6000步 +5G / 8000步 +8G，取最高档） */
+function stepTierOf(n){n=Math.max(0,parseInt(n,10)||0);if(n>=8000)return{steps:8000,pts:8};if(n>=6000)return{steps:6000,pts:5};return{steps:0,pts:0}}
+function stepPts(d){return stepTierOf(d.c&&d.c.steps).pts}
 const WATER_CUPS=8;
 const WATER_PTS_PER_CUP=1;
 function waterCupsDone(d){if(d.t.water===true)return WATER_CUPS;let n=0;for(let i=1;i<=WATER_CUPS;i++){if(d.t['water'+i])n++}return n}
@@ -1186,7 +1216,7 @@ const LAMP_PTS=5;
 function lampDone(d){let n=0;for(let i=1;i<=LAMP_CUPS;i++){if(d.t['lamp'+i])n++}return n}
 function lampPts(d){return lampDone(d)*LAMP_PTS}
 const STUDY=[
-  {k:'review',n:'复习回顾',std:'15分钟快速过前一天内容',pts:5,focusMin:15},
+  {k:'review',n:'复习回顾',std:'15分钟快速过前一天内容',pts:5,focusMin:15,full:true},
 ];
 const SKILL=[
   {k:'duolingo',n:'多邻国',std:'完成每日练习',pts:5},
@@ -1211,11 +1241,12 @@ const SUPP=[
 ];
 const SUPP_COMBO={need:['suppMorn','suppNoon','suppAfternoon','suppEve','suppBed'],pts:2};
 const LIFE2=[
+  {k:'noTakeout',n:'不吃外卖',std:'今天没点外卖（出门吃不算）',pts:5},
   {k:'trash',n:'丢垃圾',std:'出门顺手带下去',pts:3},
   {k:'deskClean',n:'整理桌面',std:'清理到可正常使用（5分钟）',pts:3},
   {k:'sinkClean',n:'清空水池',std:'清洗当日锅碗瓢盆',pts:3},
   {k:'ointment',n:'擦药膏',std:'每日任务，不做扣分',pts:10},
-  {k:'neckExercise',n:'颈椎操',std:'每天做一组',pts:5},
+  {k:'neckExercise',n:'颈椎操',std:'每天做一组',pts:6},
   {k:'ulnarNerve',n:'尺神经操',std:'每天做一组',pts:5},
 ];
 const ZONES=[
@@ -1244,7 +1275,7 @@ const SHOP=[
 ];
 const PENALTIES=[
   {k:'noWash',n:'晚间洗漱三项全没做',pts:-5,cond:d=>!d.t.faceWash&&!d.t.brushTeeth&&!d.t.shower},
-  {k:'noMain',n:'减脂/学业/生活维护三条硬主线全空',pts:-8,cond:d=>!d.t.exercise&&!d.t.noSugar&&waterCupsDone(d)===0&&!d.t.earlySleep&&!d.t.earlyRise&&d.c.study45===0&&(d.c.studyDone||0)===0&&!d.t.review&&!d.t.faceWash&&!d.t.brushTeeth&&!d.t.shower&&!d.t.suppMorn&&!d.t.suppNoon&&!d.t.suppAfternoon&&!d.t.suppEve&&!d.t.suppBed&&!d.t.trash&&!d.t.deskClean&&!d.t.sinkClean&&!d.t.ointment&&!d.t.neckExercise&&!d.t.ulnarNerve&&lampDone(d)===0},
+  {k:'noMain',n:'减脂/学业/生活维护三条硬主线全空',pts:-8,cond:d=>!d.t.exercise15&&!d.t.exercise30&&!d.t.noSugar&&waterCupsDone(d)===0&&!d.t.earlySleep&&!d.t.earlyRise&&d.c.study45===0&&(d.c.studyDone||0)===0&&!d.t.review&&!d.t.faceWash&&!d.t.brushTeeth&&!d.t.shower&&!d.t.suppMorn&&!d.t.suppNoon&&!d.t.suppAfternoon&&!d.t.suppEve&&!d.t.suppBed&&!d.t.trash&&!d.t.deskClean&&!d.t.sinkClean&&!d.t.ointment&&!d.t.neckExercise&&!d.t.ulnarNerve&&lampDone(d)===0},
   {k:'drankSugar',n:'喝了带糖饮料',pts:-5,cond:d=>d.t.drankSugar===true},
   {k:'noStudy2d',n:'连续2天没有学习打卡',pts:-10,cond:d=>false}, // 单独逻辑
   {k:'noWeekly',n:'周大扫除完全没做',pts:-10,cond:(d,k)=>isSunday(k)&&weekAllDone(k)===false&&weekAnyDone(k)===false},
@@ -1262,6 +1293,7 @@ function dayRawPts(k){
   // 减脂
   FAT.forEach(t=>{if(d.t[t.k])p+=t.pts});
   p+=waterCupsPts(d);
+  p+=stepPts(d); // 步行步数（6000/8000档，走全额渠道）
   // 学业
   p+=(d.c.study45||0)*10;
   p+=(d.c.studyDone||0)*15; // 完课每次15G（计数，计入raw，最终在full中不受软上限）
@@ -1285,12 +1317,31 @@ function dayStudyPts(k){
   if(d.t.review)p+=5;
   return p;
 }
+/* 无外卖连击：连击第 N 天 → 当天额外 +N G（封顶 NT_COMBO_CAP=15）；中断（某天没勾/空白日）归零重算；外食不算破功 */
+const NT_COMBO_CAP=15;
+const _ntStreakCache={};
+function clearNtStreakCache(){try{for(const kk in _ntStreakCache)delete _ntStreakCache[kk]}catch(e){}}
+function noTakeoutStreakLen(k){
+  if(_ntStreakCache[k]!==undefined)return _ntStreakCache[k];
+  let n=0,cur=k;
+  for(let i=0;i<400;i++){
+    const d=DB.days[cur];
+    if(!d||isBlankDay(cur)||!d.t.noTakeout)break;
+    n++;cur=shiftKey(cur,-1);
+  }
+  _ntStreakCache[k]=n;return n;
+}
+function noTakeoutComboPts(k){
+  const n=noTakeoutStreakLen(k);
+  return n>0?Math.min(n,NT_COMBO_CAP):0;
+}
 function dayCapPts(k){
   const d=getDay(k);
   const study=dayStudyPts(k);
-  // 全额渠道 = 学习类 + 标记 full 的任务（如「日常消费≤60」）
+  // 全额渠道 = 学习类 + 标记 full 的任务（如「日常消费≤60」）+ 步行步数
   let full=study;
   SKILL.forEach(t=>{if(t.full&&d.t[t.k])full+=t.pts});
+  full+=stepPts(d); // 步行步数全额到账，不受软上限
   const raw=dayRawPts(k)-full; // 其余任务原始分（受软上限）
   if(raw<=50)return raw+full;
   return 50+(raw-50)*0.5+full;
@@ -1331,23 +1382,23 @@ function dayNet(k){
   let pen=dayPenalty(k).pts;
   if(pen<-10)pen=-10; // 扣分项封顶-10G
   const res=dayRescue(k);
-  return cap+pen+res; // 净积分可为负，如实计入
+  return cap+pen+res+noTakeoutComboPts(k); // 净积分可为负，如实计入（含无外卖连击，不受软上限）
 }
-function weekZonePts(k){ // 当前周所有区域积分
+function weekZonePts(k){ // 当前周所有区域积分（区域打扫/洗晾衣按次计分；完成奖励每周一次）
   const ws=weekStart(k);let p=0;let zonesDone=0;
   ZONES.forEach(z=>{
     let zoneDone=true;let zoneP=0;
     ZONE_TASKS.forEach(zt=>{
-      // 该区域在本周任意一天做了即算（以最新状态合并）
+      // 按次计分：本周每天做过即 +3（做几天加几次），同时记录是否本周做过（用于完成奖励）
       let done=false;
-      for(let i=0;i<7;i++){const dk=shiftKey(ws,i);const d=getDay(dk);if(d.w&&d.w[z.k]&&d.w[z.k][zt.k]){done=true;break}}
-      if(done)zoneP+=3;else zoneDone=false;
+      for(let i=0;i<7;i++){const dk=shiftKey(ws,i);const d=getDay(dk);if(d.w&&d.w[z.k]&&d.w[z.k][zt.k]){done=true;zoneP+=3}}
+      if(!done)zoneDone=false;
     });
-    if(zoneDone)zoneP+=10;
+    if(zoneDone)zoneP+=10; // 本周三项都做过：+10 完成奖励（每周一次）
     p+=zoneP;
     if(zoneDone)zonesDone++;
   });
-  if(zonesDone===4)p+=20;
+  if(zonesDone===4)p+=20; // 四区全清：本周四区都完成过（每周一次）
   // 搓澡：本周任意一天完成即得 +15G
   let scrubDone=false;
   for(let i=0;i<7;i++){const dk=shiftKey(ws,i);const d=getDay(dk);if(d.t.scrub){scrubDone=true;break}}
@@ -1356,12 +1407,8 @@ function weekZonePts(k){ // 当前周所有区域积分
   let blackheadDone=false;
   for(let i=0;i<7;i++){const dk=shiftKey(ws,i);const d=getDay(dk);if(d.t.blackhead){blackheadDone=true;break}}
   if(blackheadDone)p+=15;
-  // 洗衣服：本周任意一天完成洗/晾，各+4，都做再+2（共10）
-  let ldWash=false,ldDry=false;
-  for(let i=0;i<7;i++){const dk=shiftKey(ws,i);const d=getDay(dk);if(d.ld&&d.ld.wash)ldWash=true;if(d.ld&&d.ld.dry)ldDry=true}
-  if(ldWash)p+=4;
-  if(ldDry)p+=4;
-  if(ldWash&&ldDry)p+=2;
+  // 洗衣服：按次计分，每天洗/晾各 +4，当天都做再 +2（洗N次就得N份）
+  for(let i=0;i<7;i++){const dk=shiftKey(ws,i);const d=getDay(dk);if(d.ld&&d.ld.wash)p+=4;if(d.ld&&d.ld.dry)p+=4;if(d.ld&&d.ld.wash&&d.ld.dry)p+=2}
   return p;
 }
 function weekAllDone(k){
@@ -1419,19 +1466,19 @@ function zoneTaskDoneInWeek(ws,untilK,zk,zt){
   for(let i=0;i<7;i++){const dk=shiftKey(ws,i);if(dk>untilK)break;const dd=getDay(dk);if(dd.w&&dd.w[zk]&&dd.w[zk][zt])return true}
   return false;
 }
-function zoneAllDoneUpTo(ws,untilK,zk){return ZONE_TASKS.every(zt=>zoneTaskDoneInWeek(ws,untilK,zk,zt))}
-// 当天完成的周任务明细（按"本周首次完成日"计分，总和与 weekZonePts 一致）
+function zoneAllDoneUpTo(ws,untilK,zk){return ZONE_TASKS.every(zt=>zoneTaskDoneInWeek(ws,untilK,zk,zt.k))}
+// 当天完成的周任务明细（区域打扫/洗晾衣按次计分——当天做即计；搓澡/去黑头/区域完成奖励/四区全清每周一次）
 function dayWeeklyLines(k){
   const d=getDay(k);const ws=weekStart(k);const prev=shiftKey(k,-1);const lines=[];
   const first=(cond,label,pts)=>{if(cond)lines.push({label,pts,cat:'每周任务'})};
   first(d.t.scrub&&!anyInWeek(ws,prev,'t','scrub'),'搓澡',15);
   first(d.t.blackhead&&!anyInWeek(ws,prev,'t','blackhead'),'去黑头',15);
-  first(d.ld&&d.ld.wash&&!anyInWeek(ws,prev,'ld','wash'),'洗衣服',4);
-  first(d.ld&&d.ld.dry&&!anyInWeek(ws,prev,'ld','dry'),'晾衣服',4);
-  first((d.ld&&(d.ld.wash||d.ld.dry))&&anyInWeek(ws,k,'ld','wash')&&anyInWeek(ws,k,'ld','dry')&&!(anyInWeek(ws,prev,'ld','wash')&&anyInWeek(ws,prev,'ld','dry')),'洗晾组合奖励',2);
+  first(d.ld&&d.ld.wash,'洗衣服',4);
+  first(d.ld&&d.ld.dry,'晾衣服',4);
+  first(d.ld&&d.ld.wash&&d.ld.dry,'洗晾组合',2);
   ZONES.forEach(z=>{
     ZONE_TASKS.forEach(zt=>{
-      if(d.w&&d.w[z.k]&&d.w[z.k][zt.k]&&!zoneTaskDoneInWeek(ws,prev,z.k,zt))first(true,z.n+'·'+zt.n,3);
+      if(d.w&&d.w[z.k]&&d.w[z.k][zt.k])first(true,z.n+'·'+zt.n,3);
     });
     first(zoneAllDoneUpTo(ws,k,z.k)&&!zoneAllDoneUpTo(ws,prev,z.k),z.n+'区域完成奖励',10);
   });
@@ -1445,7 +1492,7 @@ function dayWeeklySum(k){return dayWeeklyLines(k).reduce((s,l)=>s+l.pts,0)}
 function isBlankDay(k){
   const d=DB.days[k];if(!d)return true;
   const hasTask=Object.values(d.t||{}).some(v=>v);
-  const hasCount=(d.c&&d.c.study45)||0;
+  const hasCount=((d.c&&d.c.study45)||0)>0||((d.c&&d.c.steps)||0)>0;
   const hasWeek=Object.values(d.w||{}).some(z=>Object.values(z).some(v=>v));
   const hasLd=!!(d.ld&&(d.ld.wash||d.ld.dry));
   const hasResc=(d.resc||[]).length>0;
@@ -1531,9 +1578,13 @@ function renderTop(){
   document.getElementById('rawLbl').textContent=isToday?'今日原始':'当日原始';
   document.getElementById('dayLbl').textContent=isToday?'今日到账':'当日到账';
   document.getElementById('weekVal').textContent=Math.round(weekZonePts(curDate)*10)/10;
-  // 三段式软上限条：结构刻度按"到账口径"(0-50全额/50-169五折/169-455冲刺)，
-  // 169 = 全勤+听课3次到账(含照灯3格×5G + 日常消费≤60元×10G全额渠道 + 完课按2次目标计15G)；455 = 到账极限(169+周136+称重30+里程碑120)
-  const CAP_THEORY=169, CAP_EXTREME=455;
+  // 三段式软上限条：结构刻度按"到账口径"(0-50全额/50-195五折/195-481冲刺)，
+  // 195 = 全勤+听课3次+完课2次+不吃外卖(连击满15G)+步行8000步(8G全额)到账
+  //（颈椎操6G后受软上限部分144为偶数，五折恰好无 .5 尾数，精确等于195）；
+  // 481 = 到账极限(195+周136+称重30+里程碑120)
+  //（2026-09-01-8：修复 dayWeeklyLines 区域完成奖励/四区全清拆分漏算，周任务满额136如实到账）
+  //（2026-09-01-9：大扫除/洗晾衣改按次计分，周136=每周每项至少一次口径；多做多得分会超过481，刻度条满格）
+  const CAP_THEORY=195, CAP_EXTREME=481;
   const gain=dayNetTotal(curDate);
   const segF=(st,en)=>gain<=st?0:(gain>=en?100:Math.round((gain-st)/(en-st)*100));
   document.getElementById('segFill1').style.width=segF(0,50)+'%';
@@ -1545,13 +1596,17 @@ function renderTop(){
 }
 function taskRow(t,done,onclick,disabled,disabledMsg){
   const fb=(t.focusMin&&!done)?`<button class="focus-btn" onclick="event.stopPropagation();startFocus('${t.k}')">开始</button>`:'';
+  // 不受软上限标记：full:true（全额渠道）或 不吃外卖（连击奖励全额）
+  const fullCls=(t.full||t.k==='noTakeout')?' task-full':'';
+  const badge=(t.full?'<span class="full-badge">全额</span>':(t.k==='noTakeout'?'<span class="full-badge">连击</span>':''));
+  const tnameHtml=`${t.n}${badge}<div class="tstd">${t.std||''}</div>`;
   if(disabled && !done){
-    return `<div class="task disabled" title="${disabledMsg||''}">
-    <div class="box"></div><div class="tname">${t.n}<div class="tstd">${t.std||''}</div>${disabledMsg?`<div class="lock-msg">${disabledMsg}</div>`:''}</div>
+    return `<div class="task disabled${fullCls}" title="${disabledMsg||''}">
+    <div class="box"></div><div class="tname">${tnameHtml}${disabledMsg?`<div class="lock-msg">${disabledMsg}</div>`:''}</div>
     <div class="tpts">+${t.pts}G</div></div>`;
   }
-  return `<div class="task${done?' done':''}" onclick="${onclick}">
-    <div class="box"></div><div class="tname">${t.n}<div class="tstd">${t.std||''}</div></div>
+  return `<div class="task${done?' done':''}${fullCls}" onclick="${onclick}">
+    <div class="box"></div><div class="tname">${tnameHtml}</div>
     ${fb}<div class="tpts">+${t.pts}G</div></div>`;
 }
 function renderFat(){
@@ -1592,6 +1647,38 @@ function renderFat(){
   }
   cupsHtml+='</div></div>';
   document.getElementById('waterCups').innerHTML=cupsHtml;
+  // 步行步数 - 输入数字自动判档（全额渠道，金色）
+  const st=stepTierOf(d.c.steps||0);
+  const statusHtml=st.pts>0
+    ?'<span class="step-status ok" id="stepStatus">✅ 达标 '+st.steps+' 步档</span>'
+    :'<span class="step-status" id="stepStatus">未达标（需 ≥6000 步）</span>';
+  const stepHtml='<div class="zone step-zone">'
+    +'<div class="zone-head"><span class="zn">🚶 步行步数 <span class="full-badge">全额</span></span>'
+    +'<span class="zstat" style="color:var(--full)">6000 步 +5G · 8000 步 +8G</span></div>'
+    +'<div class="zone-tasks" style="width:100%"><div class="step-row">'
+    +'<input type="number" id="stepInputVal" min="0" step="100" inputmode="numeric" placeholder="今天走了多少步？输入数字自动判档" value="'+(d.c.steps||'')+'" oninput="stepPreview()" onchange="stepSave()">'
+    +statusHtml
+    +'<span class="tpts" id="stepPtsShown" style="color:var(--full);min-width:44px;text-align:right">+'+(st.pts||0)+'G</span>'
+    +'</div></div></div>';
+  document.getElementById('stepInput').innerHTML=stepHtml;
+}
+// 步数实时预览（不写库不重渲染，避免输入框失焦）
+function stepPreview(){
+  const el=document.getElementById('stepInputVal');if(!el)return;
+  const t=stepTierOf(el.value);
+  const st=document.getElementById('stepStatus');
+  const ps=document.getElementById('stepPtsShown');
+  if(st)st.textContent=t.pts>0?'✅ 达标 '+t.steps+' 步档':'未达标（需 ≥6000 步）';
+  if(st)st.className='step-status'+(t.pts>0?' ok':'');
+  if(ps)ps.textContent='+'+(t.pts||0)+'G';
+}
+// 步数保存（回车/失焦触发）
+function stepSave(){
+  const el=document.getElementById('stepInputVal');if(!el)return;
+  const n=parseInt(el.value||'0',10)||0;
+  const d=touchDay(curDate);
+  d.c.steps=n;
+  save();render();
 }
 function renderStudy(){
   const d=getDay(curDate);
@@ -1640,7 +1727,14 @@ function renderLife(){
   document.getElementById('combo-supp-st').textContent=suppAll?'已达成 +2G':'未达成';
   const l2idx=LIFE2.findIndex(t=>t.k==='ointment');
   const l2a=LIFE2.slice(0,l2idx).map(t=>taskRow(t,d.t[t.k],`toggle('${t.k}')`)).join('');
-  const l2b=LIFE2.slice(l2idx).map(t=>taskRow(t,d.t[t.k],`toggle('${t.k}')`)).join('');
+  const l2b=LIFE2.slice(l2idx).map(t=>{
+    let std=t.std;
+    if(t.k==='noTakeout'){
+      const ns=d.t.noTakeout?noTakeoutStreakLen(curDate):noTakeoutStreakLen(shiftKey(curDate,-1));
+      std=d.t.noTakeout?`${t.std} · 🔥连击 ${ns} 天 · 今日额外 +${Math.min(ns,NT_COMBO_CAP)}G`:(ns>0?`${t.std} · 已连击 ${ns} 天，今天勾上继续（+${Math.min(ns+1,NT_COMBO_CAP)}G）`:`${t.std} · 勾选开始连击（+1G）`);
+    }
+    return taskRow(Object.assign({},t,{std}),d.t[t.k],`toggle('${t.k}')`);
+  }).join('');
   document.getElementById('lifeTasks2').innerHTML=l2a+lampHtml(d)+l2b;
 }
 // 照灯格子（理疗灯子类，仿喝水样式）
@@ -1665,21 +1759,21 @@ function renderWeekly(){
   let scrubDone=false;
   {const ws=weekStart(curDate);for(let i=0;i<7;i++){const dk=shiftKey(ws,i);const d=getDay(dk);if(d.t.scrub){scrubDone=true;break}}}
   document.getElementById('scrubRow').innerHTML=
-    `<div class="task${scrubDone?' done':''}" onclick="toggleScrub()" style="margin-bottom:8px">`
-    +`<div class="box"></div><div class="tname">🧴 每周搓澡（去澡堂搓澡一次）</div><div class="tpts">+15G</div></div>`;
+    `<div class="task task-full${scrubDone?' done':''}" onclick="toggleScrub()" style="margin-bottom:8px">`
+    +`<div class="box"></div><div class="tname">🧴 每周搓澡（去澡堂搓澡一次）<span class="full-badge">全额</span></div><div class="tpts">+15G</div></div>`;
   // 去黑头：本周任意一天完成即得
   let blackheadDone=false;
   {const ws=weekStart(curDate);for(let i=0;i<7;i++){const dk=shiftKey(ws,i);const d=getDay(dk);if(d.t.blackhead){blackheadDone=true;break}}}
   document.getElementById('blackheadRow').innerHTML=
-    `<div class="task${blackheadDone?' done':''}" onclick="toggleBlackhead()" style="margin-bottom:8px">`
-    +`<div class="box"></div><div class="tname">🧫 去黑头（每周1次）</div><div class="tpts">+15G</div></div>`;
+    `<div class="task task-full${blackheadDone?' done':''}" onclick="toggleBlackhead()" style="margin-bottom:8px">`
+    +`<div class="box"></div><div class="tname">🧫 去黑头（每周1次）<span class="full-badge">全额</span></div><div class="tpts">+15G</div></div>`;
   let html='';
   ZONES.forEach(z=>{
     const d=getDay(curDate);
     const doneInWeek=zoneDoneInWeek(curDate,z.k);
     let doneCnt=0;
     ZONE_TASKS.forEach(zt=>{
-      // 本周任意天做过即标记
+      // 本周任意天做过即标记（用于区域完成奖励判定）
       const ws=weekStart(curDate);let done=false;
       for(let i=0;i<7;i++){const dk=shiftKey(ws,i);const dd=getDay(dk);if(dd.w&&dd.w[z.k]&&dd.w[z.k][zt.k]){done=true;break}}
       if(done)doneCnt++;
@@ -1687,21 +1781,25 @@ function renderWeekly(){
     html+=`<div class="zone">
       <div class="zone-head"><span class="zn">${z.n}</span><span class="zstat${doneInWeek?' full':''}">${doneCnt}/3 ${doneInWeek?'· 全做+10G':''}</span></div>
       <div class="zone-tasks">${ZONE_TASKS.map(zt=>{
-        const ws=weekStart(curDate);let done=false;
-        for(let i=0;i<7;i++){const dk=shiftKey(ws,i);const dd=getDay(dk);if(dd.w&&dd.w[z.k]&&dd.w[z.k][zt.k]){done=true;break}}
-        return `<div class="task${done?' done':''}" onclick="toggleWeekly('${z.k}','${zt.k}')"><div class="box"></div><div class="tname">${zt.n}</div><div class="tpts">+3G</div></div>`;
+        // 按次计分：统计本周做过的天数
+        const ws=weekStart(curDate);let n=0;
+        for(let i=0;i<7;i++){const dk=shiftKey(ws,i);const dd=getDay(dk);if(dd.w&&dd.w[z.k]&&dd.w[z.k][zt.k])n++}
+        const cnt=n>1?('<span class="cnt">×'+n+'</span>'):'';
+        return `<div class="task task-full${n?' done':''}" onclick="toggleWeekly('${z.k}','${zt.k}')"><div class="box"></div><div class="tname">${zt.n}${cnt}<span class="full-badge">全额</span></div><div class="tpts">+3G</div></div>`;
       }).join('')}</div>
     </div>`;
   });
-  // 洗衣服：本周任意一天完成洗/晾
-  let ldW=false,ldD=false;
-  {const ws=weekStart(curDate);for(let i=0;i<7;i++){const dk=shiftKey(ws,i);const d=getDay(dk);if(d.ld&&d.ld.wash)ldW=true;if(d.ld&&d.ld.dry)ldD=true}}
-  const ldAll=ldW&&ldD;
+  // 洗衣服：按次计分，统计本周洗/晾天数，各+4，当天都做再+2
+  let ldW=0,ldD=0;
+  {const ws=weekStart(curDate);for(let i=0;i<7;i++){const dk=shiftKey(ws,i);const d=getDay(dk);if(d.ld&&d.ld.wash)ldW++;if(d.ld&&d.ld.dry)ldD++}}
+  const ldAll=ldW>0&&ldD>0;
+  const wcnt=ldW>1?('<span class="cnt">×'+ldW+'</span>'):'';
+  const dcnt=ldD>1?('<span class="cnt">×'+ldD+'</span>'):'';
   html+=`<div class="zone">
-    <div class="zone-head"><span class="zn">洗衣</span><span class="zstat${ldAll?' full':''}">${(ldW?1:0)+(ldD?1:0)}/2 ${ldAll?'· 全做+2G':''}</span></div>
+    <div class="zone-head"><span class="zn">洗衣</span><span class="zstat${ldAll?' full':''}">${ldW}+${ldD} 次 ${ldAll?'· 当天洗晾+2G':''}</span></div>
     <div class="zone-tasks">
-      <div class="task${ldW?' done':''}" onclick="toggleLaundry('wash')"><div class="box"></div><div class="tname">洗衣服</div><div class="tpts">+4G</div></div>
-      <div class="task${ldD?' done':''}" onclick="toggleLaundry('dry')"><div class="box"></div><div class="tname">晾衣服</div><div class="tpts">+4G</div></div>
+      <div class="task task-full${ldW?' done':''}" onclick="toggleLaundry('wash')"><div class="box"></div><div class="tname">洗衣服${wcnt}<span class="full-badge">全额</span></div><div class="tpts">+4G</div></div>
+      <div class="task task-full${ldD?' done':''}" onclick="toggleLaundry('dry')"><div class="box"></div><div class="tname">晾衣服${dcnt}<span class="full-badge">全额</span></div><div class="tpts">+4G</div></div>
     </div>
   </div>`;
   document.getElementById('weeklyZones').innerHTML=html;
@@ -1839,6 +1937,7 @@ function dayEarnedLines(k){
   const add=(label,pts,cat)=>lines.push({label,pts,cat});
   FAT.forEach(t=>{if(d.t[t.k])add(t.n,t.pts,'主线一·减脂攻坚')});
   const wc=waterCupsDone(d);if(wc>0)add('喝水 '+wc+'/'+WATER_CUPS+'杯',wc*WATER_PTS_PER_CUP,'主线一·减脂攻坚');
+  const sp=stepPts(d);if(sp>0)add('步行 '+(d.c.steps||0)+' 步（'+stepTierOf(d.c.steps).steps+' 档）',sp,'主线一·减脂攻坚');
   const sc=d.c.study45||0;if(sc>0)add('专注听课 ×'+sc,sc*10,'主线二·中级经济师');
   const dc=d.c.studyDone||0;if(dc>0)add('完课奖励 ×'+dc,dc*15,'主线二·中级经济师');
   if(d.t.review)add('复习回顾',5,'主线二·中级经济师');
@@ -1848,6 +1947,11 @@ function dayEarnedLines(k){
   SUPP.forEach(t=>{if(d.t[t.k])add(t.n,t.pts,'主线四·生活维护')});
   if(SUPP_COMBO.need.every(x=>d.t[x]))add('全天补剂组合',SUPP_COMBO.pts,'主线四·生活维护');
   LIFE2.forEach(t=>{if(d.t[t.k])add(t.n,t.pts,'主线四·生活维护')});
+  if(d.t.noTakeout){
+    const ns=noTakeoutStreakLen(k);
+    const cp=noTakeoutComboPts(k);
+    if(cp>0)add('无外卖连击 ×'+ns,cp,'主线四·生活维护');
+  }
   const ld=lampDone(d);if(ld>0)add('照灯 ×'+ld,ld*LAMP_PTS,'主线四·生活维护');
   return lines;
 }
@@ -1969,6 +2073,12 @@ function toggle(k){
     }
     save();render();return;
   }
+  // 运动进阶档（30分钟）勾选时自动带上基础档（15分钟），保证 8+12=20G 全额叠加
+  if(k==='exercise30'){
+    d.t[k]=!d.t[k];
+    if(d.t[k]&&!d.t.exercise15)d.t.exercise15=true;
+    save();render();return;
+  }
   d.t[k]=!d.t[k];save();render();
 }
 function toggleDrankSugar(){const d=touchDay(curDate);d.t.drankSugar=!d.t.drankSugar;save();render()}
@@ -1985,7 +2095,8 @@ function adjCount(k,n){const d=touchDay(curDate);if(k==='study45'||k==='studyDon
 const FOCUS_TASKS={
   study45:{n:'专注听课',min:45,type:'carry',pts:10},
   review:{n:'复习回顾',min:15,type:'once',pts:5},
-  exercise:{n:'运动',min:30,type:'once',pts:20},
+  exercise15:{n:'运动·基础档',min:15,type:'once',pts:8},
+  exercise30:{n:'运动·进阶档',min:30,type:'once',pts:12},
   skillPrac:{n:'SQL / Markdown / 阅读',min:30,type:'once',pts:8},
   meditate:{n:'冥想',min:5,type:'once',pts:5},
 };
