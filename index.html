@@ -2,22 +2,35 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>人生积分系统 · 星伴版</title>
+<!-- 主题色：浅色/深色分别匹配系统，PWA 独立窗口的状态栏颜色由它决定 -->
 <meta name="theme-color" content="#2563eb">
+<meta name="theme-color" content="#121417" media="(prefers-color-scheme: dark)">
 <link rel="manifest" href="./manifest.webmanifest">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<!-- black-translucent：视口延伸到状态栏下方，配合下方 safe-area 内边距，背景铺满不露白边 -->
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="积分生活">
+<link rel="apple-touch-icon" href="./icon-192.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="format-detection" content="telephone=no">
 <style>
   :root{
+    /* 安全区（刘海/灵动岛/底部小黑条）：普通浏览器里恒为 0，安装成 App 后自动生效 */
+    --sat:env(safe-area-inset-top,0px);
+    --sab:env(safe-area-inset-bottom,0px);
+    --sal:env(safe-area-inset-left,0px);
+    --sar:env(safe-area-inset-right,0px);
+    /* 底部固定导航栏总高（内容 + 安全区） */
+    --tabbar-h:0px;
     --bg:#f5f6f8; --card:#ffffff; --border:#e6e8eb; --text:#1a1d21; --muted:#6b7280;
     --fat:#e74c3c; --fat-bg:#fdf2f2; --study:#3b82f6; --study-bg:#eff6ff;
     --skill:#10b981; --skill-bg:#ecfdf5; --life:#8b5cf6; --life-bg:#f5f3ff;
     --weekly:#f59e0b; --weekly-bg:#fffbeb; --gold:#d4a017; --neg:#dc2626;
     --full:#b45309; --full-bg:#fef3c7; --full-badge-bg:#fde68a;
-    --shadow:0 1px 3px rgba(0,0,0,.06),0 1px 2px rgba(0,0,0,.04);
-    --panel:#f7f8fa; --hover:#f0f1f3; --topbar-bg:rgba(245,246,248,.92);
+    --shadow:0 1px 3px rgba(0,0,0,.05),0 2px 10px rgba(0,0,0,.045);
+    --panel:#f7f8fa; --hover:#f0f1f3; --topbar-bg:#f5f6f8;
     --seg1-bg:#e8f8ef; --seg2-bg:#fdf3e0; --seg3-bg:#f2effc;
     --input-bg:var(--card); --box-border:#cbd0d6; --mark-bg:#fef08a;
     --btn:#2563eb; --btn-hover:#1d4ed8;
@@ -29,7 +42,7 @@
     --weekly:#fbbf24; --weekly-bg:#2b2416; --gold:#eab308; --neg:#f87171;
     --full:#fbbf24; --full-bg:#2f2410; --full-badge-bg:#4a3a18;
     --shadow:0 1px 3px rgba(0,0,0,.4);
-    --panel:#23262c; --hover:#2a2e35; --topbar-bg:rgba(18,20,23,.92);
+    --panel:#23262c; --hover:#2a2e35; --topbar-bg:#121417;
     --seg1-bg:#123026; --seg2-bg:#33291a; --seg3-bg:#272138;
     --input-bg:var(--card); --box-border:#4b5563; --mark-bg:#854d0e;
     --btn:#2f6fb8; --btn-hover:#4585c9;
@@ -38,13 +51,19 @@
   html[data-theme="dark"] .shop-item button{color:#1c1917}
   html[data-theme="dark"] .shop-item button:hover{color:#1c1917}
   *{box-sizing:border-box;margin:0;padding:0}
+  /* html 背景会铺满整个视口（含安全区），左右 padding 仅约束内容，横屏刘海不压字 */
+  html{background:var(--bg);-webkit-text-size-adjust:100%;
+    padding-left:var(--sal);padding-right:var(--sar)}
   body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
-    background:var(--bg);color:var(--text);line-height:1.6;-webkit-font-smoothing:antialiased}
-  .wrap{max-width:920px;margin:0 auto;padding:16px 16px 80px}
+    background:var(--bg);color:var(--text);line-height:1.6;-webkit-font-smoothing:antialiased;
+    -webkit-tap-highlight-color:transparent;overscroll-behavior-y:none}
+  /* 底部留白 = 原有间距 + 底部小黑条 + 底部导航栏高度 */
+  .wrap{max-width:920px;margin:0 auto;
+    padding:calc(16px + var(--sat)) 16px calc(80px + var(--sab) + var(--tabbar-h))}
 
-  /* 顶栏 */
-  .topbar{position:sticky;top:0;z-index:50;background:var(--topbar-bg);backdrop-filter:blur(8px);
-    padding:12px 0;margin:0 -16px 16px;border-bottom:1px solid var(--border)}
+  /* 顶栏：恢复原始布局；上方 padding 留出安全区(var(--sat))，避免安装成 App 时状态栏压住内容 */
+  .topbar{position:sticky;top:0;z-index:50;background:var(--topbar-bg);transform:translateZ(0);
+    padding:calc(12px + var(--sat)) 0 12px;margin:0 -16px 16px;border-bottom:1px solid var(--border)}
   .topbar-in{max-width:920px;margin:0 auto;padding:0 16px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
   .balance-box{background:linear-gradient(135deg,#1a1d21,#2d3138);color:#fff;border-radius:12px;padding:10px 18px;min-width:140px}
   .balance-box .lbl{font-size:11px;opacity:.7;letter-spacing:1px}
@@ -103,7 +122,12 @@
   #focusPill .fp-actions button.fp-sync{background:transparent;color:var(--btn);border:1px solid var(--btn)}
   #focusPill .fp-actions button.fp-reset{background:transparent;color:var(--muted);border:1px solid var(--border)}
   #focusPill.hidden{display:none}
-  @media(max-width:600px){#focusPill{top:auto;bottom:26px;transform:none}}
+  /* 移动端：专注浮窗改为底部横条，避开底部导航栏与 home 指示条 */
+  @media(max-width:600px){
+    #focusPill{top:auto;bottom:calc(12px + var(--sab) + var(--tabbar-h));transform:none;
+      left:10px;right:10px;min-width:0;padding:12px 14px;justify-content:center;
+      box-shadow:0 6px 24px rgba(0,0,0,.16)}
+  }
   .backup-bar{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:8px 14px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:12px;color:var(--muted);flex-wrap:wrap}
   .backup-bar button{background:var(--panel);border:1px solid var(--btn);color:var(--text);border-radius:6px;padding:4px 10px;cursor:pointer;font-size:11px;white-space:nowrap;font-weight:600}
   .backup-bar button:hover{background:var(--btn);color:#fff}
@@ -164,7 +188,7 @@
   .combo.active{background:var(--skill-bg);color:var(--skill);font-weight:600}
 
   .grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px 16px}
-  @media(max-width:600px){.grid2{grid-template-columns:1fr}.day-pts{flex-direction:column;gap:6px}}
+  @media(max-width:600px){.grid2{grid-template-columns:1fr}.day-pts{flex-direction:row;gap:6px;flex-wrap:wrap}}
 
   /* 周任务 */
   .zone{border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:10px}
@@ -337,6 +361,31 @@
   .page-tab.active{background:var(--btn);color:#fff;border-color:var(--btn)}
   .page-tab:hover:not(.active){background:var(--hover);color:var(--text)}
 
+  /* 触摸设备没有 hover，用 :active 给点击即时反馈 */
+  @media(hover:none){
+    .task:active,.zone-tasks .task:active,.todo-item:active,.shop-item:active{background:var(--hover)}
+    .page-tab:active,.footer-acts button:active,#rescueBtns button:active{opacity:.75}
+    .counter .ctrl button:active,.date-nav button:active{background:var(--study-bg)}
+  }
+
+  /* 移动端底部导航栏：手机上替代顶部 page-nav，固定在底部便于单手切换 */
+  .tabbar{display:none}
+  @media(max-width:768px){
+    :root{--tabbar-h:54px}
+    .page-nav{display:none}
+    .tabbar{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:60;transform:translateZ(0);
+      background:var(--topbar-bg);
+      border-top:1px solid var(--border);padding-bottom:var(--sab);
+      box-shadow:0 -1px 10px rgba(0,0,0,.05)}
+    .tabbar .tab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+      gap:2px;padding:7px 4px;background:none;border:none;cursor:pointer;
+      color:var(--muted);font-size:11px;font-weight:600;font-family:inherit;
+      min-height:54px;transition:color .15s}
+    .tabbar .tab .ti{font-size:19px;line-height:1}
+    .tabbar .tab.active{color:var(--btn)}
+    .tabbar .tab:active{background:var(--hover)}
+  }
+
   /* 便签 - 滚动来源标记 */
   .todo-item .origin-tag{font-size:10px;color:var(--muted);background:var(--hover);padding:1px 6px;border-radius:6px;margin-left:4px;white-space:nowrap}
   .todo-item .origin-tag:hover{color:var(--text)}
@@ -368,26 +417,40 @@
   .history-filter-row .date-sep{font-size:12px;color:var(--muted)}
 
   /* ============ 响应式适配 ============ */
-  /* 平板及以下 */
+  /* 平板及以下 / 手机通用 */
   @media(max-width:768px){
-    .wrap{padding:12px 12px 70px}
-    .topbar{padding:8px 0;margin:0 -12px 12px}
+    .wrap{padding:calc(12px + var(--sat)) 12px calc(24px + var(--sab) + var(--tabbar-h))}
+    .topbar{padding:calc(8px + var(--sat)) 0 8px;margin:0 -12px 12px}
     .topbar-in{padding:0 12px;gap:10px}
     .balance-box{padding:8px 14px;min-width:120px}
     .balance-box .val{font-size:22px}
     .day-pts{gap:8px;min-width:160px}
     .day-pts .chip{padding:5px 10px;font-size:12px}
     .day-pts .chip b{font-size:16px}
-    .section{padding:12px 14px}
+    .section{padding:12px 14px;margin-bottom:12px;border-radius:12px}
     .section h2{font-size:14px}
     .grid2{grid-template-columns:1fr}
-    .shop-grid{grid-template-columns:1fr}
+    .shop-grid{grid-template-columns:repeat(auto-fill,minmax(158px,1fr))}
     .stat-grid{grid-template-columns:repeat(2,1fr)}
+    /* 触摸目标放大到 34px 以上，减少误触 */
+    .counter .ctrl button{width:34px;height:34px;font-size:17px}
+    .task .box{width:24px;height:24px}
+    .todo-item .box{width:22px;height:22px}
+    .section h2 .toggle-ic{width:32px;height:32px}
+    .footer-acts button{min-height:40px}
+    #rescueBtns button{min-height:44px}
+    .shop-item button{min-height:32px;padding:5px 12px}
+    /* 输入类控件字号 ≥16px：否则 iOS 聚焦时会自动放大整页 */
+    .weight-box input,.todo-input-row input,.todo-nav input[type="date"],
+    .todo-nav input[type="month"],.date-nav input[type=date],
+    .history-filter-row select,.history-filter-row input,
+    .step-zone .step-row input,.auth-card input{font-size:16px}
+    .weight-box input{width:104px}
   }
   /* 手机 */
   @media(max-width:480px){
-    .wrap{padding:10px 10px 60px}
-    .topbar{padding:6px 0;margin:0 -10px 10px}
+    .wrap{padding:calc(10px + var(--sat)) 10px calc(20px + var(--sab) + var(--tabbar-h))}
+    .topbar{padding:calc(6px + var(--sat)) 0 6px;margin:0 -10px 10px}
     .topbar-in{padding:0 10px;flex-direction:column;align-items:stretch;gap:8px}
     .balance-box{text-align:center;min-width:auto;padding:8px 12px}
     .balance-box .val{font-size:20px}
@@ -463,10 +526,11 @@
   }
   /* 超小屏（老旧手机） */
   @media(max-width:360px){
-    .wrap{padding:8px 8px 50px}
+    .wrap{padding:calc(8px + var(--sat)) 8px calc(16px + var(--sab) + var(--tabbar-h))}
     .day-pts .chip{padding:4px 4px;font-size:10px}
     .day-pts .chip b{font-size:14px}
     .balance-box .val{font-size:18px}
+    .date-nav button{padding:4px 6px;font-size:12px}
     .section{padding:8px 10px}
     .task .tname{font-size:12px}
     .task .tpts{font-size:11px;min-width:36px}
@@ -784,7 +848,7 @@ function load(){try{const r=localStorage.getItem(KEY);if(r){DB=JSON.parse(r);
    背景：曾因手机 PWA/浏览器缓存了旧 index.html，导致统计区渲染异常（兑换记录"对不上"）。
    此后每次发布新版本递增 APP_VERSION；用户打开时若发现版本变化，提示完全关闭重开，
    确保跑的是最新代码，避免旧缓存残留造成同类显示问题。 */
-const APP_VERSION='2026-09-01-9';
+const APP_VERSION='2026-09-02-4';
 try{
   const lastVer=localStorage.getItem('lpVer');
   if(lastVer&&lastVer!==APP_VERSION){
@@ -1572,11 +1636,6 @@ function renderTop(){
   const dn=Math.round(netTotal*10)/10;
   document.getElementById('dayVal').textContent=(netTotal>=0?'+':'')+dn;
   document.getElementById('chipDay').className='chip '+(netTotal>=0?'pos':'neg');
-  // 动态标签：看今天显示"今日"，看其他天显示"当日"
-  const isToday=curDate===todayKey();
-  document.getElementById('taskLbl').textContent=isToday?'本日任务':'当日任务';
-  document.getElementById('rawLbl').textContent=isToday?'今日原始':'当日原始';
-  document.getElementById('dayLbl').textContent=isToday?'今日到账':'当日到账';
   document.getElementById('weekVal').textContent=Math.round(weekZonePts(curDate)*10)/10;
   // 三段式软上限条：结构刻度按"到账口径"(0-50全额/50-195五折/195-481冲刺)，
   // 195 = 全勤+听课3次+完课2次+不吃外卖(连击满15G)+步行8000步(8G全额)到账
@@ -2878,25 +2937,25 @@ function initCollapse(){
 }
 
 /* ============ 页面切换 ============ */
-function switchPage(page){
+function switchPage(p){
+  const page=(p==='todo'||p==='stats')?p:'main';
   const main=document.getElementById('pageMain');
   const todo=document.getElementById('pageTodo');
   const stats=document.getElementById('pageStats');
-  const tabMain=document.getElementById('tabMain');
-  const tabTodo=document.getElementById('tabTodo');
-  const tabStats=document.getElementById('tabStats');
-  [main,todo,stats].forEach(p=>{if(p)p.classList.add('hidden')});
-  [tabMain,tabTodo,tabStats].forEach(t=>{if(t)t.classList.remove('active')});
-  if(page==='todo'){
-    todo.classList.remove('hidden');tabTodo.classList.add('active');
-    renderAllTodos();
-  }else if(page==='stats'){
-    stats.classList.remove('hidden');tabStats.classList.add('active');
-    renderStatsPage();
-  }else{
-    main.classList.remove('hidden');tabMain.classList.add('active');
-    render();
-  }
+  // 顶部 tab 与底部导航栏（移动端）同步高亮
+  const TABS={main:['tabMain','navMain'],todo:['tabTodo','navTodo'],stats:['tabStats','navStats']};
+  [main,todo,stats].forEach(el=>{if(el)el.classList.add('hidden')});
+  Object.keys(TABS).forEach(k=>TABS[k].forEach(id=>{
+    const el=document.getElementById(id);if(el)el.classList.remove('active');
+  }));
+  TABS[page].forEach(id=>{const el=document.getElementById(id);if(el)el.classList.add('active')});
+  const panel=page==='todo'?todo:page==='stats'?stats:main;
+  if(panel)panel.classList.remove('hidden');
+  if(page==='todo')renderAllTodos();
+  else if(page==='stats')renderStatsPage();
+  else render();
+  // 切页回到顶部，并让可能因滚动而收起的顶栏复位
+  try{window.scrollTo({top:0,behavior:'smooth'})}catch(e){try{window.scrollTo(0,0)}catch(e2){}}
 }
 
 /* ============ 主题切换 ============ */
@@ -3029,5 +3088,12 @@ if(isAuthed()){
     </div>
   </div>
 </div>
+
+<!-- 移动端底部导航栏：手机上常驻，单手即可切换三个页面 -->
+<nav class="tabbar" id="tabbar" aria-label="页面导航">
+  <button class="tab active" id="navMain" onclick="switchPage('main')"><span class="ti">📋</span><span>积分</span></button>
+  <button class="tab" id="navStats" onclick="switchPage('stats')"><span class="ti">📊</span><span>统计</span></button>
+  <button class="tab" id="navTodo" onclick="switchPage('todo')"><span class="ti">📝</span><span>便签</span></button>
+</nav>
 </body>
 </html>
