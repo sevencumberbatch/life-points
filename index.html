@@ -1143,8 +1143,12 @@ function mergeSyncData(local,cloud){
   const wmap={};(out.weightLog||[]).forEach(w=>{wmap[w.date]=w});
   (cloud.weightLog||[]).forEach(w=>{if(!wmap[w.date])wmap[w.date]=w});
   out.weightLog=Object.values(wmap);
-  // 3) 兑换记录去重：带 id 按 id 精确去重（同一天可多次转盘/同名兑换，不能按 日期+名称 合并）
-  const rmap={};const rkey=r=>r&&r.id?('id:'+r.id):(r.date+'|'+r.n);
+  // 3) 兑换记录去重：带 id 按 id 精确去重（同一天可多次转盘/同名兑换，不能按 日期+名称 合并）。
+  // 例外：自动兑换（清日常，dailyLimit:1，每天每款至多1次）必须按 日期+名称 去重、忽略 id——
+  // 否则旧版重复触发的多条带新 id 记录在合并时全部放行，云端越攒越多（曾造成同一天同款 11 条、1000 条重复）
+  const autoNames=new Set();
+  SHOP.forEach(s=>s.items.forEach(it=>{if(it.auto)autoNames.add(it.n)}));
+  const rkey=r=>{if(!r)return'';if(r.n&&autoNames.has(r.n))return 'auto|'+(r.date||'')+'|'+r.n;return r.id?('id:'+r.id):(r.date+'|'+r.n)};
   (out.redeemLog||[]).forEach(r=>rmap[rkey(r)]=r);
   (cloud.redeemLog||[]).forEach(r=>{if(!rmap[rkey(r)])rmap[rkey(r)]=r});
   out.redeemLog=Object.values(rmap);
@@ -1234,9 +1238,17 @@ async function cloudSync(){
         localStorage.setItem(SB_LASTSYNC,new Date().toISOString());_sbLastErr='';
         return;
       }
-      if(!cf&&lf){
-        // 云端已无权威标记（本机遗留）→ 清除，恢复正常合并
+      // 本机带权威标记（刚手动恢复/本机覆盖过）：以本机为准整包上传覆盖一次，然后清标记恢复正常合并。
+      // 修复：原来只有云端带 _forced 才强制，本机自己的恢复结果在下一次 30s 同步时 cf===lf 会绕过强制
+      // 走正常合并 → 云端旧数据（如历史重复兑换 1000+ 条）又被并回刚恢复的干净备份 =「本地备份被云端覆盖」
+      if(lf){
         DB._forced=null;
+        try{localStorage.setItem(KEY,JSON.stringify(DB))}catch(e){}
+        render();
+        const{error:upErr}=await _sbApp.from('life_points').update({data:DB,updated_at:new Date().toISOString()}).eq('sync_key',syncKey);
+        if(upErr)throw upErr;
+        localStorage.setItem(SB_LASTSYNC,new Date().toISOString());_sbLastErr='';
+        return;
       }
       // 安全：合并前把本地整包留一个快照（升级保护，防止任何意外）
       try{localStorage.setItem('lpSyncPreMergeBackup',JSON.stringify(DB))}catch(e){}
