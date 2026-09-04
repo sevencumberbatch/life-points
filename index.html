@@ -123,6 +123,9 @@
   #focusPill .fp-actions button.fp-sync{background:transparent;color:var(--btn);border:1px solid var(--btn)}
   #focusPill .fp-actions button.fp-reset{background:transparent;color:var(--muted);border:1px solid var(--border)}
   #focusPill.hidden{display:none}
+  #focusPill .fp-item{border:1px solid var(--border);border-radius:12px;padding:10px 12px;margin:8px 0}
+  #focusPill .fp-item.fp-paused{opacity:.6}
+  #focusPill .fp-name{font-weight:600;color:var(--text)}
   /* 移动端：专注浮窗改为底部横条，避开底部导航栏与 home 指示条 */
   @media(max-width:600px){
     #focusPill{top:auto;bottom:calc(12px + var(--sab) + var(--tabbar-h));transform:none;
@@ -886,7 +889,7 @@ function load(){try{const r=localStorage.getItem(KEY);if(r){DB=JSON.parse(r);
    背景：曾因手机 PWA/浏览器缓存了旧 index.html，导致统计区渲染异常（兑换记录"对不上"）。
    此后每次发布新版本递增 APP_VERSION；用户打开时若发现版本变化，提示完全关闭重开，
    确保跑的是最新代码，避免旧缓存残留造成同类显示问题。 */
-const APP_VERSION='2026-09-04-17';
+const APP_VERSION='2026-09-04-21';
 try{
   const lastVer=localStorage.getItem('lpVer');
   if(lastVer&&lastVer!==APP_VERSION){
@@ -1148,6 +1151,7 @@ function mergeSyncData(local,cloud){
   // 否则旧版重复触发的多条带新 id 记录在合并时全部放行，云端越攒越多（曾造成同一天同款 11 条、1000 条重复）
   const autoNames=new Set();
   SHOP.forEach(s=>s.items.forEach(it=>{if(it.auto)autoNames.add(it.n)}));
+  const rmap={};
   const rkey=r=>{if(!r)return'';if(r.n&&autoNames.has(r.n))return 'auto|'+(r.date||'')+'|'+r.n;return r.id?('id:'+r.id):(r.date+'|'+r.n)};
   (out.redeemLog||[]).forEach(r=>rmap[rkey(r)]=r);
   (cloud.redeemLog||[]).forEach(r=>{if(!rmap[rkey(r)])rmap[rkey(r)]=r});
@@ -1362,7 +1366,7 @@ async function restoreLocalFromCloud(){
 function getDay(k){if(!DB.days[k])DB.days[k]=blankDay();return DB.days[k]}
 // 标记某天被修改（供按天合并同步使用）
 function touchDay(k){const d=getDay(k);d._ts=Date.now();return d}
-function blankDay(){return{t:{},c:{study45:0,study45Dev:{},study45FixDev:{},studyDone:0,studyDoneDev:{},studyDoneFixDev:{},focusMinDev:{},steps:0},w:{bedroom:{o:false,s:false,m:false},living:{o:false,s:false,m:false},kitchen:{o:false,s:false,m:false},bath:{o:false,s:false,m:false}},ld:{wash:false,dry:false},wt:null,r:[],resc:[],todos:[]}}
+function blankDay(){return{t:{},c:{study45:0,study45Dev:{},study45FixDev:{},studyDone:0,studyDoneDev:{},studyDoneFixDev:{},focusMinDev:{},steps:0,taskMinPool:{}},w:{bedroom:{o:false,s:false,m:false},living:{o:false,s:false,m:false},kitchen:{o:false,s:false,m:false},bath:{o:false,s:false,m:false}},ld:{wash:false,dry:false},wt:null,r:[],resc:[],todos:[]}}
 
 /* ============ 任务定义 ============ */
 const FAT=[
@@ -1568,8 +1572,9 @@ function classifyWant(name,price){
 
 /* ============ 幸运大转盘 ============ */
 const WHEEL=[
-  {id:'none',   n:'谢谢参与',                  w:30, kind:'none'},
-  {id:'pts',    n:'积分奖励',                  w:20, kind:'pts'},
+  {id:'none',   n:'谢谢参与',                  w:24, kind:'none'},
+  {id:'pts',    n:'积分奖励',                  w:18, kind:'pts'},
+  {id:'lose',   n:'破财消灾',                  w:8,  kind:'lose'},
   {id:'study30',n:'加学30分钟（完成+20/放弃-20）', w:9, kind:'quest'},
   {id:'accum',  n:'日积月累·今日任务+15%',      w:8, kind:'day30'},
   {id:'vigor',  n:'精力充沛·下项学习任务×2',    w:8, kind:'nextStudy'},
@@ -1632,6 +1637,9 @@ function maybeConsumeNext(k){
   const g=(k==='study45'?10:(k==='studyDone'?15:Math.round((taskBasePts(curDate,k)||0)*10)/10));
   const tag=src==='study'?'精力充沛':'经验暴击';
   DB.wheelLog.push({id:uid(),kind:'buff',ts:Date.now(),date:curDate,n:tag+'翻倍·'+taskNameOf(k),g,buff:true});
+  // 提示剩余：让用户清楚队列里还有几个 ×2（同任务当日只触发一次，剩余会跨天保留给后续学习/任务）
+  const left=q.filter(x=>x==='study'||x==='any').length;
+  try{if(left>0&&window.showFocusToast)showFocusToast(tag+'已生效：'+taskNameOf(k)+' 得分 ×2（队列还剩 ×2 共 '+left+' 个）')}catch(e){}
   return true;
 }
 // 撤销某任务的翻倍（取消勾选 / 计数减到 0 时调用）
@@ -1657,6 +1665,7 @@ function spinWheel(depth,acc){
   const prize=wheelPick();
   const wk={id:uid(),ts:Date.now(),date:curDate};
   if(prize.kind==='none'){DB.wheelLog.push(Object.assign(wk,{kind:'draw',n:'谢谢参与',g:0}));acc.push({n:prize.n,eff:'什么都没有，下次好运～'})}
+  else if(prize.kind==='lose'){DB.wheelLog.push(Object.assign(wk,{kind:'draw',n:'破财消灾',g:-2}));acc.push({n:prize.n,eff:'-2G，认栽～下次好运'})}
   else if(prize.kind==='pts'){const vals=[0.5,1,2,3,4,5];const g=vals[Math.floor(Math.random()*vals.length)];DB.wheelLog.push(Object.assign(wk,{kind:'draw',n:'积分奖励',g}));acc.push({n:prize.n,eff:'+'+(Math.round(g*10)/10)+'G'})}
   else if(prize.kind==='big10'){DB.wheelLog.push(Object.assign(wk,{kind:'draw',n:'大额暴击',g:10}));acc.push({n:prize.n,eff:'+10G'})}
   else if(prize.kind==='quest'){DB.quest={id:uid(),type:'study30',date:curDate};DB.wheelLog.push(Object.assign(wk,{kind:'quest_accept',n:'加学30分钟挑战',g:0}));acc.push({n:prize.n,eff:'已接到挑战：去加学30分钟，回来点「完成 +20G」或「放弃 -20G」'})}
@@ -2807,21 +2816,65 @@ const FOCUS_TASKS={
 };
 const FOCUS_KEY='lpFocus';
 function readFocus(){try{return JSON.parse(localStorage.getItem(FOCUS_KEY))}catch(e){return null}}
-function getFocus(){return readFocus()}
-function writeFocus(st){localStorage.setItem(FOCUS_KEY,JSON.stringify(st))}
+// V2：支持同时多个计时。存储为数组；旧版单对象自动迁移为数组
+function getFocuses(){
+  let raw=readFocus();
+  if(!raw)return[];
+  if(!Array.isArray(raw)){writeFocus([raw]);return[raw]}
+  return raw;
+}
+function writeFocus(arr){try{localStorage.setItem(FOCUS_KEY,JSON.stringify(arr))}catch(e){}}
 function clearFocus(){localStorage.removeItem(FOCUS_KEY);renderFocusPill()}
+const FOCUS_MAX=3; // V2：同时进行的计时上限
 function fmtFocus(ms){ms=Math.max(0,Math.round(ms/1000));return String(Math.floor(ms/60)).padStart(2,'0')+':'+String(ms%60).padStart(2,'0')}
+// 暂停感知的已计时毫秒：总经过 − 各段暂停累计
+function focusElapsedMs(st){return Date.now()-(st.start||Date.now())-(st.pauseAcc||0)}
+function focusRemainMs(st){return (st.end||0)-Date.now()}
+function focusPaused(st){return !!st.paused}
 function startFocus(k){
   const f=FOCUS_TASKS[k];if(!f)return;
-  const cur=getFocus();
-  if(cur){alert('已有专注进行中：'+cur.n+'，请先保存时间再开始新的');return}
+  const list=getFocuses();
+  if(list.length>=FOCUS_MAX){alert('同时最多进行 '+FOCUS_MAX+' 个计时，请先结束一个');return}
+  if(list.some(s=>s.k===k)){alert('「'+f.n+'」已有进行中的计时');return}
   const d=getDay(todayKey());
   if(f.type==='once'&&d.t[k]){alert('今天已完成：'+f.n);return}
-  // carry 型（专注听课）正计时：每满 45 分钟自动折算 +1，不用等保存时间；lastCarryMin 记录已实时累计进零头池的分钟
-  const sess={id:Math.random().toString(36).slice(2,10),k,n:f.n,min:f.min,type:f.type,pts:f.pts,start:Date.now(),end:f.type==='once'?Date.now()+f.min*60000:null,expanded:false,lastCarryMin:0};
-  writeFocus(sess);
-  renderFocusPill();render();save();
+  const poolNow=(f.type==='once'&&d.c&&d.c.taskMinPool&&d.c.taskMinPool[k])||0;
+  // V2：carry(专注听课)/once 均为「在线才累积」的累计型——暂停或离开页面即停，回来续算；
+  // carry 满45自动折算(可多次)；once 拼满目标自动打卡一次(当日一次)，中间可分段拼凑
+  const sess={id:Math.random().toString(36).slice(2,10),k,n:f.n,min:f.min,type:f.type,pts:f.pts,start:Date.now(),end:null,paused:false,pauseAcc:0,lastCarryMin:0,lastSeen:Date.now()};
+  list.push(sess);writeFocus(list);renderFocusPill();render();save();
+  if(f.type==='once'){
+    if(poolNow>0)showFocusToast(f.n+' 上次已累计 '+poolNow+'/'+f.min+' 分钟，继续拼满即打卡 +'+f.pts+'G');
+    else focusFlashTitle('计时开始：'+f.n+'，拼满 '+f.min+' 分钟即 +'+f.pts+'G');
+  }else{focusFlashTitle('专注听课进行中：每满 45 分钟 +10G')}
 }
+// 暂停/继续
+function togglePauseFocus(id){
+  const list=getFocuses();const st=list.find(s=>s.id===id);if(!st)return;
+  if(st.paused){
+    st.pauseAcc=(st.pauseAcc||0)+(Date.now()-(st.pauseSince||Date.now()));
+    st.paused=false;st.pauseSince=null;
+  }else{st.paused=true;st.pauseSince=Date.now()}
+  writeFocus(list);renderFocusPill();save();
+}
+// 开始新计时面板（展开时底部快捷入口）
+function openFocusStartBox(){
+  const list=getFocuses();
+  if(list.length>=FOCUS_MAX){alert('同时最多进行 '+FOCUS_MAX+' 个计时，请先结束一个');return}
+  const box=document.createElement('div');
+  box.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:400;display:flex;align-items:center;justify-content:center;padding:16px';
+  box.addEventListener('click',()=>box.remove());
+  const rows=Object.keys(FOCUS_TASKS).map(k=>{
+    const f=FOCUS_TASKS[k];
+    return '<div class="pick-row" onclick="boxCloseAndStart(event,\''+k+'\')"><span class="pick-n">'+f.n+'</span><span style="color:var(--muted);font-size:11px">'+(f.type==='carry'?'折算型 · 每'+f.min+'分钟+'+f.pts+'G':'倒计时 '+f.min+' 分钟 · 完成+'+f.pts+'G')+'</span></div>';
+  }).join('');
+  box.innerHTML='<div style="background:var(--card);color:var(--text);max-width:420px;width:100%;border-radius:16px;overflow:hidden;box-shadow:0 12px 48px rgba(0,0,0,.3)" onclick="event.stopPropagation()">'
+    +'<div style="padding:14px 16px;border-bottom:1px solid var(--border)"><div style="font-weight:700">开始新计时</div><div style="font-size:11px;color:var(--muted);margin-top:2px">同时最多 '+FOCUS_MAX+' 个 · 点任务开始 · 点空白处关闭</div></div>'
+    +'<div class="pick-body">'+rows+'</div></div>';
+  document.body.appendChild(box);
+  window._focusStartBox=box;
+}
+function boxCloseAndStart(ev,k){const b=window._focusStartBox;if(b)b.remove();window._focusStartBox=null;startFocus(k)}
 function carryTotal(){
   const raw=sumDev(DB.focusCarryDev)-(DB.carryConvertedTotal||0)*45;
   return raw>0?raw:0;
@@ -2869,105 +2922,270 @@ function resetTodayFocus(){
   else{save();alert('未连接云同步，已清空本机。请连接云后到设置里点「本机覆盖云端」。');}
 }
 function focusMinAdd(d,m){if(!d.c.focusMinDev)d.c.focusMinDev={};d.c.focusMinDev[myDev()]=(d.c.focusMinDev[myDev()]||0)+m;}
-function saveFocusTime(){
-  const st=getFocus();if(!st)return;
-  const el=Math.max(0,Math.round((Date.now()-st.start)/60000));
-  if(st.type==='carry'){
-    const last=st.lastCarryMin||0;
-    if(el>last)addCarry(el-last); // 进行中已实时累计（floor），这里补齐最后不足 1 分钟的零头，不重复折算
-  }
-  if(el>0)focusMinAdd(touchDay(todayKey()),el);
-  clearFocus();save();if(_sbReady)cloudSync();render();
-  if(el>0)alert('已保存专注 '+el+' 分钟，并同步到云端');
-}
-function completeFocus(){
-  const st=getFocus();if(!st)return;
-  const el=Math.round((Date.now()-st.start)/60000);
-  // 归属「开始当天」：跨日/隔夜会话（如昨晚23:50开始的15分钟任务凌晨才到点）自动结算时，
-  // 记到开始那天而非"打开页面当天"，否则用户过几天回来会被错误补记到回来那天
+// 结束某个计时（carry=专注听课→全局池折算可多次；once→拼满目标打卡一次，未满则保存进度下次续拼）
+// 在线分钟已在 focusTick 实时写入池（离开/暂停不累积），此处仅处理「结束/到点」判定
+function finishFocus(id){
+  const list=getFocuses();const idx=list.findIndex(s=>s.id===id);if(idx<0)return;
+  const st=list[idx];
+  const el=Math.max(0,Math.floor(focusElapsedMs(st)/60000));
   const dayKey=fmt(new Date(st.start));
   const d=touchDay(dayKey);
-  if(el>0)focusMinAdd(d,el);
+  if(el>0)focusMinAdd(d,el); // 今日专注时长统计
   if(st.type==='carry'){
     const last=st.lastCarryMin||0;
-    if(el>last)addCarry(el-last); // 补齐最后零头，不重复折算
-  }else{
-    d.t[st.k]=true;
-    // 运动进阶档自动带基础档：与 toggle('exercise30') 手动勾选路径保持一致，
-    // 否则「开始→倒计时完成」进阶档只记 12G、漏掉基础档 8G（手动勾与计时完成两条路径不一致）
-    if(st.k==='exercise30'&&!d.t.exercise15)d.t.exercise15=true;
-    const orig=curDate;curDate=dayKey;maybeConsumeNext(st.k);curDate=orig; // 计时完成也要消费 buff
+    if(el>last)addCarry(el-last); // 补齐不足 1 分钟的秒数零头，不重复折算
+    list.splice(idx,1);writeFocus(list);save();render();renderFocusPill();
+    showFocusToast('专注听课已结束：本次在线 '+el+' 分钟累计入池（满 45 分钟自动折算 +10G）');
+    return;
   }
-  const msg=st.n+'完成 +'+st.pts+'G'+(dayKey!==todayKey()?'（已记入 '+dayKey+'）':'');
-  clearFocus();save();render();alert(msg);
+  // once：池判定（taskMinPool 已含本 session 在线分钟）
+  const pool=(d.c.taskMinPool&&d.c.taskMinPool[st.k])||0;
+  list.splice(idx,1);writeFocus(list);
+  if(pool>=st.min){
+    if(!d.t[st.k]){
+      d.t[st.k]=true;
+      if(st.k==='exercise30'&&!d.t.exercise15)d.t.exercise15=true; // 进阶档自动带基础档
+      const orig=curDate;curDate=dayKey;maybeConsumeNext(st.k);curDate=orig; // 完成消费 ×2 buff
+      d.c.taskMinPool[st.k]=0; // 完成即清零当日池，防重复触发
+    }
+    save();render();renderFocusPill();
+    showFocusToast(st.n+'完成 +'+st.pts+'G'+(dayKey!==todayKey()?'（记入 '+dayKey+'）':''));
+  }else{
+    save();render();renderFocusPill();
+    const remain=st.min-pool;
+    showFocusToast(st.n+' 进度已保存 '+pool+'/'+st.min+' 分钟，还差 '+remain+' 分钟（可随时继续拼满）');
+  }
 }
-function focusRemainMs(st){return (st.end||0)-Date.now()}
-function focusElapsedMs(st){return Date.now()-(st.start||Date.now())}
+// 放弃 once：清空该任务当日池并结束（进度作废）
+function abandonFocus(id){
+  const list=getFocuses();const idx=list.findIndex(s=>s.id===id);if(idx<0)return;
+  const st=list[idx];
+  if(st.type==='carry'){finishFocus(id);return}
+  const dayKey=fmt(new Date(st.start));
+  if(!confirm('放弃本次「'+st.n+'」？已累计的进度将清空，当天需重新拼满 '+st.min+' 分钟。'))return;
+  const d=touchDay(dayKey);
+  if(d.c.taskMinPool&&d.c.taskMinPool[st.k])delete d.c.taskMinPool[st.k];
+  list.splice(idx,1);writeFocus(list);renderFocusPill();save();render();
+  showFocusToast(st.n+' 已放弃，当日进度清空');
+}
+// 页面标题闪烁提醒
+function focusFlashTitle(txt){
+  try{
+    const orig=document.title;let n=0;
+    const iv=setInterval(()=>{n++;document.title=(n%2)?txt:orig;if(n>12){clearInterval(iv);document.title=orig}},700);
+  }catch(e){}
+}
+function notifyFocusDone(st,msg){
+  showFocusToast(msg);
+  focusFlashTitle(st.n+' 完成！');
+}
+function showFocusToast(msg){
+  try{
+    let t=document.getElementById('focusToast');
+    if(!t){t=document.createElement('div');t.id='focusToast';document.body.appendChild(t)}
+    t.style.cssText='position:fixed;left:50%;top:14px;transform:translateX(-50%);z-index:500;background:var(--card);color:var(--text);border:1px solid var(--btn);border-radius:12px;padding:10px 18px;font-size:13px;box-shadow:0 6px 24px rgba(0,0,0,.18);max-width:86vw';
+    t.textContent=msg;
+    clearTimeout(t._tm);t._tm=setTimeout(()=>{t.remove()},4200);
+  }catch(e){alert(msg)}
+}
+/* ============ 手动补录（V2）：选任务+填分钟 ============ */
+function openManualAdd(){
+  const box=document.createElement('div');
+  box.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:400;display:flex;align-items:center;justify-content:center;padding:16px';
+  box.addEventListener('click',()=>box.remove());
+  const opts=Object.keys(FOCUS_TASKS).map(k=>{
+    const f=FOCUS_TASKS[k];
+    return '<option value="'+k+'">'+f.n+'（'+(f.type==='carry'?'折算型':'完成需满 '+f.min+' 分钟')+'）</option>';
+  }).join('');
+  box.innerHTML='<div style="background:var(--card);color:var(--text);max-width:400px;width:100%;border-radius:16px;overflow:hidden;box-shadow:0 12px 48px rgba(0,0,0,.3)" onclick="event.stopPropagation()">'
+    +'<div style="padding:14px 16px;border-bottom:1px solid var(--border)"><div style="font-weight:700">手动补录专注</div>'
+    +'<div style="font-size:11px;color:var(--muted);margin-top:2px">折算型任意分钟进累计池（满45+10G，零头保留）；倒计时型须填满目标时长才算完成打卡</div></div>'
+    +'<div style="padding:14px 16px;display:flex;flex-direction:column;gap:10px">'
+    +'<select id="maTask" style="padding:8px;border-radius:8px;border:1px solid var(--border);background:var(--panel);color:var(--text)">'+opts+'</select>'
+    +'<div style="display:flex;gap:8px;align-items:center"><input id="maMin" type="number" min="1" max="480" value="45" style="flex:1;padding:8px;border-radius:8px;border:1px solid var(--border);background:var(--panel);color:var(--text)"><span style="font-size:12px;color:var(--muted)">分钟</span></div>'
+    +'<div id="maPreview" style="font-size:12px;color:var(--muted);min-height:16px"></div>'
+    +'<button onclick="applyManualAdd()" style="background:var(--btn);color:#fff;border:none;border-radius:8px;padding:9px;font-weight:600">确认补录</button>'
+    +'</div></div>';
+  document.body.appendChild(box);
+  const sel=box.querySelector('#maTask'),inp=box.querySelector('#maMin'),prev=box.querySelector('#maPreview');
+  const upd=()=>{
+    const k=sel.value,f=FOCUS_TASKS[k],m=Math.max(0,parseInt(inp.value||'0',10));
+    if(f.type==='carry'){
+      const total=carryTotal()+m;prev.textContent='补录 '+m+' 分钟 → 累计池约 '+total+' 分钟（可折算 '+Math.floor(total/45)+' 次，已折算 '+(DB.carryConvertedTotal||0)+' 次）';
+    }else{
+      const today=todayKey();const td=getDay(today);
+      const poolNow=(td.c.taskMinPool&&td.c.taskMinPool[k])||0;
+      const after=poolNow+m;
+      if(td.t[k])prev.textContent='今天已打卡过「'+f.n+'」，本次补录只计专注时长不计分';
+      else if(after>=f.min)prev.textContent='补录后累计 '+after+'/'+f.min+' 分钟 → 完成打卡 +'+f.pts+'G'+(f.k==='exercise30'?'（并自动带上基础档）':'');
+      else prev.textContent='补录后累计 '+after+'/'+f.min+' 分钟，还差 '+(f.min-after)+'（可多次拼凑到满即打卡）';
+    }
+  };
+  sel.addEventListener('change',upd);inp.addEventListener('input',upd);upd();
+  window._maBox=box;
+}
+function applyManualAdd(){
+  const box=window._maBox;if(!box)return;
+  const k=box.querySelector('#maTask').value;
+  const m=Math.max(0,parseInt(box.querySelector('#maMin').value||'0',10));
+  const f=FOCUS_TASKS[k];if(!f||!m){alert('请填写补录分钟数');return}
+  const today=todayKey();const d=touchDay(today);
+  focusMinAdd(d,m); // 今日专注时长统计（纯展示）
+  if(f.type==='carry'){
+    addCarry(m); // 进累计池，满45自动折算 +1 并消费 buff
+    showFocusToast('已补录专注听课 '+m+' 分钟');
+  }else{
+    // once：分钟进「当日任务池」，拼满即打卡（与计时器同池，可与真实计时互相拼接）
+    if(!d.c.taskMinPool)d.c.taskMinPool={};
+    const after=(d.c.taskMinPool[k]||0)+m;
+    d.c.taskMinPool[k]=after;
+    if(after>=f.min&&!d.t[k]){
+      d.t[k]=true;
+      if(k==='exercise30'&&!d.t.exercise15)d.t.exercise15=true;
+      const orig=curDate;curDate=today;maybeConsumeNext(k);curDate=orig;
+      d.c.taskMinPool[k]=0; // 打卡后清零
+      showFocusToast('已补录并打卡：'+f.n+' +'+f.pts+'G');
+    }else if(after>=f.min&&d.t[k]){
+      showFocusToast(f.n+' 今天已打卡过，'+m+' 分钟已计专注时长不计分');
+    }else{
+      showFocusToast('已补录：'+f.n+' 累计 '+after+'/'+f.min+' 分钟，还差 '+(f.min-after)+'');
+    }
+  }
+  box.remove();window._maBox=null;
+  save();render();
+}
 function renderFocusPill(){
   const pill=document.getElementById('focusPill');if(!pill)return;
-  const st=getFocus();
+  const list=getFocuses();
   const total=todayFocusMinTotal();
-  const run=pill.querySelector('.fp-running'), idle=pill.querySelector('.fp-idle');
-  if(st){
-    pill.classList.remove('hidden');
-    if(run)run.style.display=''; if(idle)idle.style.display='none';
-    pill.classList.toggle('expanded',!!st.expanded);
-    pill.classList.toggle('carry',st.type==='carry');
-    const nm=document.getElementById('fpName');if(nm)nm.textContent=st.n;
-    let timerTxt,barW=0,hint='';
+  if(!list.length&&!total){pill.classList.add('hidden');pill.innerHTML='';return}
+  pill.classList.remove('hidden');
+  const expanded=pill.dataset.exp==='1';
+  // 折叠态：显示汇总
+  const running=list.filter(s=>!focusPaused(s));
+  const runningTxt=running.length?('⏱ '+running.map(s=>s.n).join('、')):'';
+  const nTxt=list.length?'进行中 '+list.length+' 项':(total?('今日专注 '+total+' 分钟'):'');
+  if(!expanded){
+    const q=DB.pendingBuffs||[];
+    const bCnt=q.filter(x=>x==='study'||x==='any').length;
+    const hintPaused=list.length>running.length?'（暂停 '+ (list.length-running.length) +'）':'';
+    pill.innerHTML='<div style="text-align:center;padding:6px 4px;min-width:130px">'
+      +'<div class="fp-name" style="margin-bottom:2px">'+nTxt+'</div>'
+      +(runningTxt?'<div style="font-size:11px;color:var(--muted)">'+runningTxt+hintPaused+(bCnt?' · <b style="color:var(--gold)">×2×'+bCnt+'</b>':'')+'</div>':'')
+      +(list.length&&!running.length?'<div style="font-size:11px;color:var(--muted)">已暂停 · 点击恢复面板</div>':'')
+      +'</div>';
+    return;
+  }
+  // 展开态：多会话卡片
+  let items='';
+  list.forEach(st=>{
+    const paused=focusPaused(st);
+    let body;
     if(st.type==='carry'){
       const elMin=focusElapsedMs(st)/60000;
-      timerTxt=fmtFocus(focusElapsedMs(st));
-      const seg=elMin%45;barW=Math.min(100,seg/45*100);
-      hint=elMin<45?'还差 '+Math.ceil(45-elMin)+' 分钟到 +1（零头自动累计，不用点保存）':'已达成 45min，已自动 +1！继续每满 45 分钟再 +1';
-    }else{timerTxt=fmtFocus(focusRemainMs(st));}
-    const te=document.getElementById('fpTimerE');if(te)te.textContent=timerTxt;
-    const bar=document.getElementById('fpBarFill');if(bar)bar.style.width=barW+'%';
-    const h=document.getElementById('fpHint');if(h)h.textContent=hint;
-    const tr=document.getElementById('fpTotalRun');if(tr)tr.textContent='今日专注 '+total+' 分钟';
-    return;
+      const seg=((elMin%45)+45)%45;
+      const remain=Math.ceil((45-seg)||0);
+      const hintTxt=elMin<45?('还差 '+remain+' 分钟折算 +10G（已折算 '+(DB.carryConvertedTotal||0)+' 次，零头自动累计）'):'已满 45 分钟自动 +10G，可继续累计';
+      body='<div class="fp-time" style="font-size:22px">'+fmtFocus(focusElapsedMs(st))+'</div>'
+        +'<div class="fp-bar"><div class="fp-bar-fill" style="width:'+Math.min(100,(seg/45*100))+'%"></div></div>'
+        +'<div class="fp-hint" style="color:'+(paused?'var(--muted)':'var(--study)')+'">'+(paused?'已暂停 · '+hintTxt:hintTxt)+'</div>';
+    }else{
+      // once：大字实时跳秒（本次已计时），下方进度条/小字按「当日任务池」显示拼凑进度
+      const dayKey=fmt(new Date(st.start));
+      const d=getDay(dayKey);
+      const pool=((d.c&&d.c.taskMinPool&&d.c.taskMinPool[st.k])||0);
+      const shown=Math.min(pool,st.min);
+      const remain=Math.max(0,st.min-pool);
+      const pct=Math.min(100,pool/st.min*100);
+      const hintTxt=pool>=st.min?'已拼满 '+st.min+' 分钟，即将打卡 +'+st.pts+'G':'已拼 '+shown+'/'+st.min+' 分钟，还差 '+remain+'（可暂停，之后继续拼）';
+      body='<div class="fp-time" style="font-size:22px">'+fmtFocus(focusElapsedMs(st))+'</div>'
+        +'<div class="fp-bar"><div class="fp-bar-fill" style="width:'+pct+'%"></div></div>'
+        +'<div class="fp-hint" style="color:'+(paused?'var(--muted)':'var(--study)')+'">'+(paused?'已暂停 · '+hintTxt:hintTxt)+'</div>';
+    }
+    const pauseBtn='<button class="fp-sync" onclick="event.stopPropagation();togglePauseFocus(\''+st.id+'\')">'+(paused?'继续':'暂停')+'</button>';
+    const endBtn=st.type==='carry'
+      ?'<button class="fp-save" onclick="event.stopPropagation();finishFocus(\''+st.id+'\')">结束并保存</button>'
+      :'<button class="fp-save" onclick="event.stopPropagation();finishFocus(\''+st.id+'\')">结束结算</button>';
+    const giveBtn=st.type==='once'?'<button class="fp-reset" onclick="event.stopPropagation();abandonFocus(\''+st.id+'\')">放弃</button>':'';
+    items+='<div class="fp-item'+(paused?' fp-paused':'')+'">'
+      +'<div class="fp-name">'+st.n+'</div>'+body
+      +'<div class="fp-actions">'+pauseBtn+endBtn+giveBtn+'</div></div>';
+  });
+  const addBtns='<div style="display:flex;gap:6px;justify-content:center;margin-top:10px">'
+    +'<button class="fp-sync" style="padding:5px 12px" onclick="event.stopPropagation();openFocusStartBox()">+ 新计时</button>'
+    +'<button class="fp-sync" style="padding:5px 12px" onclick="event.stopPropagation();openManualAdd()">手动补录</button>'
+    +'<button class="fp-reset" style="padding:5px 12px" onclick="event.stopPropagation();resetTodayFocus()">清空今日</button></div>';
+  // 待用 ×2 buff 提示（保持现状：同任务当日只翻倍一次，队列跨天保留）
+  const q=DB.pendingBuffs||[];
+  const nStudy=q.filter(x=>x==='study').length,nAny=q.filter(x=>x==='any').length;
+  let bufLine='';
+  if(nStudy||nAny){
+    const parts=[];
+    if(nStudy)parts.push('精力充沛 ×'+nStudy);
+    if(nAny)parts.push('经验暴击 ×'+nAny);
+    bufLine='<div style="text-align:center;font-size:11px;color:var(--gold);border-top:1px dashed var(--border);padding:8px 4px 2px;margin-top:4px">待用 ×2：'+parts.join(' · ')+'<div style="color:var(--muted);font-weight:400;margin-top:2px">完成任务时自动用掉一个；同一任务当天只翻倍一次，没用完的会保留到以后</div></div>';
   }
-  if(total>0){
-    pill.classList.remove('hidden');
-    if(run)run.style.display='none'; if(idle)idle.style.display='';
-    const ti=document.getElementById('fpTotalIdle');if(ti)ti.textContent='今日专注 '+total+' 分钟';
-    return;
-  }
-  pill.classList.add('hidden');
-  if(run)run.style.display='none'; if(idle)idle.style.display='none';
+  pill.innerHTML='<div style="width:250px;max-height:70vh;overflow:auto">'
+    +'<div style="text-align:center;font-size:12px;color:var(--muted);padding-bottom:6px;border-bottom:1px solid var(--border)">专注面板 · 今日 '+total+' 分钟 · 点击收起</div>'
+    +items+(list.length?addBtns:'')+bufLine+'</div>';
 }
 function focusTick(){
-  const st=getFocus();if(!st)return;
-  // carry 型（专注听课）：实时把新增分钟累计进零头池，每满 45 分钟自动折算 +1（不用等保存时间）
-  if(st.type==='carry'){
-    const el=Math.floor(focusElapsedMs(st)/60000);
-    const last=st.lastCarryMin||0;
-    if(el>last){
-      st.lastCarryMin=el;
-      writeFocus(st);
-      const before=DB.carryConvertedTotal||0;
-      addCarry(el-last);
-      if((DB.carryConvertedTotal||0)!==before)render(); // 刚折算 +1，刷新零头框/计数/余额
+  const list=getFocuses();if(!list.length){renderFocusPill();return}
+  const now=Date.now();
+  let needPersist=false;
+  list.forEach(st=>{
+    if(focusPaused(st))return;
+    // 心跳：距上次 tick 超过 60 秒视为「离线/切走」，把这段时间从计时中扣除（不算专注）
+    if(st.lastSeen&&now-st.lastSeen>60000){st.pauseAcc=(st.pauseAcc||0)+(now-st.lastSeen);needPersist=true}
+    st.lastSeen=now;
+    if(st.type==='carry'){
+      // 实时把新增在线分钟累计进全局零头池，每满 45 分钟自动折算 +1
+      const el=Math.floor(focusElapsedMs(st)/60000);
+      const last=st.lastCarryMin||0;
+      if(el>last){
+        st.lastCarryMin=el;needPersist=true;
+        const before=DB.carryConvertedTotal||0;
+        addCarry(el-last);
+        if((DB.carryConvertedTotal||0)!==before)render(); // 刚折算 +1，刷新计数/余额
+      }
+    }else{
+      // once：在线分钟实时写入「开始当天」的任务池，拼满目标即自动打卡
+      const el=Math.floor(focusElapsedMs(st)/60000);
+      const last=st.lastCarryMin||0;
+      if(el>last){
+        st.lastCarryMin=el;needPersist=true;
+        const dayKey=fmt(new Date(st.start));
+        const d=touchDay(dayKey);
+        if(!d.c.taskMinPool)d.c.taskMinPool={};
+        d.c.taskMinPool[st.k]=(d.c.taskMinPool[st.k]||0)+(el-last);
+        save();
+        if(!d.t[st.k]&&(d.c.taskMinPool[st.k]||0)>=st.min){
+          const nm=st.n;const pts=st.pts;const dk=dayKey;
+          finishFocus(st.id);
+          if(dk===todayKey())notifyFocusDone({n:nm,pts},nm+' 拼满 '+st.min+' 分钟，完成 +'+pts+'G');
+        }
+      }
     }
-    renderFocusPill();
-    return;
-  }
-  // once 型：到点自动打卡
-  if(focusRemainMs(st)<=0){completeFocus();return}
+  });
+  if(needPersist)writeFocus(getFocuses());
   renderFocusPill();
 }
 function toggleFocusPill(){
-  const st=getFocus();if(!st)return;
-  st.expanded=!st.expanded;writeFocus(st);renderFocusPill();
+  const pill=document.getElementById('focusPill');if(!pill)return;
+  const list=getFocuses();
+  if(!list.length&&!todayFocusMinTotal())return;
+  pill.dataset.exp=pill.dataset.exp==='1'?'0':'1';
+  renderFocusPill();
 }
 let _focusTimerStarted=false;
 function initFocus(){
   if(!_focusTimerStarted){setInterval(focusTick,1000);_focusTimerStarted=true}
-  const st=getFocus();
-  // carry 型(专注听课)的 end 为 null，focusRemainMs 恒为负；若不做类型判断，
-  // 刷新页面会把「进行中的专注」当成已完成结算并弹「+10G」，实际分数并未到账
-  if(st&&st.type==='once'&&focusRemainMs(st)<=0){completeFocus()}
-  else{renderFocusPill()}
+  // 恢复进行中的会话：旧版（带 end 且已过点）的 once 直接结算一次；新版 once 无 end，交给 focusTick 拼池
+  const list=getFocuses();
+  list.forEach(st=>{
+    if(st.type==='once'&&st.end&&!focusPaused(st)&&st.end<=Date.now()){finishFocus(st.id)}
+  });
+  renderFocusPill();
 }
 function todayFocusMinTotal(){const d=getDay(todayKey());return sumDev(d.c&&d.c.focusMinDev)}
 function syncFocusTime(){if(_sbReady)cloudSync();else renderFocusPill()}
@@ -3787,26 +4005,7 @@ if(isAuthed()){
   showAuthGate();
 }
 </script>
-<div id="focusPill" class="hidden" onclick="toggleFocusPill()">
-  <div class="fp-running">
-    <div class="fp-name" id="fpName">专注中</div>
-    <div class="fp-time" id="fpTimerE">00:00</div>
-    <div class="fp-bar"><div class="fp-bar-fill" id="fpBarFill"></div></div>
-    <div class="fp-hint" id="fpHint"></div>
-    <div class="fp-total" id="fpTotalRun">今日专注 0 分钟</div>
-    <div class="fp-actions">
-      <button class="fp-save" onclick="event.stopPropagation();saveFocusTime()">保存时间</button>
-      <button class="fp-sync" onclick="event.stopPropagation();syncFocusTime()">同步时间</button>
-    </div>
-  </div>
-  <div class="fp-idle">
-    <div class="fp-total" id="fpTotalIdle">今日专注 0 分钟</div>
-    <div class="fp-actions">
-      <button class="fp-sync" onclick="event.stopPropagation();syncFocusTime()">同步时间</button>
-      <button class="fp-reset" onclick="event.stopPropagation();resetTodayFocus()">清空今日</button>
-    </div>
-  </div>
-</div>
+<div id="focusPill" class="hidden" onclick="toggleFocusPill()"></div>
 
 <!-- 移动端底部导航栏：手机上常驻，单手即可切换三个页面 -->
 <nav class="tabbar" id="tabbar" aria-label="页面导航">
