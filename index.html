@@ -132,6 +132,13 @@
   .backup-bar{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:8px 14px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:12px;color:var(--muted);flex-wrap:wrap}
   .backup-bar button{background:var(--panel);border:1px solid var(--btn);color:var(--text);border-radius:6px;padding:4px 10px;cursor:pointer;font-size:11px;white-space:nowrap;font-weight:600}
   .backup-bar button:hover{background:var(--btn);color:#fff}
+  /* 从文件恢复 - 自绘选择器 */
+  .pick-body{overflow:auto;padding:6px;min-height:80px}
+  .pick-row{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:8px;cursor:pointer;font-size:13px;border-bottom:1px solid transparent}
+  .pick-row:nth-child(odd){background:rgba(127,127,127,.04)}
+  .pick-row:hover{background:var(--panel);border-bottom-color:var(--border)}
+  .pick-i{color:var(--muted);font-size:11px;min-width:24px;text-align:right;font-variant-numeric:tabular-nums}
+  .pick-n{font-family:ui-monospace,Consolas,monospace;font-size:12px}
 
   /* 区块 */
   .section{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:14px;box-shadow:var(--shadow)}
@@ -951,12 +958,37 @@ async function restoreFromFile(){if(!_dirHandle){alert('请先连接备份目录
   const files=[];for await(const entry of _dirHandle.values()){if(entry.name.match(/^backup-\d{4}-\d{2}-\d{2}-\d{4}\.json$/))files.push(entry.name)}
   if(!files.length){alert('备份目录中没有找到备份文件');return}
   files.sort().reverse();
-  const list='请选择要恢复的备份（输入序号）：\n\n'+files.map((f,i)=>(i+1)+'. '+f).join('\n');
-  const choice=prompt(list);if(!choice)return;
-  const idx=parseInt(choice)-1;if(isNaN(idx)||idx<0||idx>=files.length){alert('选择无效');return}
-  const fh=await _dirHandle.getFileHandle(files[idx]);const f=await fh.getFile();const obj=JSON.parse(await f.text());
-  if(!confirm('确认用 '+files[idx]+' 覆盖当前数据？'))return;restoreApply(obj,'已从 '+files[idx]+' 恢复');
+  // 页面内自绘选择器（原 prompt 系统弹窗列长列表会显示不全，改成可滚动列表+点击恢复）
+  const MAX_SHOW=100; // 列表展示上限：备份再多也只展示最近 100 份
+  const shown=files.length>MAX_SHOW?files.slice(0,MAX_SHOW):files;
+  window._restoreNames=shown;
+  const ov=document.createElement('div');
+  ov.className='pick-ov';
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:400;display:flex;align-items:center;justify-content:center;padding:16px';
+  ov.addEventListener('click',()=>{ov.remove();window._restoreNames=null});
+  const rows=shown.map((f,i)=>{
+    const label=f.replace(/^backup-/,'').replace(/\.json$/,'');
+    return '<div class="pick-row" onclick="event.stopPropagation();pickRestoreFile('+i+')"><span class="pick-i">'+(i+1)+'</span><span class="pick-n">'+label+'</span></div>';
+  }).join('');
+  ov.innerHTML='<div style="background:var(--card);color:var(--text);max-width:540px;width:100%;max-height:82vh;display:flex;flex-direction:column;border-radius:16px;overflow:hidden;box-shadow:0 12px 48px rgba(0,0,0,.3)" onclick="event.stopPropagation()">'
+    +'<div style="padding:14px 16px;border-bottom:1px solid var(--border)"><div style="font-weight:700">💾 从文件恢复</div>'
+    +'<div style="font-size:11px;color:var(--muted);margin-top:2px">共 '+files.length+' 份备份'+(files.length>MAX_SHOW?' · 仅展示最近 '+MAX_SHOW+' 份':'')+' · 点击任意一份直接恢复 · 点空白处关闭</div></div>'
+    +'<div class="pick-body">'+rows+'</div>'
+    +'</div>';
+  document.body.appendChild(ov);
 }catch(e){alert('恢复失败：'+e.message)}}
+async function pickRestoreFile(i){
+  const name=(window._restoreNames||[])[i];if(!name)return;
+  const label=name.replace(/^backup-/,'').replace(/\.json$/,'');
+  if(!confirm('确认用 '+label+' 的备份覆盖当前数据？'))return;
+  try{
+    const fh=await _dirHandle.getFileHandle(name);
+    const f=await fh.getFile();
+    const obj=JSON.parse(await f.text());
+    restoreApply(obj,'已从 '+label+' 恢复');
+    const ov=document.querySelector('.pick-ov');if(ov)ov.remove();window._restoreNames=null;
+  }catch(e){alert('恢复失败：'+e.message)}
+}
 async function restoreFromIDB(){
   const snap=await idbGet('snapshot');
   if(!snap){alert('浏览器内无备份');return}
@@ -1210,13 +1242,13 @@ async function cloudSync(){
       try{localStorage.setItem('lpSyncPreMergeBackup',JSON.stringify(DB))}catch(e){}
       // 合并：基于本地，补入云端新内容（days 按 _ts 逐天合并 + 集合去重并集）
       const merged=mergeSyncData(DB,cloudData);
-      // 历史保留：把云端旧整包存入 _history 供回溯恢复（最多20条）
+      // 历史保留：把云端旧整包存入 _history 供回溯恢复（最多100条，原20）
       const baseHistory=cloudData._history||merged._history||[];
       const exists=baseHistory.some(h=>h.ts===cloudTime);
       if(!exists&&cloudTime>0){
         const oldSnap=JSON.parse(JSON.stringify(cloudData));delete oldSnap._history;
         merged._history=baseHistory.concat([{data:oldSnap,updated_at:cloud.updated_at,ts:cloudTime}]);
-        if(merged._history.length>20)merged._history=merged._history.slice(-20);
+        if(merged._history.length>100)merged._history=merged._history.slice(-100);
       }else{merged._history=baseHistory}
       merged._updatedAt=Date.now();
       DB=merged;
@@ -1280,7 +1312,7 @@ async function overwriteCloudFromLocal(skipConfirm){
       const oldData=JSON.parse(JSON.stringify(rows[0].data));delete oldData._history;
       let hist=DB._history||[];
       hist.push({data:oldData,updated_at:rows[0].updated_at,ts:(new Date(rows[0].updated_at).getTime())||Date.now()});
-      if(hist.length>20)hist=hist.slice(-20);
+      if(hist.length>100)hist=hist.slice(-100);
       DB._history=hist;
     }
     DB._updatedAt=Date.now();
@@ -1305,7 +1337,7 @@ async function restoreLocalFromCloud(){
     const oldLocal=JSON.parse(JSON.stringify(DB));delete oldLocal._history;
     let hist=cloudData._history||DB._history||[];
     hist.push({data:oldLocal,updated_at:new Date().toISOString(),ts:Date.now()});
-    if(hist.length>20)hist=hist.slice(-20);
+    if(hist.length>100)hist=hist.slice(-100);
     cloudData._history=hist;cloudData._updatedAt=Date.now();
     DB=cloudData;DB._forced={ver:Date.now().toString(36)+Math.random().toString(36).slice(2,7),at:new Date().toISOString()}; // 以云为准恢复 → 权威版本
     localStorage.setItem(KEY,JSON.stringify(DB));await scheduleBackup();render();
