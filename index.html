@@ -879,7 +879,7 @@ function load(){try{const r=localStorage.getItem(KEY);if(r){DB=JSON.parse(r);
    背景：曾因手机 PWA/浏览器缓存了旧 index.html，导致统计区渲染异常（兑换记录"对不上"）。
    此后每次发布新版本递增 APP_VERSION；用户打开时若发现版本变化，提示完全关闭重开，
    确保跑的是最新代码，避免旧缓存残留造成同类显示问题。 */
-const APP_VERSION='2026-09-04-15';
+const APP_VERSION='2026-09-04-16';
 try{
   const lastVer=localStorage.getItem('lpVer');
   if(lastVer&&lastVer!==APP_VERSION){
@@ -2985,11 +2985,22 @@ function redeem(lv,i){
   DB.redeemLog.push({id:uid(),date:curDate,n:it.n,c:it.c});
   save();render();
 }
-/* 每日自动兑换：每天首次打开页面时，为标记 auto:true 的商店项自动记一笔（幂等，不重复） */
+/* 每日自动兑换：每天首次打开页面时，为标记 auto:true 的商店项自动记一笔（幂等，不重复）。
+   幂等加固(2026-09-04-16)：除 redeemLog 外，另写一个独立 localStorage 标记 AUTO_DONE_KEY。
+   原因：云同步"权威版本"(_forced)机制会用云端旧包整包覆盖本地 DB，可能抹掉今天刚记的兑换记录，
+   导致下次刷新时 autoRedeemDaily 误以为今天还没扣 → 每天重复扣 32G。独立标记不随 DB 覆盖丢失，
+   只要今天已执行过就绝不再扣。历史重复(同日同名多条)由 repairAutoDupes 启动时自动清理。 */
+const AUTO_REDEEM_KEY='lpAutoRedeemDone';
+function autoRedeemDoneKey(){return AUTO_REDEEM_KEY+'-'+todayKey()}
 function getAutoRedeem(){return DB.autoRedeem!==false}
+function autoRedeemDoneMark(){try{return localStorage.getItem(autoRedeemDoneKey())==='1'}catch(e){return false}}
+function setAutoRedeemDoneMark(){try{localStorage.setItem(autoRedeemDoneKey(),'1')}catch(e){}}
+function clearAutoRedeemDoneMark(){try{localStorage.removeItem(autoRedeemDoneKey())}catch(e){}}
 function autoRedeemDaily(){
   if(getAutoRedeem()===false)return;
   const today=todayKey();
+  // 独立幂等标记：今天已执行过 → 无论 DB/云端怎么覆盖都直接跳过（根治"每次刷新都扣32"）
+  if(autoRedeemDoneMark())return;
   let added=false;
   SHOP.forEach(s=>s.items.forEach(it=>{
     if(!it.auto)return;
@@ -2999,6 +3010,31 @@ function autoRedeemDaily(){
     added=true;
   }));
   if(added){save();render();}
+  // 无论是否新增（如云端已带来今日记录），都落标记：保证今天只会执行一次
+  setAutoRedeemDoneMark();
+}
+/* 历史重复自动修复：同一天同一款"清日常"(auto)只应存在 1 条。
+   云端覆盖/旧版重复曾造成同日多条(每天扣 2 次以上) → 保留最早一条，删除多余并重存。
+   在 autoRedeemDaily 前调用；余额因此被多扣的部分会自动恢复。 */
+function repairAutoDupes(){
+  if(!Array.isArray(DB.redeemLog)||!DB.redeemLog.length)return 0;
+  const autoNames=new Set();
+  SHOP.forEach(s=>s.items.forEach(it=>{if(it.auto)autoNames.add(it.n)}));
+  if(!autoNames.size)return 0;
+  const seen={}; // date|name → index
+  const keep=[];let removed=0;
+  DB.redeemLog.forEach(r=>{
+    if(r&&autoNames.has(r.n)){
+      const k=(r.date||'')+'|'+r.n;
+      if(seen[k]!==undefined){removed++;return} // 同日同名重复 → 丢弃多余的
+      seen[k]=keep.length;
+    }
+    keep.push(r);
+  });
+  if(!removed)return 0;
+  DB.redeemLog=keep;
+  try{save();render()}catch(e){}
+  return removed;
 }
 function toggleAutoRedeem(){
   DB.autoRedeem=!getAutoRedeem();
@@ -3134,6 +3170,7 @@ async function resetConfirm(){
   if(!confirm('⚠️ 确认清空全部数据？此操作不可逆！\n\n所有打卡、积分、记录都将删除。\n建议先点「导出数据」留一份备份。'))return;
   if(!confirm('再次确认：所有打卡、积分、记录都将删除。\n（若已连接云同步，云端数据也会一并清空，从 0 开始）'))return;
   DB={meta:{baselineWeight:null},days:{},weightLog:[],redeemLog:[],milestones:[],rescues:{},autoRedeem:true,weekTodos:{},monthTodos:{},lastTodoDate:null,lastTodoWeek:null,lastTodoMonth:null};
+  clearAutoRedeemDoneMark(); // 重置后从 0 开始，当天可重新自动兑换
   if(_sbReady){
     localStorage.setItem(KEY,JSON.stringify(DB));
     render();
@@ -3176,7 +3213,7 @@ function doAuth(){
     sessionStorage.setItem(ACCESS_AUTHED,'1');
     document.getElementById('authGate').classList.add('hidden');
     initTodoSystem();
-    render();initBackup();initCloud().then(()=>autoRedeemDaily());
+    render();initBackup();initCloud().then(()=>{repairAutoDupes();autoRedeemDaily()});
     initFocus();
     return;
   }
@@ -3184,7 +3221,7 @@ function doAuth(){
     sessionStorage.setItem(ACCESS_AUTHED,'1');
     document.getElementById('authGate').classList.add('hidden');
     initTodoSystem();
-    render();initBackup();initCloud().then(()=>autoRedeemDaily());
+    render();initBackup();initCloud().then(()=>{repairAutoDupes();autoRedeemDaily()});
     initFocus();
   }else{
     document.getElementById('authErr').textContent='密码错误（密码存在当前设备浏览器，各设备独立）';
@@ -3700,7 +3737,7 @@ document.getElementById('datePick').addEventListener('change',e=>{curDate=e.targ
 initCollapse();
 if(isAuthed()){
   initTodoSystem();
-  render();initBackup();initCloud().then(()=>autoRedeemDaily());
+  render();initBackup();initCloud().then(()=>{repairAutoDupes();autoRedeemDaily()});
   initFocus();
 }else{
   showAuthGate();
