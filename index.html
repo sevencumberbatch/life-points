@@ -672,6 +672,7 @@
     <div style="font-size:13px;font-weight:600;margin-bottom:6px">🧼 每周清洁</div>
     <div id="scrubRow"></div>
     <div id="blackheadRow"></div>
+    <div id="medPackRow"></div>
     <div style="height:10px"></div>
     <div style="font-size:13px;font-weight:600;margin-bottom:6px">🧹 大扫除</div>
     <div id="weeklyZones"></div>
@@ -889,7 +890,7 @@ function load(){try{const r=localStorage.getItem(KEY);if(r){DB=JSON.parse(r);
    背景：曾因手机 PWA/浏览器缓存了旧 index.html，导致统计区渲染异常（兑换记录"对不上"）。
    此后每次发布新版本递增 APP_VERSION；用户打开时若发现版本变化，提示完全关闭重开，
    确保跑的是最新代码，避免旧缓存残留造成同类显示问题。 */
-const APP_VERSION='2026-09-04-23';
+const APP_VERSION='2026-09-06-24';
 try{
   const lastVer=localStorage.getItem('lpVer');
   if(lastVer&&lastVer!==APP_VERSION){
@@ -1438,6 +1439,7 @@ const LIFE2=[
   {k:'sinkClean',n:'清空水池',std:'清洗当日锅碗瓢盆',pts:3},
   {k:'ointment',n:'擦药膏',std:'每日任务，不做扣分',pts:10},
   {k:'neckExercise',n:'颈椎操',std:'每天做一组',pts:6},
+  {k:'lumbar',n:'腰椎操',std:'每天做一组',pts:6},
   {k:'ulnarNerve',n:'尺神经操',std:'每天做一组',pts:5},
 ];
 const ZONES=[
@@ -1467,7 +1469,7 @@ const SHOP=[
 ];
 const PENALTIES=[
   {k:'noWash',n:'晚间洗漱三项全没做',pts:-5,cond:d=>!d.t.faceWash&&!d.t.brushTeeth&&!d.t.shower},
-  {k:'noMain',n:'减脂/学业/生活维护三条硬主线全空',pts:-8,cond:d=>!d.t.exercise15&&!d.t.exercise30&&!d.t.noSugar&&waterCupsDone(d)===0&&!d.t.earlySleep&&!d.t.earlyRise&&d.c.study45===0&&(d.c.studyDone||0)===0&&!d.t.review&&!d.t.faceWash&&!d.t.brushTeeth&&!d.t.shower&&!d.t.suppMorn&&!d.t.suppNoon&&!d.t.suppAfternoon&&!d.t.suppEve&&!d.t.suppBed&&!d.t.trash&&!d.t.deskClean&&!d.t.sinkClean&&!d.t.ointment&&!d.t.neckExercise&&!d.t.ulnarNerve&&!d.t.noTakeout&&lampDone(d)===0},
+  {k:'noMain',n:'减脂/学业/生活维护三条硬主线全空',pts:-8,cond:d=>!d.t.exercise15&&!d.t.exercise30&&!d.t.noSugar&&waterCupsDone(d)===0&&!d.t.earlySleep&&!d.t.earlyRise&&d.c.study45===0&&(d.c.studyDone||0)===0&&!d.t.review&&!d.t.faceWash&&!d.t.brushTeeth&&!d.t.shower&&!d.t.suppMorn&&!d.t.suppNoon&&!d.t.suppAfternoon&&!d.t.suppEve&&!d.t.suppBed&&!d.t.trash&&!d.t.deskClean&&!d.t.sinkClean&&!d.t.ointment&&!d.t.neckExercise&&!d.t.ulnarNerve&&!d.t.lumbar&&!d.t.noTakeout&&lampDone(d)===0},
   {k:'drankSugar',n:'喝了带糖饮料',pts:-5,cond:d=>d.t.drankSugar===true},
   {k:'noStudy2d',n:'连续2天没有学习打卡',pts:-10,cond:d=>false}, // 单独逻辑
   {k:'noWeekly',n:'周大扫除完全没做',pts:-10,cond:(d,k)=>isSunday(k)&&weekAllDone(k)===false&&weekAnyDone(k)===false},
@@ -1946,6 +1948,10 @@ function weekZonePts(k){ // 当前周所有区域积分（区域打扫/洗晾衣
   let blackheadDone=false;
   for(let i=0;i<7;i++){const dk=shiftKey(ws,i);const d=getDay(dk);if(d.t.blackhead){blackheadDone=true;break}}
   if(blackheadDone)p+=15;
+  // 药剂分装：本周任意一天完成即得 +15G
+  let medPackDone=false;
+  for(let i=0;i<7;i++){const dk=shiftKey(ws,i);const d=getDay(dk);if(d.t.medPack){medPackDone=true;break}}
+  if(medPackDone)p+=15;
   // 洗衣服：按次计分，每天洗/晾各 +4，当天都做再 +2（洗N次就得N份）
   for(let i=0;i<7;i++){const dk=shiftKey(ws,i);const d=getDay(dk);if(d.ld&&d.ld.wash)p+=4;if(d.ld&&d.ld.dry)p+=4;if(d.ld&&d.ld.wash&&d.ld.dry)p+=2}
   return p;
@@ -2019,6 +2025,7 @@ function dayWeeklyLines(k){
   const firstDayInWeek=(cond)=>{for(let i=0;i<7;i++){const dk=shiftKey(ws,i);if(cond(getDay(dk),dk))return dk}return null};
   first(d.t.scrub&&firstDayInWeek(x=>x.t.scrub)===k,'搓澡',15);
   first(d.t.blackhead&&firstDayInWeek(x=>x.t.blackhead)===k,'去黑头',15);
+  first(d.t.medPack&&firstDayInWeek(x=>x.t.medPack)===k,'药剂分装',15);
   first(d.ld&&d.ld.wash,'洗衣服',4);
   first(d.ld&&d.ld.dry,'晾衣服',4);
   first(d.ld&&d.ld.wash&&d.ld.dry,'洗晾组合',2);
@@ -2314,6 +2321,12 @@ function renderWeekly(){
   document.getElementById('blackheadRow').innerHTML=
     `<div class="task task-full${blackheadDone?' done':''}" onclick="toggleBlackhead()" style="margin-bottom:8px">`
     +`<div class="box"></div><div class="tname">🧫 去黑头（每周1次）<span class="full-badge">全额</span></div><div class="tpts">+15G</div></div>`;
+  // 药剂分装：本周任意一天完成即得
+  let medPackDone=false;
+  {const ws=weekStart(curDate);for(let i=0;i<7;i++){const dk=shiftKey(ws,i);const d=getDay(dk);if(d.t.medPack){medPackDone=true;break}}}
+  document.getElementById('medPackRow').innerHTML=
+    `<div class="task task-full${medPackDone?' done':''}" onclick="toggleMedPack()" style="margin-bottom:8px">`
+    +`<div class="box"></div><div class="tname">💊 药剂分装（每周分装一次·28格）<span class="full-badge">全额</span></div><div class="tpts">+15G</div></div>`;
   let html='';
   ZONES.forEach(z=>{
     const d=getDay(curDate);
@@ -2816,6 +2829,7 @@ function toggle(k){
 function toggleDrankSugar(){const d=touchDay(curDate);d.t.drankSugar=!d.t.drankSugar;save();render()}
 function toggleScrub(){const d=touchDay(curDate);d.t.scrub=!d.t.scrub;save();render()}
 function toggleBlackhead(){const d=touchDay(curDate);d.t.blackhead=!d.t.blackhead;save();render()}
+function toggleMedPack(){const d=touchDay(curDate);d.t.medPack=!d.t.medPack;save();render()}
 function adjCount(k,n){const d=touchDay(curDate);if(k==='study45'||k==='studyDone'){
   if(n>0){focusDevAdd(d,k,n);maybeConsumeNext(k);} // 先 +1 计数再触发翻倍，否则 taskBasePts 读到旧值(0→1 时精力充沛会记成 0)
   else if(n<0){const fk=k+'FixDev';if(!d.c[fk])d.c[fk]={};d.c[fk][myDev()]=(d.c[fk][myDev()]||0)+(-n);recalcCount(d,k);}
