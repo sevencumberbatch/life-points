@@ -889,7 +889,7 @@ function load(){try{const r=localStorage.getItem(KEY);if(r){DB=JSON.parse(r);
    背景：曾因手机 PWA/浏览器缓存了旧 index.html，导致统计区渲染异常（兑换记录"对不上"）。
    此后每次发布新版本递增 APP_VERSION；用户打开时若发现版本变化，提示完全关闭重开，
    确保跑的是最新代码，避免旧缓存残留造成同类显示问题。 */
-const APP_VERSION='2026-09-04-21';
+const APP_VERSION='2026-09-04-23';
 try{
   const lastVer=localStorage.getItem('lpVer');
   if(lastVer&&lastVer!==APP_VERSION){
@@ -897,7 +897,25 @@ try{
   }
   localStorage.setItem('lpVer',APP_VERSION);
 }catch(e){}
-function save(){clearNtStreakCache();DB._updatedAt=DB._updatedAt||Date.now();localStorage.setItem(KEY,JSON.stringify(DB));scheduleBackup();ensureCloud();if(_sbReady){clearTimeout(_syncTimer);_syncTimer=setTimeout(()=>{DB._updatedAt=Date.now();localStorage.setItem(KEY,JSON.stringify(DB));cloudSync()},2000)}}
+// 云端历史裁剪：条数与体积双上限（历史每条约 35KB，100 条会撑爆 localStorage 配额——2026-09-06 曾致页面无法保存）
+function trimHistory(arr){
+  arr=(arr||[]).slice();
+  // 1) 丢弃无 data 字段的残缺快照
+  arr=arr.filter(h=>h&&h.data&&typeof h.data==='object');
+  // 2) 去重：days/redeemLog/wheelLog 内容相同即视为冗余（定时同步每次都追加，必须合并掉，否则撑爆 localStorage 配额）
+  const sig=h=>JSON.stringify([h.data.days||{},h.data.redeemLog||[],h.data.wheelLog||{}]);
+  const out=[];
+  for(let i=arr.length-1;i>=0;i--){const s=sig(arr[i]);if(out.length&&sig(out[out.length-1])===s)continue;out.unshift(arr[i]);}
+  arr=out;
+  // 3) 双上限兜底（每条快照含完整 days，约 30KB，12 条≈360KB，远低于 5MB 配额）
+  while(arr.length>12)arr.shift();
+  while(arr.length>3&&JSON.stringify(arr).length>400000)arr.shift();
+  return arr;
+}
+function save(){clearNtStreakCache();DB._updatedAt=DB._updatedAt||Date.now();
+  try{localStorage.setItem(KEY,JSON.stringify(DB))}
+  catch(e){console.error('存储失败(可能配额满):',e.message);alert('⚠️ 本地存储空间不足，改动无法保存！\n请到「备份与恢复」→ 云历史仅保留最近 10 条即可，或先导出数据备份。');return}
+  scheduleBackup();ensureCloud();if(_sbReady){clearTimeout(_syncTimer);_syncTimer=setTimeout(()=>{DB._updatedAt=Date.now();localStorage.setItem(KEY,JSON.stringify(DB));cloudSync()},2000)}}
 
 /* === PWA：可安装成 App（manifest.webmanifest 静态引用 + Service Worker 离线缓存）=== */
 let _deferredPrompt=null;
@@ -1264,7 +1282,7 @@ async function cloudSync(){
       if(!exists&&cloudTime>0){
         const oldSnap=JSON.parse(JSON.stringify(cloudData));delete oldSnap._history;
         merged._history=baseHistory.concat([{data:oldSnap,updated_at:cloud.updated_at,ts:cloudTime}]);
-        if(merged._history.length>100)merged._history=merged._history.slice(-100);
+        merged._history=trimHistory(merged._history);
       }else{merged._history=baseHistory}
       merged._updatedAt=Date.now();
       DB=merged;
@@ -1328,7 +1346,7 @@ async function overwriteCloudFromLocal(skipConfirm){
       const oldData=JSON.parse(JSON.stringify(rows[0].data));delete oldData._history;
       let hist=DB._history||[];
       hist.push({data:oldData,updated_at:rows[0].updated_at,ts:(new Date(rows[0].updated_at).getTime())||Date.now()});
-      if(hist.length>100)hist=hist.slice(-100);
+      hist=trimHistory(hist);
       DB._history=hist;
     }
     DB._updatedAt=Date.now();
@@ -1353,7 +1371,7 @@ async function restoreLocalFromCloud(){
     const oldLocal=JSON.parse(JSON.stringify(DB));delete oldLocal._history;
     let hist=cloudData._history||DB._history||[];
     hist.push({data:oldLocal,updated_at:new Date().toISOString(),ts:Date.now()});
-    if(hist.length>100)hist=hist.slice(-100);
+    hist=trimHistory(hist);
     cloudData._history=hist;cloudData._updatedAt=Date.now();
     DB=cloudData;DB._forced={ver:Date.now().toString(36)+Math.random().toString(36).slice(2,7),at:new Date().toISOString()}; // 以云为准恢复 → 权威版本
     localStorage.setItem(KEY,JSON.stringify(DB));await scheduleBackup();render();
