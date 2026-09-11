@@ -571,8 +571,8 @@
       <div class="val"><span id="balVal">0</span><span class="u">G</span></div>
     </div>
     <div class="day-pts">
-      <div class="chip" id="chipRaw" title="今日原始分（任务含翻倍/日积月累加成 + 周任务 + 里程碑 + 称重），未扣软上限/扣分前"><span id="rawLbl">今日原始</span><b id="rawVal">0</b></div>
-      <div class="chip pos" id="chipDay" title="今日净到账（任务过软上限 + 扣分/救赎 + 周任务 + 里程碑 + 称重 + 转盘直接奖励）"><span id="dayLbl">今日到账</span><b id="dayVal">0</b></div>
+      <div class="chip" id="chipRaw" title="今日原始分（任务含翻倍/日积月累加成 + 周任务 + 里程碑 + 称重 + 无外卖连击），未扣软上限/扣分前"><span id="rawLbl">今日原始</span><b id="rawVal">0</b></div>
+      <div class="chip pos" id="chipDay" title="今日净到账（任务过软上限 + 扣分/救赎 + 周任务 + 里程碑 + 称重 + 无外卖连击 + 转盘直接奖励）"><span id="dayLbl">今日到账</span><b id="dayVal">0</b></div>
       <div class="chip" id="chipTask" title="本日任务原始分（含经验暴击/精力充沛×2 与日积月累+15% 加成）——与「🎡转盘所得」存在包含关系：翻倍份已含在任务分中，转盘 chip 仅单独标出转盘带来的部分，不会重复入账"><span id="taskLbl">本日任务</span><b id="taskVal">0</b></div>
       <div class="chip" id="chipWheel" title="当日从转盘获得的所有积分（含翻倍/日积月累加成与直接奖励）"><span>🎡转盘所得</span><b id="wheelVal">0</b></div>
       <div class="chip" id="chipWeek"><span>本周周任务</span><b id="weekVal">0</b></div>
@@ -868,12 +868,28 @@ function isSunday(k){return parseKey(k).getDay()===0}
 function myDev(){let id=localStorage.getItem('lpDevId');if(!id){id='d'+Math.random().toString(36).slice(2,10);localStorage.setItem('lpDevId',id)}return id}
 function sumDev(m){if(!m)return 0;let s=0;for(const k in m)s+=(m[k]||0);return s}
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,9)} // 账目记录唯一 id（云合并按 id 去重，避免同名同日多条被误合并）
+// 便签 id：必须严格唯一（勾选/删除用 === 查找，重复 id 会作用到错误的便签），
+// 且必须保持「数字」类型——id 通过 onclick="toggleTodo(${t.id})" 内联传参，
+// 若是字符串会变成减法表达式；同时历史数据里 id 也是数字，改类型会让旧便签点不动。
+// Date.now()+Math.random() 在同毫秒内批量创建时实测约 0.94% 碰撞；
+// Date.now()*1000+seq 在 seq≥1000 时会进位到下一秒毫秒位而碰撞。
+// 故用「毫秒时间戳 × 4000 + 自增序号」。乘数上限受 Number.MAX_SAFE_INTEGER 约束：
+// Date.now()≈1.79e12，乘数须 ≤ 9e15/1.79e12 ≈ 5000，取 4000 留足余量（序号上限 3999，
+// 同毫秒建 4000 个便签已远超实际场景；乘数再大会因浮点精度丢失导致 id 碰撞）。
+let _todoSeq=0,_todoLastMs=0;
+function todoId(){
+  const ms=Date.now();
+  if(ms===_todoLastMs){_todoSeq++;if(_todoSeq>3999)_todoSeq=0}else{_todoLastMs=ms;_todoSeq=0}
+  return ms*4000+_todoSeq;
+}
 function recalcCount(d,kind){const fk=kind+'FixDev';d.c[kind]=Math.max(0,sumDev(d.c[kind+'Dev'])-sumDev(d.c[fk]||{}))}
 function normalizeDev(d,devId){if(!d||!d.c)return;['study45','studyDone'].forEach(kind=>{const mk=kind+'Dev',fk=kind+'FixDev';if(!d.c[mk])d.c[mk]={};if(!d.c[fk])d.c[fk]={};if(Object.keys(d.c[mk]).length===0&&typeof d.c[kind]==='number'&&d.c[kind]>0)d.c[mk][devId]=d.c[kind];recalcCount(d,kind)})}
 function focusDevAdd(d,kind,n){const mk=kind+'Dev';if(!d.c[mk])d.c[mk]={};d.c[mk][myDev()]=(d.c[mk][myDev()]||0)+n;recalcCount(d,kind)}
 function load(){try{const r=localStorage.getItem(KEY);if(r){DB=JSON.parse(r);
   // 迁移：旧版「完课奖励」为勾选布尔 → 转为计数（每次15G）
-  if(DB.days)Object.values(DB.days).forEach(d=>{if(d&&d.t&&d.t.studyDone){d.c.studyDone=(d.c.studyDone||0)+1;delete d.t.studyDone}normalizeDev(d,myDev())});
+  // 注意：必须补 d.c，老备份/手工改过的备份里可能存在只有 t 没有 c 的天，否则下面 d.c.studyDone 直接 TypeError，
+  // 且该异常被外层 try 静默吞掉 → 整个 load() 中断，所有迁移（focusCarry/wheelLog/emotionRate）全部不执行。
+  if(DB.days)Object.values(DB.days).forEach(d=>{if(!d||typeof d!=='object')return;if(!d.c||typeof d.c!=='object')d.c={};if(d.t&&d.t.studyDone){d.c.studyDone=(d.c.studyDone||0)+1;delete d.t.studyDone}normalizeDev(d,myDev())});
   // 迁移：旧版专注零头为顶层数字 _focusCarry → 改为按设备记账 focusCarryDev
   if(typeof DB._focusCarry==='number'&&!DB.focusCarryDev){DB.focusCarryDev={};DB.focusCarryDev[myDev()]=DB._focusCarry;delete DB._focusCarry;}
   if(!DB.focusCarryDev)DB.focusCarryDev={};
@@ -890,7 +906,7 @@ function load(){try{const r=localStorage.getItem(KEY);if(r){DB=JSON.parse(r);
    背景：曾因手机 PWA/浏览器缓存了旧 index.html，导致统计区渲染异常（兑换记录"对不上"）。
    此后每次发布新版本递增 APP_VERSION；用户打开时若发现版本变化，提示完全关闭重开，
    确保跑的是最新代码，避免旧缓存残留造成同类显示问题。 */
-const APP_VERSION='2026-09-06-24';
+const APP_VERSION='2026-09-11-28';
 try{
   const lastVer=localStorage.getItem('lpVer');
   if(lastVer&&lastVer!==APP_VERSION){
@@ -1036,8 +1052,14 @@ function renderBackup(){const el=document.getElementById('backupBar');if(!el)ret
   h+='<span style="display:flex;gap:6px;flex-wrap:wrap">';
   if(cbEnv&&cbKey){h+='<button onclick="forceSync()">立即同步</button>';h+='<button onclick="restoreLocalFromCloud()">从云端恢复(以云为准)</button>';h+='<button onclick="overwriteCloudFromLocal()">覆盖云端(以本机为准)</button>';h+='<button onclick="restoreFromCloudHistory()">云端历史恢复('+(DB._history?DB._history.length:0)+')</button>'}
   h+='<button onclick="configCloud()">'+(cbEnv?'同步设置':'配置云同步')+'</button></span>';
-  h+='<br><span>🔒 访问密码：<b style="color:var(--skill)">已设置</b> · 同一设备当天只需输一次</span>';
-  h+='<span style="display:flex;gap:6px;flex-wrap:wrap"><button onclick="changeAccessPass()">修改访问密码</button></span>';
+  // 访问密码状态：必须真实反映是否设置过，不能无条件写死"已设置"，否则用户以为有密码保护、实际裸奔
+  if(getAccessPass()){
+    h+='<br><span>🔒 访问密码：<b style="color:var(--skill)">已设置</b> · 同一设备当天只需输一次</span>';
+    h+='<span style="display:flex;gap:6px;flex-wrap:wrap"><button onclick="changeAccessPass()">修改访问密码</button></span>';
+  }else{
+    h+='<br><span>🔓 访问密码：<b style="color:var(--neg)">未设置</b>（点下方按钮设置，防止他人打开看到你的记录）</span>';
+    h+='<span style="display:flex;gap:6px;flex-wrap:wrap"><button onclick="changeAccessPass()">设置访问密码</button></span>';
+  }
   h+='<br><span>💾 备份：';if(dir){h+='已连接 <b>'+dir+'</b> · 每次改动留存版本（保留30天） · '}else{h+='<b>浏览器内自动备份</b>（建议连接文件夹加强） · '}h+='上次 '+lbStr;if(needsExportReminder())h+=' · <b style="color:var(--neg)">超7天未导出，建议备份</b>';
   h+='</span><span style="display:flex;gap:6px;flex-wrap:wrap">';h+='<button onclick="connectBackupDir()">'+(dir?'换目录':'连接文件夹')+'</button>';if(dir)h+='<button onclick="restoreFromFile()">从文件恢复</button>';h+='<button onclick="restoreFromIDB()">从浏览器恢复</button>';h+='</span>';el.innerHTML=h}
 async function initBackup(){await loadDirHandle();if(_dirHandle){await scheduleBackup()}renderBackup();if(!localStorage.getItem(KEY)||Object.keys(DB.days||{}).length===0){const snap=await idbGet('snapshot');if(snap){if(confirm('检测到浏览器内自动备份，但当前无数据。是否恢复？')){DB=snap;save();render()}}}}
@@ -1101,7 +1123,7 @@ async function initCloud(){
   renderBackup();
 }
 
-// 合并单天数据：字段级并集（t/c/w/ld 键并集，truthy优先；resc/todos 按值/id 并集；_ts取新）
+// 合并单天数据：字段级并集（t/c/w/ld 键并集；resc/todos 按值/id 并集；_ts取新）
 function mergeDay(l,c){
   const out=JSON.parse(JSON.stringify(l));
   const truthyMerge=(a,b)=>{
@@ -1114,14 +1136,45 @@ function mergeDay(l,c){
       else if(av===undefined){a[k]=bv}
     });
   };
-  // c：跨设备计数累加，保持原 truthy 合并（配合下方 recalcCount）
-  ['c'].forEach(f=>{
-    const cf=c[f];
-    if(cf&&typeof cf==='object'){
-      if(!out[f]||typeof out[f]!=='object')out[f]={};
-      truthyMerge(out[f],cf);
+  // c：跨设备计数按设备累加，再经 recalcCount 汇总成 d.c[kind]（见下方 *_Dev 处理）。
+  // 对 c 里的**设备记账子对象**（xxDev / xxFixDev，键=设备id，值=次数）必须走「按设备累加」而非 truthyMerge：
+  //   truthyMerge 只在云端值更大时才覆盖，导致「本机把计数从 5 改小到 3（adjCount -1 记进 FixDev）」这类
+  //   减量修正会被过期云端值盖掉 → 本机修正丢失、计数被压低/弹回，且折算积分随之算错。
+  //   设备维度是纯计数域，两端取自加即可（与 recalcCount 的 sumDev 口径一致）。
+  // 设备 id 用形如 'dev_xxx' 的字符串，用 xxDev/xxFixDev 后缀识别；d.c 下其余标量键（studyDone 等）
+  // 仍保持 truthy 合并，避免把「当天总数」两端相加造成翻倍。
+  const DEVSUF=/(?:Fix)?Dev$/;
+  const isDevBucket=v=>v&&typeof v==='object'&&!Array.isArray(v);
+  const cf0=c['c'];
+  if(cf0&&typeof cf0==='object'){
+    if(!out['c']||typeof out['c']!=='object')out['c']={};
+    const hasDev=(o)=>{for(const k in o){if(DEVSUF.test(k)&&isDevBucket(o[k]))return true}return false};
+    if(hasDev(cf0)||hasDev(out['c'])){
+      out['c']['_legacy']=out['c']['_legacy']||{}; // 占位，避免下面 truthyMerge 递归时类型不一致
     }
-  });
+    Object.keys(cf0).forEach(k=>{
+      if(DEVSUF.test(k)&&isDevBucket(cf0[k])){
+        // 按设备累加
+        const dst=isDevBucket(out['c'][k])?out['c'][k]:(out['c'][k]={});
+        Object.keys(cf0[k]).forEach(dv=>{
+          const bv=cf0[k][dv];const av=dst[dv];
+          if(typeof bv==='object'&&bv!==null&&!Array.isArray(bv)){
+            dst[dv]=isDevBucket(av)?av:{};truthyMerge(dst[dv],bv);
+          }else if(typeof bv==='number'){
+            // 计数域：两端都有则相加（本机取消的负数会被算进 FixDev，相加后自然抵消）
+            dst[dv]=(typeof av==='number')?av+bv:(av===undefined?bv:av);
+          }else if(av===undefined){dst[dv]=bv}
+        });
+      }else if(isDevBucket(cf0[k])){
+        // 未知的子对象（如 _legacy）：保持原 truthy 合并
+        if(!isDevBucket(out['c'][k]))out['c'][k]={};
+        truthyMerge(out['c'][k],cf0[k]);
+      }else{
+        // 标量/布尔键：本机优先，仅补云端有而本机没有的
+        if(out['c'][k]===undefined)out['c'][k]=cf0[k];
+      }
+    });
+  }
   // t/w/ld：日常任务/状态（如喝水杯、运动、洗衣、卧室整理等）——本机优先。
   // 只补入云端有而本机没有的 key；本机已设的值（含主动取消的 false）绝不被云端旧 true 覆盖，
   // 否则会出现「取消勾选后被云端旧状态自动重新勾上」的回弹。
@@ -1142,10 +1195,24 @@ function mergeDay(l,c){
   if(c.wt!==undefined&&c.wt!==null&&out.wt===undefined)out.wt=c.wt;
   if(!out.c)out.c={};
   // 专注计数跨设备累加：按设备维度记账，合并时求和（不覆盖、不丢）；显示值扣除「手动撤销」FixDev
+  // 旧版标量迁移：某端只有 d.c[kind]（无 *_Dev）时，把该标量搬进 _legacy 当"设备"参与求和。
+  // 关键：单端迁移是幂等的——若另一端也带同一个旧标量，绝不能再加一次，
+  // 否则 5+5 会得到 10（凭空翻倍）。所以只在「合并结果里既没有 *_Dev 又没有 _legacy」时才迁移。
   ['study45','studyDone'].forEach(kind=>{
     const mk=kind+'Dev';
     if(!out.c[mk])out.c[mk]={};
-    [l,c].forEach(side=>{if(side&&side.c&&typeof side.c[kind]==='number'&&side.c[kind]>0&&(!side.c[mk]||Object.keys(side.c[mk]).length===0)){out.c[mk]._legacy=(out.c[mk]._legacy||0)+side.c[kind];}});
+    const hasRoster=(side)=>{const b=side&&side.c&&side.c[mk];return !!(b&&typeof b==='object'&&Object.keys(b).length>0)};
+    if(!hasRoster(l)&&!hasRoster(c)&&Object.keys(out.c[mk]).length===0){
+      // 两端都无设备账 → 取两端旧标量的较大值（同一份历史数据的两种快照，不是两份独立贡献）
+      const lv=(l&&l.c&&typeof l.c[kind]==='number')?l.c[kind]:0;
+      const cv=(c&&c.c&&typeof c.c[kind]==='number')?c.c[kind]:0;
+      const v=Math.max(lv,cv);
+      if(v>0)out.c[mk]._legacy=v;
+    }else if(!hasRoster(l)&&!hasRoster(c)&&out.c[mk]._legacy===undefined){
+      // 兜底：设备账已存在但从未迁移过旧标量 → 仅迁本机（本机权威），不再叠加云端
+      const lv=(l&&l.c&&typeof l.c[kind]==='number')?l.c[kind]:0;
+      if(lv>0)out.c[mk]._legacy=lv;
+    }
     recalcCount(out,kind);
   });
   out._ts=Math.max(l._ts||0,c._ts||0);
@@ -1407,6 +1474,14 @@ const LAMP_CUPS=3;
 const LAMP_PTS=5;
 function lampDone(d){let n=0;for(let i=1;i<=LAMP_CUPS;i++){if(d.t['lamp'+i])n++}return n}
 function lampPts(d){return lampDone(d)*LAMP_PTS}
+// 工间操（公司一天 4 次）：4格打卡，每格2G；4次全勤额外+5G
+const GJC_CUPS=4;
+const GJC_PTS=2;
+const GJC_COMBO_PTS=5;
+function gjcDone(d){let n=0;for(let i=1;i<=GJC_CUPS;i++){if(d.t['gjc'+i])n++}return n}
+function gjcPts(d){return gjcDone(d)*GJC_PTS}
+function gjcComboPts(d){return gjcDone(d)>=GJC_CUPS?GJC_COMBO_PTS:0}
+function gjcTotalPts(d){return gjcPts(d)+gjcComboPts(d)}
 const STUDY=[
   {k:'review',n:'复习回顾',std:'15分钟快速过前一天内容',pts:5,focusMin:15,full:true},
 ];
@@ -1469,9 +1544,11 @@ const SHOP=[
 ];
 const PENALTIES=[
   {k:'noWash',n:'晚间洗漱三项全没做',pts:-5,cond:d=>!d.t.faceWash&&!d.t.brushTeeth&&!d.t.shower},
-  {k:'noMain',n:'减脂/学业/生活维护三条硬主线全空',pts:-8,cond:d=>!d.t.exercise15&&!d.t.exercise30&&!d.t.noSugar&&waterCupsDone(d)===0&&!d.t.earlySleep&&!d.t.earlyRise&&d.c.study45===0&&(d.c.studyDone||0)===0&&!d.t.review&&!d.t.faceWash&&!d.t.brushTeeth&&!d.t.shower&&!d.t.suppMorn&&!d.t.suppNoon&&!d.t.suppAfternoon&&!d.t.suppEve&&!d.t.suppBed&&!d.t.trash&&!d.t.deskClean&&!d.t.sinkClean&&!d.t.ointment&&!d.t.neckExercise&&!d.t.ulnarNerve&&!d.t.lumbar&&!d.t.noTakeout&&lampDone(d)===0},
+  {k:'noMain',n:'减脂/学业/生活维护三条硬主线全空',pts:-8,cond:d=>!d.t.exercise15&&!d.t.exercise30&&!d.t.noSugar&&waterCupsDone(d)===0&&!d.t.earlySleep&&!d.t.earlyRise&&d.c.study45===0&&(d.c.studyDone||0)===0&&!d.t.review&&!d.t.faceWash&&!d.t.brushTeeth&&!d.t.shower&&!d.t.suppMorn&&!d.t.suppNoon&&!d.t.suppAfternoon&&!d.t.suppEve&&!d.t.suppBed&&!d.t.trash&&!d.t.deskClean&&!d.t.sinkClean&&!d.t.ointment&&!d.t.neckExercise&&!d.t.ulnarNerve&&!d.t.lumbar&&!d.t.noTakeout&&lampDone(d)===0&&gjcDone(d)===0},
   {k:'drankSugar',n:'喝了带糖饮料',pts:-5,cond:d=>d.t.drankSugar===true},
-  {k:'noStudy2d',n:'连续2天没有学习打卡',pts:-10,cond:d=>false}, // 单独逻辑
+  // special:true = 判定逻辑不在 cond 里，由 dayPenalty 的特殊分支按「连续段第2天」结算。
+  // 原来写成 cond:d=>false 容易被误认为「已被禁用」而误删特殊分支，导致该扣分静默失效。
+  {k:'noStudy2d',n:'连续2天没有学习打卡',pts:-10,special:true},
   {k:'noWeekly',n:'周大扫除完全没做',pts:-10,cond:(d,k)=>isSunday(k)&&weekAllDone(k)===false&&weekAnyDone(k)===false},
   {k:'noOintment',n:'没擦药膏',pts:-10,cond:d=>!d.t.ointment},
 ];
@@ -1506,7 +1583,7 @@ const WANT_NEED=[ // 明确必需品：生活刚需/耗材/账单/医药品，�
 const WANT_EMOTION=[ // 明确情绪消费：兴趣/收藏/娱乐/犒赏，几乎无"刚需"歧义
   '吧唧','立牌','手账','手帐','手账贴纸','盲盒','扭蛋','周边','谷子','同人','联名','限定','限量','预售','特典',
   '皮肤','抽卡','氪金','月卡','季卡','战令','通行证','648','328','198',
-  '手办','高达','乐高','模型','玩偶','棉花娃娃','毛绒','挂件','钥匙扣','徽章','吧唧套','收纳盒(周边)',
+  '手办','高达','乐高','模型','玩偶','棉花娃娃','毛绒','挂件','钥匙扣','徽章','吧唧套','收纳盒',
   '口红','唇釉','眼影','腮红','高光','粉底','遮瑕','定妆','香水','美甲','美睫','穿戴甲',
   '发夹','发圈','发饰','头箍','耳环','耳钉','项链','手链','手镯','戒指',
   '连衣裙','半身裙','卫衣','T恤','衬衫','外套','大衣','夹克','牛仔裤','阔腿裤','围巾','帽子','手套','包','包包','帆布包','单肩包','双肩包','鞋','鞋子','运动鞋','帆布鞋','凉鞋','靴子',
@@ -1517,7 +1594,7 @@ const WANT_EMOTION=[ // 明确情绪消费：兴趣/收藏/娱乐/犒赏，几�
   '旅游','旅行','酒店','民宿','露营','景区','门票',
   '相机','镜头','无人机','云台','稳定器','拍立得',
   '游戏','Switch','PS5','Xbox','Steam','游戏机','游戏卡','点卡',
-  '视频会员','音乐会员','网盘会员','读书会员','大会员','追剧','综艺','动漫','漫画','订阅','知识付费','课程(兴趣)'
+  '视频会员','音乐会员','网盘会员','读书会员','大会员','追剧','综艺','动漫','漫画','订阅','知识付费','课程'
 ];
 /* 中性语境词：存在"必需版"与"情绪版"，靠你的历史习惯裁决，不硬归 */
 const WANT_AMBIGUOUS={
@@ -1580,13 +1657,15 @@ function classifyWant(name,price){
   const nm=normWantWord(name);
   const r0=wantPrefHit(name);
   if(r0)return {tag:r0.tag,...wantCfg(r0.tag),reason:`根据你之前的习惯，把含「${r0.kw}」的东西记成了${wantCfg(r0.tag).label}`,kw:r0.kw,ambi:false,fromPref:true};
+  // 词库匹配统一走 normWantWord：nm 已被去括号/空格处理，若拿原始词（如 '收纳盒(周边)'）去 includes 会永远匹配不上
+  const hit=(w)=>{const nw=normWantWord(w);return nw&&nm.includes(nw)?nw:null};
   // 明确情绪词
-  for(const w of WANT_EMOTION){if(nm.includes(w))return {tag:'emotion',...wantCfg('emotion'),reason:`名称里有「${w}」，是兴趣/娱乐类情绪消费`,kw:w,ambi:false}}
+  for(const w of WANT_EMOTION){const h=hit(w);if(h)return {tag:'emotion',...wantCfg('emotion'),reason:`名称里有「${h}」，是兴趣/娱乐类情绪消费`,kw:h,ambi:false}}
   // 明确必需词
-  for(const w of WANT_NEED){if(nm.includes(w))return {tag:'need',...wantCfg('need'),reason:`名称里有「${w}」，是生活必需类`,kw:w,ambi:false}}
+  for(const w of WANT_NEED){const h=hit(w);if(h)return {tag:'need',...wantCfg('need'),reason:`名称里有「${h}」，是生活必需类`,kw:h,ambi:false}}
   // 中性语境词
   for(const w in WANT_AMBIGUOUS){
-    if(nm.includes(w))return {tag:'doubt',...wantCfg('doubt'),reason:`「${w}」既可能必需也可能情绪（${WANT_AMBIGUOUS[w].need} vs ${WANT_AMBIGUOUS[w].emotion}），请你按这次的用途选一下`,kw:w,ambi:true}}
+    if(nm.includes(normWantWord(w))){const h=normWantWord(w);return {tag:'doubt',...wantCfg('doubt'),reason:`「${h}」既可能必需也可能情绪（${WANT_AMBIGUOUS[w].need} vs ${WANT_AMBIGUOUS[w].emotion}），请你按这次的用途选一下`,kw:h,ambi:true}}}
   return {tag:'doubt',...wantCfg('doubt'),reason:'名称里没明显关键词，请你手动判断',kw:null,ambi:false};
 }
 
@@ -1621,6 +1700,10 @@ function ensureWheelFields(){
 }
 function wheelPick(){const tot=WHEEL.reduce((s,x)=>s+x.w,0);let r=Math.random()*tot;for(const x of WHEEL){if((r-=x.w)<0)return x}return WHEEL[WHEEL.length-1]}
 function taskMult(tk,k){let m=1;const arr=DB.doubled&&DB.doubled[k];if(arr)arr.forEach(x=>{const xk=typeof x==='string'?x:x.k;if(xk===tk)m*=2});return Math.min(m,2)}
+// 明细展示用：任务行的基础分（不在此处做翻倍）。
+// ⚠️ 故意保持恒等函数：任务被「经验暴击/精力充沛 ×2」多出的那份，已由
+// dayCapBreakdown.bonus 计入余额、并在明细的「转盘奖励」列以 buff 行单独展示。
+// 若在此处返回 pts×2，会导致同一份翻倍被任务列和转盘列各算一次 → 明细与余额分叉。
 function wadj(pts){return pts}
 function isStudyTask(k){return STUDY.some(t=>t.k===k)||k==='review'||k==='study45'||k==='studyDone'}
 function taskBasePts(k,tk){
@@ -1664,7 +1747,10 @@ function maybeConsumeNext(k){
 }
 // 撤销某任务的翻倍（取消勾选 / 计数减到 0 时调用）
 // 不撤销的话：dayCapBreakdown.bonus 因任务取消而归 0，但 wheelLog 的 buff 行仍在明细里显示 +g → 明细比余额多算
-function revokeBuff(k){
+// opt.recalc!==false 时会清零当日 NT 连击缓存并让 _ntStreakCache 失效，
+// 供「任务取消 → 当日不再是非空白日」等会影响连击链的场景使用；
+// opt.recalc===false 用于「清空日数据后立刻重填」这类中间态（避免缓存被无效清空、次日连击被低估）。
+function revokeBuff(k,opt){
   ensureWheelFields();
   const arr=DB.doubled[curDate]||[];
   const before=arr.length;
@@ -1676,6 +1762,7 @@ function revokeBuff(k){
     const w=DB.wheelLog[i];
     if(w.date===curDate&&w.buff&&String(w.n).indexOf(nm)>=0){DB.wheelLog.splice(i,1);break}
   }
+  if(!opt||opt.recalc!==false)clearNtStreakCache();
   return true;
 }
 function spinWheel(depth,acc){
@@ -1810,6 +1897,7 @@ function dayRawPts(k){
   if(SUPP_COMBO.need.every(x=>d.t[x]))base+=SUPP_COMBO.pts;
   LIFE2.forEach(t=>{if(d.t[t.k])add(t.k,t.pts)});
   base+=lampPts(d);
+  base+=gjcTotalPts(d);
   let p=base+bonus;
   // 日积月累+15%：只对基础分(base，不含翻倍 bonus)加成，翻倍奖励不再乘 15%
   if(DB.dayBuff30&&DB.dayBuff30[k])p=base+bonus+Math.round(base*DAY_BUFF_RATE);
@@ -1846,6 +1934,7 @@ function dayCapBreakdown(k){
   FAT.forEach(t=>{if(d.t[t.k])reg(t.k,t.pts,false)});
   normal+=waterCupsPts(d);
   normal+=lampPts(d);
+  normal+=gjcTotalPts(d);
   SKILL.forEach(t=>{if(d.t[t.k])reg(t.k,t.pts,!!t.full)});
   LIFE1.forEach(t=>{if(d.t[t.k])reg(t.k,t.pts,false)});
   if(LIFE1_COMBO.need.every(x=>d.t[x]))normal+=LIFE1_COMBO.pts;
@@ -1899,7 +1988,7 @@ function dayPenalty(k){
         const noStudyPrevPrev=dayNoStudy(ppK); // 前天也失学 → 本段更长，今天不是第 2 天
         trigger=noStudyNow&&noStudyPrev&&!noStudyPrevPrev;
       }else{
-        trigger=pe.cond(d,k);
+        trigger=pe.cond?pe.cond(d,k):false; // special 项（noStudy2d）已在上方分支处理，无 cond
       }
     }
     if(trigger){p+=pe.pts;list.push(pe)}
@@ -1990,18 +2079,25 @@ function weightDeltaPts(k){
   if(!isSunday(k))return null;
   const d=getDay(k);if(!d.wt)return null;
   const prev=lastSundayWeight(k);if(prev===null)return null;
-  const delta=prev-d.wt; // 正=减轻
+  // 修复浮点边界：先用 0.1kg 精度四舍五入再判定。
+  // 否则浮点误差（如 70.4-70.3 = 0.10000000000000853 但 70.0-69.9 = 0.09999999999999432）
+  // 会让「同样减重 0.1kg」时好时坏，落进 -8G 的扣分档。
+  const deltaRaw=prev-d.wt; // 正=减轻
+  const delta=Math.round(deltaRaw*10)/10;
   if(delta>=0.5)return{pts:30,delta,prev};
   if(delta>=0.1)return{pts:15,delta,prev};
-  if(Math.abs(delta)<=0.1)return{pts:0,delta,prev};
+  if(delta>-0.1)return{pts:0,delta,prev}; // -0.1 < delta < 0.1（含 0），等价于 |delta|<0.1
   if(delta>=-0.5)return{pts:-8,delta,prev};
   return{pts:-15,delta,prev};
 }
 function weightPtsToday(k){const wp=weightDeltaPts(k);return wp?wp.pts:0}
 // 某天达成的里程碑积分
 function milestonePtsOn(k){return (DB.milestones||[]).filter(m=>m.date===k).reduce((s,m)=>s+m.pts,0)}
-// 当日到账总额：日任务(过软上限+扣分+救赎) + 当天完成的周任务 + 称重 + 里程碑（后三者不过软上限）
-function dayNetTotal(k){return dayNet(k)+dayWeeklySum(k)+weightPtsToday(k)+milestonePtsOn(k)}
+// 当日到账总额：日任务(过软上限+扣分+救赎) + 当天完成的周任务 + 称重 + 里程碑 + 转盘直接奖励
+// （周任务/称重/里程碑/转盘直接奖励均不过软上限）
+// 修复：原实现漏了 wheelDirectPts（转盘直接奖励「积分奖励/大额暴击/加学挑战」），
+// 导致顶部「今日到账」与 totalBalance、统计页 dayContribution 口径不一致。
+function dayNetTotal(k){return dayNet(k)+dayWeeklySum(k)+weightPtsToday(k)+milestonePtsOn(k)+wheelDirectPts(k)}
 
 /* ============ 周任务按完成日拆分 ============ */
 function anyInWeek(ws,untilK,k1,k2){
@@ -2121,7 +2217,10 @@ function renderTop(){
   const weekToday=dayWeeklySum(curDate);       // 当天完成的周任务
   const ms=milestonePtsOn(curDate);            // 今日达成里程碑
   const wt=weightPtsToday(curDate);            // 今日称重
-  const rawTotal=taskRaw+weekToday+ms+wt;      // 今日原始：当天获得的原始分总和（含当天周任务）
+  // 今日原始 = 当天获得的原始分总和。必须含无外卖连击（它不受软上限、直接计入到账），
+  // 否则「今日原始」口径缺失这项，会出现「到账 > 原始」的反直觉显示（明明没走软上限折减却比原始还多）。
+  const ntCombo=noTakeoutComboPts(curDate);   // 无外卖连击（不受软上限）
+  const rawTotal=taskRaw+weekToday+ms+wt+ntCombo; // 今日原始：当天获得的原始分总和（含当天周任务与无外卖连击）
   const netTotal=dayNetTotal(curDate);         // 今日到账：所有到账分（扣软上限后）
   document.getElementById('taskVal').textContent=Math.round(taskRaw*10)/10;
   // 当日转盘所得：翻倍bonus + 日积月累15% + 直接奖励(积分奖励/大额暴击/加学挑战)之和，纯展示统计，不影响余额
@@ -2186,7 +2285,7 @@ function renderFat(){
       }
     }
     return taskRow(t,d.t[t.k],`toggle('${t.k}')`,disabled,msg);
-  }).join('');
+  }).join('')+gjcHtml(d);
   // 喝水 - 仿大扫除zone风格
   const cupsDone=waterCupsDone(d);
   const allDone=cupsDone===WATER_CUPS;
@@ -2290,6 +2389,25 @@ function renderLife(){
     return taskRow(Object.assign({},t,{std}),d.t[t.k],`toggle('${t.k}')`);
   }).join('');
   document.getElementById('lifeTasks2').innerHTML=l2a+lampHtml(d)+l2b;
+}
+// 工间操格子（公司一天4次，仿照灯样式；4次全勤额外+5G）
+function gjcHtml(d){
+  const done=gjcDone(d);
+  const combo=done>=GJC_CUPS;
+  let h='<div style="font-size:13px;font-weight:600;margin:8px 0 6px">🏢 工间操<span style="float:right;color:var(--skill);font-weight:600">'+done+'/'+GJC_CUPS+'次 · +'+gjcTotalPts(d)+'G'+(combo?'（含全勤+'+GJC_COMBO_PTS+'G）':'')+'</span></div>';
+  h+='<div style="display:flex;gap:6px;flex-wrap:wrap">';
+  for(let i=1;i<=GJC_CUPS;i++){
+    const isDone=!!d.t['gjc'+i];
+    h+='<div class="task'+(isDone?' done':'')+'" onclick="toggleGjc('+i+')" style="flex:1 1 0;min-width:0;padding:6px 4px;text-align:center"><div class="box" style="margin:0 auto"></div><div class="tname" style="white-space:nowrap;font-size:12px">第'+i+'次</div><div class="tpts" style="font-size:11px">+'+GJC_PTS+'G</div></div>';
+  }
+  h+='</div>';
+  h+='<div class="combo'+(combo?' active':'')+'" style="margin-top:6px"><span>🏢 工间操4次全勤</span><span id="combo-gjc-st">'+(combo?'已达成 +'+GJC_COMBO_PTS+'G':'未达成（做满4次 +'+GJC_COMBO_PTS+'G）')+'</span></div>';
+  return h;
+}
+function toggleGjc(n){
+  const d=touchDay(curDate);
+  d.t['gjc'+n]=!d.t['gjc'+n];
+  save();render();
 }
 // 照灯格子（理疗灯子类，仿喝水样式）
 function lampHtml(d){
@@ -2432,6 +2550,7 @@ function renderRescue(){
   const r=d.resc||[];
   document.getElementById('rescueList').innerHTML=r.length?r.map(rk=>{
     const def=RESCUES.find(x=>x.k===rk);
+    if(!def)return ''; // 防御：旧数据/云合并可能残留已废弃的救赎 key，跳过而非崩溃
     return `<div class="rescue-item"><span>${def.n} <span class="tag">${def.desc}</span></span><span style="color:var(--skill);font-weight:600">+${def.pts}G</span></div>`;
   }).join(''):'<div class="empty">今日无救赎</div>';
   // 按钮：已选则显示为取消
@@ -2545,7 +2664,7 @@ function renderStats(){
     <div class="stat-card"><div class="v">${milestonePts}</div><div class="l">里程碑 G</div></div>
     <div class="stat-card"><div class="v">${DB.weightLog.length}</div><div class="l">称重次数</div></div>`;
   document.getElementById('redeemLog').innerHTML=DB.redeemLog.length?
-    DB.redeemLog.slice().reverse().map(r=>{const tag=r.tag?`<span class="redeem-tag" style="background:${tagColor(r.tag)}">${tagLabel(r.tag)}</span>`:'';const price=r.price?` · ¥${r.price}`:'';return `<div class="log-row"><span>${r.n}${tag}</span><span><span class="dt">${r.date}${price}</span> · <b style="color:var(--neg)">-${r.c}G</b></span></div>`}).join('')
+    DB.redeemLog.slice().reverse().map(r=>{const tag=r.tag?`<span class="redeem-tag" style="background:${tagColor(r.tag)}">${tagLabel(r.tag)}</span>`:'';const price=r.price?` · ¥${r.price}`:'';return `<div class="log-row"><span>${escapeHtml(r.n)}${tag}</span><span><span class="dt">${r.date}${price}</span> · <b style="color:var(--neg)">-${r.c}G</b></span></div>`}).join('')
     :'<div class="empty">暂无兑换记录</div>';
   document.getElementById('weightLog').innerHTML=DB.weightLog.length?
     DB.weightLog.slice().reverse().map(w=>`<div class="log-row"><span>${w.weight}kg</span><span class="dt">${w.date}</span></div>`).join('')
@@ -2650,6 +2769,9 @@ function dayEarnedLines(k){
     if(cp>0)add('无外卖连击 ×'+ns,wadj(cp,null,k),'主线四·生活维护');
   }
   const ld=lampDone(d);if(ld>0)add('照灯 ×'+ld,wadj(ld*LAMP_PTS,null,k),'主线四·生活维护');
+  const gd=gjcDone(d);
+  if(gd>0)add('工间操 ×'+gd,wadj(gd*GJC_PTS,null,k),'主线一·减脂攻坚');
+  if(gd>=GJC_CUPS)add('工间操4次全勤',wadj(GJC_COMBO_PTS,null,k),'主线一·减脂攻坚');
   return lines;
 }
 function dayContribution(k){
@@ -2685,7 +2807,8 @@ function renderEarnDetail(){
     try{
     const lines=[];
     const taskLines=dayEarnedLines(k);
-    // 任务基础分行（日常/学习列）
+    // 任务基础分行（日常/学习列）。注意「无外卖连击」虽不参与软上限，但它必须留在任务列里：
+    // 软上限折减只折 normal（不含连击），故「任务列加总(含连击) − 折减」恰好等于 dayNet。
     taskLines.forEach(l=>lines.push({...l,type:l.cat==='主线二·中级经济师'?'study':'earn'}));
     // 当日软上限折减（与 totalBalance 同口径）：普通任务超 50 部分 ×50% 被折，转盘加成/学习/步行/full 不折
     // 以独立负行展示，用户把任务行加总后能对上「到账」
@@ -2777,7 +2900,7 @@ function renderRedeemDetail(){
     const sum=rows.reduce((s,r)=>s+r.c,0);
     return `<div class="detail-day">
       <div class="detail-day-hd" onclick="this.parentElement.classList.toggle('collapsed')"><span><span class="arr">▾</span>📅 ${k}</span><span class="neg" style="color:var(--neg)">-${sum}G（${rows.length}笔）</span></div>
-      ${rows.map(r=>{const tag=r.tag?`<span class="redeem-tag" style="background:${tagColor(r.tag)}">${tagLabel(r.tag)}</span>`:'';const price=r.price?` · ¥${r.price}`:'';return `<div class="detail-row"><span>${r.n}${tag}${price}</span><span class="neg" style="color:var(--neg)">-${r.c}G</span></div>`}).join('')}
+      ${rows.map(r=>{const tag=r.tag?`<span class="redeem-tag" style="background:${tagColor(r.tag)}">${tagLabel(r.tag)}</span>`:'';const price=r.price?` · ¥${r.price}`:'';return `<div class="detail-row"><span>${escapeHtml(r.n)}${tag}${price}</span><span class="neg" style="color:var(--neg)">-${r.c}G</span></div>`}).join('')}
     </div>`;
   }).join('');
 }
@@ -2830,11 +2953,19 @@ function toggleDrankSugar(){const d=touchDay(curDate);d.t.drankSugar=!d.t.drankS
 function toggleScrub(){const d=touchDay(curDate);d.t.scrub=!d.t.scrub;save();render()}
 function toggleBlackhead(){const d=touchDay(curDate);d.t.blackhead=!d.t.blackhead;save();render()}
 function toggleMedPack(){const d=touchDay(curDate);d.t.medPack=!d.t.medPack;save();render()}
+// 计数类「取消/减号」的公共收尾：计数归零时撤销该任务的翻倍，避免 DB.doubled 残留。
+// 说明：dayCapBreakdown 对 study45/studyDone 有 `if(sc>0&&taskMult(...)>1)` 保护（计数0不给bonus），
+// 但 DB.doubled 仍留记录 → 明细「转盘奖励」列残留 +g buff 行；且该任务再次 +1 时 taskMult 立刻=2，
+// 会凭空翻倍却不经过转盘。故归零时必须撤销。revokeBuff 内部只挑最后一条匹配的 buff 行删除，可逆。
+function revokeIfZeroCount(d,k){if(!['study45','studyDone'].includes(k))return false;if((d.c[k]||0)>0)return false;return revokeBuff(k,{recalc:false})}
 function adjCount(k,n){const d=touchDay(curDate);if(k==='study45'||k==='studyDone'){
   if(n>0){focusDevAdd(d,k,n);maybeConsumeNext(k);} // 先 +1 计数再触发翻倍，否则 taskBasePts 读到旧值(0→1 时精力充沛会记成 0)
-  else if(n<0){const fk=k+'FixDev';if(!d.c[fk])d.c[fk]={};d.c[fk][myDev()]=(d.c[fk][myDev()]||0)+(-n);recalcCount(d,k);}
+  else if(n<0){
+    const fk=k+'FixDev';if(!d.c[fk])d.c[fk]={};d.c[fk][myDev()]=(d.c[fk][myDev()]||0)+(-n);recalcCount(d,k);
+    revokeIfZeroCount(d,k); // 计数被减到 0：同步撤销翻倍
+  }
   save();render();return;
-}d.c[k]=Math.max(0,(d.c[k]||0)+n);save();render()}
+}const before=d.c[k]||0;d.c[k]=Math.max(0,before+n);revokeIfZeroCount(d,k);save();render()}
 
 /* ============ 专注计时（开始按钮，侧边折叠胶囊） ============ */
 // carry=累计型（零头进全局池，每满45折算1次）；once=倒计时结束直接打卡
@@ -3376,6 +3507,10 @@ function importData(e){
     try{
       localStorage.setItem(KEY,JSON.stringify(obj));
       load(); // 复用统一的旧版数据迁移逻辑
+      // 导入后必须重跑待办系统的「滚动初始化」：
+      // 导入的 lastTodoDate 可能远早于今天，若不 roll，待办页仍按导入前的内存态展示（旧任务残留、新一天不生成），
+      // 直到用户手动刷新页面才正常；同时 resetFocus/清理旧计时状态避免串台。
+      try{initTodoSystem()}catch(e){}
       save();render();
       alert('导入成功：'+n+' 天数据');
     }catch(err){alert('导入失败：'+err.message)}
@@ -3465,6 +3600,9 @@ async function resetConfirm(){
   if(!confirm('再次确认：所有打卡、积分、记录都将删除。\n（若已连接云同步，云端数据也会一并清空，从 0 开始）'))return;
   DB={meta:{baselineWeight:null},days:{},weightLog:[],redeemLog:[],milestones:[],rescues:{},autoRedeem:true,weekTodos:{},monthTodos:{},lastTodoDate:null,lastTodoWeek:null,lastTodoMonth:null};
   clearAutoRedeemDoneMark(); // 重置后从 0 开始，当天可重新自动兑换
+  // 专注计时数据存在独立的 localStorage 键（lpFocus），不属于 DB，必须单独清，
+  // 否则清空后侧边胶囊里还挂着上一份数据的计时任务（甚至可继续打卡进新账，凭空多分）。
+  clearFocus();
   if(_sbReady){
     localStorage.setItem(KEY,JSON.stringify(DB));
     render();
@@ -3561,10 +3699,13 @@ function rollDailyTodos(){
   if(DB.lastTodoDate===today)return; // 今天已滚动过
   // 找出 lastTodoDate 到昨天之间所有未完成的日便签
   let carry=[];
-  let checkFrom=DB.lastTodoDate?shiftKey(DB.lastTodoDate,0):null;
+  const checkFrom=DB.lastTodoDate||null; // 原写法 shiftKey(x,0) 等于 x，纯冗余，已去掉
   if(checkFrom && checkFrom<today){
     let k=checkFrom;
-    while(k<today){
+    // 迭代上限保护：lastTodoDate 若因云合并/旧数据被设得很早，逐日循环会为
+    // 每一天 getDay() 建出空白 day 对象（污染 DB.days、拖慢 totalBalance），故封顶 60 天。
+    let guard=0;
+    while(k<today && guard++<60){
       const todos=getTodos(k);
       const undone=todos.filter(t=>!t.done);
       if(undone.length){
@@ -3579,7 +3720,7 @@ function rollDailyTodos(){
   }
   if(carry.length){
     const todayTodos=getTodos(today);
-    carry.forEach(t=>{t.rolled=true;t.id=Date.now()+Math.random();todayTodos.push(t)});
+    carry.forEach(t=>{t.rolled=true;t.id=todoId();todayTodos.push(t)});
   }
   DB.lastTodoDate=today;
   save();
@@ -3592,7 +3733,7 @@ function rollWeekTodos(){
     const undone=oldTodos.filter(t=>!t.done);
     if(undone.length){
       const newTodos=getWeekTodos(thisWeek);
-      undone.forEach(t=>{t.rolled=true;t.origin=DB.lastTodoWeek;t.id=Date.now()+Math.random();newTodos.push(t)});
+      undone.forEach(t=>{t.rolled=true;t.origin=DB.lastTodoWeek;t.id=todoId();newTodos.push(t)});
       DB.weekTodos[DB.lastTodoWeek]=oldTodos.filter(t=>t.done);
     }
   }
@@ -3607,7 +3748,7 @@ function rollMonthTodos(){
     const undone=oldTodos.filter(t=>!t.done);
     if(undone.length){
       const newTodos=getMonthTodos(thisMonth);
-      undone.forEach(t=>{t.rolled=true;t.origin=DB.lastTodoMonth;t.id=Date.now()+Math.random();newTodos.push(t)});
+      undone.forEach(t=>{t.rolled=true;t.origin=DB.lastTodoMonth;t.id=todoId();newTodos.push(t)});
       DB.monthTodos[DB.lastTodoMonth]=oldTodos.filter(t=>t.done);
     }
   }
@@ -3757,7 +3898,7 @@ function addTodo(){
   const text=input.value.trim();
   if(!text)return;
   const todos=getTodos(todoViewDate);
-  todos.push({id:Date.now()+Math.random(),text:text,done:false});
+  todos.push({id:todoId(),text:text,done:false});
   touchDay(todoViewDate);
   input.value='';
   save();renderTodos();renderTodoHistory();
@@ -3788,7 +3929,7 @@ function addWeekTodo(){
   const text=input.value.trim();
   if(!text)return;
   const todos=getWeekTodos(todoViewWeek);
-  todos.push({id:Date.now()+Math.random(),text:text,done:false,createdAt:fmtTs(new Date())});
+  todos.push({id:todoId(),text:text,done:false,createdAt:fmtTs(new Date())});
   input.value='';
   save();renderWeekTodos();renderTodoHistory();
 }
@@ -3818,7 +3959,7 @@ function addMonthTodo(){
   const text=input.value.trim();
   if(!text)return;
   const todos=getMonthTodos(todoViewMonth);
-  todos.push({id:Date.now()+Math.random(),text:text,done:false,createdAt:fmtTs(new Date())});
+  todos.push({id:todoId(),text:text,done:false,createdAt:fmtTs(new Date())});
   input.value='';
   save();renderMonthTodos();renderTodoHistory();
 }
@@ -4027,7 +4168,14 @@ installPWA();
 load();
 applyTheme(getTheme());
 document.getElementById('datePick').value=curDate;
-document.getElementById('datePick').addEventListener('change',e=>{curDate=e.target.value;render()});
+// 日期选择器：清空（用户按 Esc 或删掉日期）时 e.target.value===''，
+// 若不 guard 会把 curDate 置为 ''，之后所有打卡都写进 DB.days[''] 这一天 —— 静默串数据且很难发现。
+document.getElementById('datePick').addEventListener('change',e=>{
+  const v=e.target.value;
+  if(!v){e.target.value=curDate;return} // 空值：还原成当前日期，不做任何切换
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(v)){e.target.value=curDate;return} // 非法格式同样拒绝
+  curDate=v;render();
+});
 initCollapse();
 if(isAuthed()){
   initTodoSystem();
