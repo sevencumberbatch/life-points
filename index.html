@@ -906,7 +906,7 @@ function load(){try{const r=localStorage.getItem(KEY);if(r){DB=JSON.parse(r);
    背景：曾因手机 PWA/浏览器缓存了旧 index.html，导致统计区渲染异常（兑换记录"对不上"）。
    此后每次发布新版本递增 APP_VERSION；用户打开时若发现版本变化，提示完全关闭重开，
    确保跑的是最新代码，避免旧缓存残留造成同类显示问题。 */
-const APP_VERSION='2026-09-12-29';
+const APP_VERSION='2026-09-12-30';
 try{
   const lastVer=localStorage.getItem('lpVer');
   if(lastVer&&lastVer!==APP_VERSION){
@@ -1315,14 +1315,24 @@ async function cloudSync(){
       const cloud=rows[0];
       const cloudTime=new Date(cloud.updated_at).getTime()||0;
       const cloudData=JSON.parse(JSON.stringify(cloud.data));
-      // —— 权威版本机制（手动恢复强制）：云端带 _forced 且本机不是该版本时，整包覆盖、不做合并 ——
-      const cf=cloudData._forced&&cloudData._forced.ver;
+      // —— 权威版本机制（2026-09-12-30 拆除「自动整包覆盖」）——
+      // 旧逻辑：云端带 _forced 且本机版本不同 → DB=cloudData 整包覆盖本机。
+      // 事故根因：本机当天新记的打卡/兑换（如当天下午的自动兑换）尚未上传云端，
+      //   一旦命中该分支就被整包抹掉，且 autoRedeemDaily 的独立标记已置位 → 不会自动补回（9/12 事故）。
+      // 现逻辑：**永不自动整包覆盖本机**。改为「安全合并」——云端内容并进来，本机独有记录一律保留；
+      //   处理完记下 _forcedSeen 并把 _forced 置空随上传写回云端，令该标记一次性消费。
+      //   「以云为准」的强制覆盖仍保留，但只在你手动点按钮时发生（restoreLocalFromCloud）。
+      const cf=(cloudData._forced&&cloudData._forced.ver)||null;
       const lf=DB._forced&&DB._forced.ver;
-      if(cf&&lf!==cf){
+      if(cf&&lf!==cf&&DB._forcedSeen!==cf){
         try{localStorage.setItem('lpSyncPreMergeBackup',JSON.stringify(DB))}catch(e){}
-        DB=cloudData;
-        DB._updatedAt=Date.now();
-        localStorage.setItem(KEY,JSON.stringify(DB));
+        let mForce;
+        try{mForce=mergeSyncData(DB,cloudData)}catch(e){mForce=DB}
+        mForce._forced=null;
+        mForce._forcedSeen=cf;
+        mForce._updatedAt=Date.now();
+        DB=mForce;
+        try{localStorage.setItem(KEY,JSON.stringify(DB))}catch(e){}
         render();
         const{error:upErr}=await _sbApp.from('life_points').update({data:DB,updated_at:new Date().toISOString()}).eq('sync_key',syncKey);
         if(upErr)throw upErr;
@@ -3425,8 +3435,10 @@ function clearAutoRedeemDoneMark(){try{localStorage.removeItem(autoRedeemDoneKey
 function autoRedeemDaily(){
   if(getAutoRedeem()===false)return;
   const today=todayKey();
-  // 独立幂等标记：今天已执行过 → 无论 DB/云端怎么覆盖都直接跳过（根治"每次刷新都扣32"）
-  if(autoRedeemDoneMark())return;
+  // 自愈（2026-09-12-30）：标记置位只代表「今天执行过」，不代表记录还在。
+  // 旧逻辑在此直接 return → 记录一旦被云端整包覆盖丢失，今天的自动兑换就永久消失、不会补回（9/12 事故）。
+  // 现逻辑：即便标记已置位也继续往下走，按「日期+名称」逐项补缺（已有项跳过，天然幂等、不会重复扣）。
+  // 防重复三重保障：① 下方 todayCnt>=1 跳过 ② 云端合并 rkey 按 日期+名称 去重 ③ repairAutoDupes 兜底清理。
   let added=false;
   SHOP.forEach(s=>s.items.forEach(it=>{
     if(!it.auto)return;
