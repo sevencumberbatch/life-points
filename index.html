@@ -906,7 +906,7 @@ function load(){try{const r=localStorage.getItem(KEY);if(r){DB=JSON.parse(r);
    背景：曾因手机 PWA/浏览器缓存了旧 index.html，导致统计区渲染异常（兑换记录"对不上"）。
    此后每次发布新版本递增 APP_VERSION；用户打开时若发现版本变化，提示完全关闭重开，
    确保跑的是最新代码，避免旧缓存残留造成同类显示问题。 */
-const APP_VERSION='2026-09-11-28';
+const APP_VERSION='2026-09-12-29';
 try{
   const lastVer=localStorage.getItem('lpVer');
   if(lastVer&&lastVer!==APP_VERSION){
@@ -1140,7 +1140,8 @@ function mergeDay(l,c){
   // 对 c 里的**设备记账子对象**（xxDev / xxFixDev，键=设备id，值=次数）必须走「按设备累加」而非 truthyMerge：
   //   truthyMerge 只在云端值更大时才覆盖，导致「本机把计数从 5 改小到 3（adjCount -1 记进 FixDev）」这类
   //   减量修正会被过期云端值盖掉 → 本机修正丢失、计数被压低/弹回，且折算积分随之算错。
-  //   设备维度是纯计数域，两端取自加即可（与 recalcCount 的 sumDev 口径一致）。
+  //   设备维度是按设备累计的计数域：同一设备键在两端就是「同一条累计计数」（本机同步过，云端存的就是本机那份），
+  //   合并必须取较大值，绝不能相加——否则同一设备计数每次同步翻倍（曾造成 study45/studyDone/focusMin 指数膨胀）。
   // 设备 id 用形如 'dev_xxx' 的字符串，用 xxDev/xxFixDev 后缀识别；d.c 下其余标量键（studyDone 等）
   // 仍保持 truthy 合并，避免把「当天总数」两端相加造成翻倍。
   const DEVSUF=/(?:Fix)?Dev$/;
@@ -1161,8 +1162,8 @@ function mergeDay(l,c){
           if(typeof bv==='object'&&bv!==null&&!Array.isArray(bv)){
             dst[dv]=isDevBucket(av)?av:{};truthyMerge(dst[dv],bv);
           }else if(typeof bv==='number'){
-            // 计数域：两端都有则相加（本机取消的负数会被算进 FixDev，相加后自然抵消）
-            dst[dv]=(typeof av==='number')?av+bv:(av===undefined?bv:av);
+            // 同一设备键：两端是同一条累计计数的快照，取较大值（新者胜）。相加会导致每次同步翻倍。
+            dst[dv]=(typeof av==='number')?Math.max(av,bv):(av===undefined?bv:av);
           }else if(av===undefined){dst[dv]=bv}
         });
       }else if(isDevBucket(cf0[k])){
