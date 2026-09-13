@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>人生积分系统 · 星伴版</title>
 <!-- 主题色：浅色/深色分别匹配系统，PWA 独立窗口的状态栏颜色由它决定 -->
 <meta name="theme-color" content="#2563eb">
@@ -400,7 +400,7 @@
     .page-nav{display:none}
     .tabbar{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:60;transform:translateZ(0);
       background:var(--topbar-bg);
-      border-top:1px solid var(--border);padding-bottom:var(--sab);padding-left:var(--sal);padding-right:var(--sar);
+      border-top:1px solid var(--border);padding-bottom:var(--sab);
       box-shadow:0 -1px 10px rgba(0,0,0,.05)}
     .tabbar .tab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
       gap:2px;padding:7px 4px;background:none;border:none;cursor:pointer;
@@ -441,50 +441,6 @@
   .history-filter-row .search-input{flex:1;min-width:140px}
   .history-filter-row .date-sep{font-size:12px;color:var(--muted)}
 
-  /* ============ 移动端手感与交互（-33 新增） ============ */
-  /* 去掉双击缩放带来的点击延迟，并禁止长按选中文字 / 弹出系统菜单 */
-  .task,.counter,.zone-tasks .task,.todo-item,.page-tab,.date-nav button,
-  .footer-acts button,#rescueBtns button,.shop-item button,.shop-tab,
-  .tabbar,.tabbar .tab,.counter .ctrl button{
-    touch-action:manipulation;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
-  /* 便签正文仍允许长按复制 */
-  .todo-item .todo-text{-webkit-user-select:text;user-select:text}
-  /* 可滚动小容器：滚到边界不要带动整页，也别触发下拉刷新 */
-  #detailBody,.log-list,.todo-history-list,.detail-col .col-body{overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
-  /* 触摸设备按下时轻微缩放，给出更明确的反馈 */
-  @media(hover:none){
-    .task,.todo-item,.counter .ctrl button,.tabbar .tab{transition:transform .08s,background .12s}
-    .counter .ctrl button:active{transform:scale(.92)}
-    .task:active .box,.todo-item:active .box{transform:scale(.88)}
-  }
-
-  /* 顶栏吸顶后的紧凑态：往下滚时自动收窄，少占屏幕 */
-  .topbar.compact{padding-top:calc(6px + var(--sat));padding-bottom:6px;box-shadow:0 2px 10px rgba(0,0,0,.06)}
-  .topbar.compact .balance-box{padding:5px 12px;min-width:auto}
-  .topbar.compact .balance-box .lbl{display:none}
-  .topbar.compact .balance-box .val{font-size:19px}
-  .topbar.compact .day-pts .chip{padding:3px 8px}
-  .topbar.compact .day-pts .chip b{font-size:15px}
-  .topbar.compact .date-nav button{padding:3px 8px}
-  .topbar.compact .date-nav input[type=date]{padding:3px 6px}
-
-  /* 回到顶部：仅手机端出现，浮在底部导航栏之上，避开专注胶囊 */
-  .to-top{display:none}
-  @media(max-width:768px){
-    .to-top{display:flex;position:fixed;z-index:55;align-items:center;justify-content:center;
-      right:calc(14px + var(--sar));bottom:calc(78px + var(--sab) + var(--tabbar-h));
-      width:44px;height:44px;border-radius:50%;padding:0;cursor:pointer;
-      background:var(--card);color:var(--text);border:1px solid var(--border);
-      box-shadow:0 2px 12px rgba(0,0,0,.14);font-size:20px;line-height:1;font-family:inherit}
-    .to-top:active{transform:scale(.92)}
-    .to-top.hidden{display:none}
-    /* 明细/日志不再套两层滚动：外层放开，内层留一个更高的滚动区 */
-    #detailBody{max-height:none;overflow:visible}
-    .detail-col .col-body{max-height:min(60vh,520px)}
-    .log-list{max-height:min(60vh,520px)}
-    .todo-history-list{max-height:min(58vh,440px)}
-  }
-
   /* ============ 响应式适配 ============ */
   /* 平板及以下 / 手机通用 */
   @media(max-width:768px){
@@ -502,7 +458,7 @@
     .shop-grid{grid-template-columns:repeat(auto-fill,minmax(158px,1fr))}
     .stat-grid{grid-template-columns:repeat(2,1fr)}
     /* 触摸目标放大到 34px 以上，减少误触 */
-    .counter .ctrl button{width:40px;height:40px;font-size:18px;border-radius:9px}
+    .counter .ctrl button{width:34px;height:34px;font-size:17px}
     .task .box{width:24px;height:24px}
     .todo-item .box{width:22px;height:22px}
     .section h2 .toggle-ic{width:32px;height:32px}
@@ -539,12 +495,11 @@
     .task .tname{font-size:13px}
     .task .tstd{font-size:10px}
     .task .tpts{font-size:12px;min-width:40px}
-    .task .box{width:22px;height:22px}
-    .counter{padding:6px 5px;gap:6px}
+    .task .box{width:20px;height:20px}
+    .counter{padding:7px 6px;gap:8px}
     .counter .tname{font-size:13px}
-    .counter .ctrl{gap:6px}
-    .counter .ctrl button{width:40px;height:40px;font-size:18px;border-radius:9px}
-    .counter .tpts{font-size:12px;min-width:38px}
+    .counter .ctrl button{width:26px;height:26px;font-size:15px}
+    .counter .tpts{font-size:12px;min-width:40px}
     .combo{padding:6px 10px;font-size:11px}
     .zone{padding:8px 10px}
     .zone-head .zn{font-size:13px}
@@ -577,8 +532,8 @@
     .todo-input-row button{padding:7px 12px;font-size:12px}
     .todo-item{padding:6px 8px;gap:8px}
     .todo-item .todo-text{font-size:13px}
-    .todo-item .box{width:20px;height:20px}
-    .todo-item .del-btn{opacity:.5;font-size:18px;padding:4px 10px}
+    .todo-item .box{width:18px;height:18px}
+    .todo-item .del-btn{opacity:.4;font-size:16px}
     .todo-nav{flex-wrap:wrap;gap:4px}
     .todo-nav .nav-label{min-width:auto;font-size:12px}
     .todo-nav button{padding:4px 8px;font-size:12px}
@@ -596,10 +551,6 @@
   }
   /* 超小屏（老旧手机） */
   @media(max-width:360px){
-    /* 超小屏：按钮保持 40px 不缩，改为压缩内边距与间距，保证任务名不被挤没 */
-    .counter{padding:5px 4px;gap:5px}
-    .counter .ctrl{gap:5px}
-    .counter .tpts{min-width:34px}
     .wrap{padding:calc(8px + var(--sat)) 8px calc(16px + var(--sab) + var(--tabbar-h))}
     .day-pts .chip{padding:4px 4px;font-size:10px}
     .day-pts .chip b{font-size:14px}
@@ -609,26 +560,8 @@
     .task .tname{font-size:12px}
     .task .tpts{font-size:11px;min-width:36px}
   }
-  /* ============ 移动端输入控件统一（-33） ============ */
-  /* iOS 上输入框字号 <16px 会在聚焦时自动放大整页；这里放到样式表最末，强制覆盖前面所有小字号 */
-  @media(max-width:768px){
-    input:not([type=checkbox]):not([type=radio]):not([type=range]),
-    select,textarea{font-size:16px !important}
-    .weight-box input{width:124px}
-    /* 键盘弹出时，让聚焦的输入框自动滚到键盘上方 */
-    html{scroll-padding-bottom:140px}
-    /* 登录卡片在键盘弹出时改为顶部对齐 + 可滚动，不会被顶出屏幕 */
-    #authGate{align-items:flex-start;overflow-y:auto;padding:calc(32px + var(--sat)) 16px calc(32px + var(--sab))}
-  }
-  /* 横屏：底栏压缩，别占掉太多高度 */
-  @media(max-width:768px) and (orientation:landscape){
-    :root{--tabbar-h:48px}
-    .tabbar .tab{min-height:48px;padding:4px 4px}
-    .tabbar .tab .ti{font-size:17px}
-    .wrap{padding-top:calc(8px + var(--sat))}
-    #focusPill{bottom:calc(60px + var(--sab) + var(--tabbar-h))}
-  }
 </style>
+</head>
 <body>
 <div id="authGate" class="hidden"></div>
 <div class="wrap">
@@ -751,8 +684,8 @@
     <h2><span class="ic" style="background:#6366f1">⚖️</span>周日称重结算</h2>
     <div class="sub">每周日早晨称重，与上周对比计算积分变动</div>
     <div class="weight-box">
-      <div class="fld"><label>基准体重 (kg)</label><input type="number" step="0.1" id="baseWeight" inputmode="decimal" autocomplete="off" placeholder="待填写"></div>
-      <div class="fld"><label>今日体重 (kg)</label><input type="number" step="0.1" id="todayWeight" inputmode="decimal" autocomplete="off" placeholder="称重填入"></div>
+      <div class="fld"><label>基准体重 (kg)</label><input type="number" step="0.1" id="baseWeight" placeholder="待填写"></div>
+      <div class="fld"><label>今日体重 (kg)</label><input type="number" step="0.1" id="todayWeight" placeholder="称重填入"></div>
       <button onclick="saveWeight()">记录</button>
     </div>
     <div class="weight-info" id="weightInfo">基准体重未设置，明早称完告诉我。</div>
@@ -836,7 +769,7 @@
         <button onclick="goTodoToday()">今天</button>
       </div>
       <div class="todo-input-row">
-        <input type="text" id="todoInput" enterkeyhint="done" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="输入待办事项，回车添加" onkeydown="if(event.key==='Enter')addTodo()">
+        <input type="text" id="todoInput" placeholder="输入待办事项，回车添加" onkeydown="if(event.key==='Enter')addTodo()">
         <button onclick="addTodo()">添加</button>
       </div>
       <div class="todo-list" id="todoList"></div>
@@ -1092,7 +1025,7 @@ function load(){try{const r=localStorage.getItem(KEY);if(r){DB=JSON.parse(r);
    背景：曾因手机 PWA/浏览器缓存了旧 index.html，导致统计区渲染异常（兑换记录"对不上"）。
    此后每次发布新版本递增 APP_VERSION；用户打开时若发现版本变化，提示完全关闭重开，
    确保跑的是最新代码，避免旧缓存残留造成同类显示问题。 */
-const APP_VERSION='2026-09-13-33';
+const APP_VERSION='2026-09-12-32';
 try{
   const lastVer=localStorage.getItem('lpVer');
   if(lastVer&&lastVer!==APP_VERSION){
@@ -4380,43 +4313,6 @@ function initTodoSystem(){
   todoViewWeek=weekStart(todayKey());
   todoViewMonth=todayKey().substring(0,7);
 }
-/* ===== 移动端交互增强（-33） ===== */
-// 轻微震动：仅触摸设备 + 浏览器支持时生效，任何异常静默忽略
-let _hapticOK=false;
-try{ _hapticOK=!!(navigator.vibrate&&window.matchMedia&&matchMedia('(hover:none)').matches) }catch(e){}
-function haptic(ms){ if(!_hapticOK)return; try{navigator.vibrate(ms||8)}catch(e){} }
-function scrollToTop(){ try{window.scrollTo({top:0,behavior:'smooth'})}catch(e){ try{window.scrollTo(0,0)}catch(e2){} } }
-// 用事件委托统一给所有"勾选/计数/切页"动作加震动，不必改每个 toggle 函数
-try{
-  document.addEventListener('click',function(ev){
-    if(!_hapticOK)return;
-    try{
-      const el=ev.target;
-      if(el&&el.closest&&el.closest('.task,.todo-item,.counter .ctrl button,.tabbar .tab,.page-tab,.shop-item button,.footer-acts button'))haptic(8);
-    }catch(e){}
-  },{passive:true});
-}catch(e){}
-// 顶栏滚动紧凑态 + 回到顶部按钮：rAF 节流，避免滚动抖动
-function initMobileScrollUI(){
-  try{
-    const bar=document.querySelector?document.querySelector('.topbar'):null;
-    const btn=document.getElementById('toTop');
-    let ticking=false;
-    function apply(){
-      ticking=false;
-      const de=document.documentElement||{};
-      const y=window.pageYOffset||de.scrollTop||0;
-      if(bar){ if(y>60)bar.classList.add('compact'); else bar.classList.remove('compact') }
-      if(btn){ if(y>400)btn.classList.remove('hidden'); else btn.classList.add('hidden') }
-    }
-    function onScroll(){ if(ticking)return; ticking=true;
-      if(window.requestAnimationFrame)window.requestAnimationFrame(apply); else setTimeout(apply,16); }
-    if(window.addEventListener){ window.addEventListener('scroll',onScroll,{passive:true});
-      window.addEventListener('resize',onScroll,{passive:true}); }
-    apply();
-  }catch(e){}
-}
-initMobileScrollUI();
 installPWA();
 load();
 applyTheme(getTheme());
@@ -4446,7 +4342,5 @@ if(isAuthed()){
   <button class="tab" id="navStats" onclick="switchPage('stats')"><span class="ti">📊</span><span>统计</span></button>
   <button class="tab" id="navTodo" onclick="switchPage('todo')"><span class="ti">📝</span><span>便签</span></button>
 </nav>
-<!-- 回到顶部：仅手机端显示 -->
-<button id="toTop" class="to-top hidden" onclick="scrollToTop()" aria-label="回到顶部">↑</button>
 </body>
 </html>
