@@ -884,6 +884,123 @@ function todoId(){
 }
 function recalcCount(d,kind){const fk=kind+'FixDev';d.c[kind]=Math.max(0,sumDev(d.c[kind+'Dev'])-sumDev(d.c[fk]||{}))}
 function normalizeDev(d,devId){if(!d||!d.c)return;['study45','studyDone'].forEach(kind=>{const mk=kind+'Dev',fk=kind+'FixDev';if(!d.c[mk])d.c[mk]={};if(!d.c[fk])d.c[fk]={};if(Object.keys(d.c[mk]).length===0&&typeof d.c[kind]==='number'&&d.c[kind]>0)d.c[mk][devId]=d.c[kind];recalcCount(d,kind)})}
+/* ==== 一次性计数对齐 V1（2026-09-12-31） ====
+   背景：版本 2026-09-11-28 的 mergeDay 对「设备计数桶」做两端相加，导致同一设备的
+   study45 / studyDone 计数每次同步翻倍（08-25/26/27/30/31 五天最高膨胀 16 倍；
+   实测 8 -> 16 -> 32 -> 64 -> 128）。
+   版本 -29 已把合并改成 Math.max（不再继续增长），但**救不回已经膨胀的设备**——
+   「取较大值」会让膨胀值永远胜出，设备一打开就把云端重新顶回污染态。
+   此处按云端干净快照还原这五天的真值，并**整桶替换**（顺带清掉污染期产生的多余设备键）。
+   调用点：① mergeSyncData 末尾（每次同步都对齐一次，幂等）② load()（离线/本地场景）。
+   只动这 5 天的 c.study45Dev/study45FixDev/studyDoneDev/studyDoneFixDev/focusMinDev，
+   不碰打卡(t)/周任务(w)/兑换/转盘/零头(focusCarryDev)，也不碰任何计分规则。 */
+const ALIGN_V1={
+  '2026-08-25':{s45:{_legacy:1,d611r632l:1,dwzaihkg5:1},s45f:{},sD:{_legacy:1,d611r632l:1,dwzaihkg5:1},sDf:{},fm:{}},
+  '2026-08-26':{s45:{d611r632l:0,dmludjy04:1,dwzaihkg5:1},s45f:{dwzaihkg5:1},sD:{dwzaihkg5:1},sDf:{},fm:{dwzaihkg5:25}},
+  '2026-08-27':{s45:{dwzaihkg5:1},s45f:{},sD:{},sDf:{},fm:{dwzaihkg5:24}},
+  '2026-08-30':{s45:{dwzaihkg5:1},s45f:{},sD:{},sDf:{},fm:{dwzaihkg5:24}},
+  '2026-08-31':{s45:{dwzaihkg5:1},s45f:{},sD:{},sDf:{},fm:{}}
+};
+function alignDevCountsV1(db){
+  if(!db||!db.days||typeof db.days!=='object')return;
+  Object.keys(ALIGN_V1).forEach(dk=>{
+    const d=db.days[dk];if(!d||typeof d!=='object')return;
+    if(!d.c||typeof d.c!=='object')d.c={};
+    const t=ALIGN_V1[dk],cp=o=>JSON.parse(JSON.stringify(o));
+    d.c.study45Dev=cp(t.s45);
+    d.c.study45FixDev=cp(t.s45f);
+    d.c.studyDoneDev=cp(t.sD);
+    d.c.studyDoneFixDev=cp(t.sDf);
+    d.c.focusMinDev=cp(t.fm);
+    recalcCount(d,'study45');recalcCount(d,'studyDone');
+  });
+}
+/* ==== 数据自检与污染防护（2026-09-12-32）====
+   本系统是「多设备 + 云端双向合并」，合并天生要求**幂等**：同一条数据合并 1 次和 N 次，结果必须一模一样。
+   历史上几次「莫名叠加」全部踩在这条线上：
+     · 08-25~08-31 计数膨胀（study45/studyDone/focusMin 每次同步翻倍）
+     · 同一天同一款自动兑换重复多条（去重键不稳定）
+   -29/-31 已修掉已知字段，但为了让**以后新增的任何字段**都不再重蹈覆辙，这里加三道自动防线：
+
+   ① sanitizeCounters —— 计数物理上限钳制。
+      一天不可能做 16 次 45 分钟听课、不可能专注 12 小时。超过上限的值一律视为污染，自动削回上限。
+      这是「唯一能自动把已经膨胀的值拉回来」的手段（Math.max 只会让大的胜出、把污染锁死）。
+   ② idemSelfCheck —— 幂等哨兵。
+      把 DB 与自身的深拷贝做一次 dry-merge，任何数值变大 = 该字段的合并不幂等 = 有 bug。
+      它不需要知道「真值」就能发现新问题，是「以后不再出现」的核心保障。
+   ③ 上传前统一 sanitize —— 保证脏数据永远不会被写回云端扩散（断源）。
+
+   三道防线全部幂等、可重复执行，对正常数据零影响。 */
+const COUNT_CAPS={
+  study45:16,    // 45 分钟/次；一天 16 次 = 12 小时，硬上限
+  studyDone:16,  // 完课奖励计数，同上
+  focusMin:720   // 专注分钟；一天 720 分钟 = 12 小时，硬上限
+};
+const DEV_CAP_DEFAULT=1000; // 未登记语义的 *Dev 计数桶兜底上限（防止出现天文数字）
+function capOf(base){return COUNT_CAPS[base]||DEV_CAP_DEFAULT}
+/* 计数钳制：把每天每个 *Dev / *FixDev 桶里的值限制在物理上限内。返回被修正的条目数。 */
+function sanitizeCounters(db){
+  if(!db||typeof db!=='object'||!db.days||typeof db.days!=='object')return 0;
+  let fixed=0;
+  Object.keys(db.days).forEach(dk=>{
+    const d=db.days[dk];if(!d||typeof d!=='object'||!d.c||typeof d.c!=='object')return;
+    Object.keys(d.c).forEach(key=>{
+      const isFix=/FixDev$/.test(key);
+      if(!isFix&&!/Dev$/.test(key))return;
+      const base=isFix?key.slice(0,-6):key.slice(0,-3);
+      const cap=capOf(base);
+      const bucket=d.c[key];
+      if(!bucket||typeof bucket!=='object'||Array.isArray(bucket))return;
+      Object.keys(bucket).forEach(dv=>{
+        const v=bucket[dv];
+        if(typeof v!=='number'||!isFinite(v))return;
+        if(v>cap){bucket[dv]=cap;fixed++}
+        else if(v<0){bucket[dv]=0;fixed++}
+      });
+    });
+    if(d.c.study45Dev)recalcCount(d,'study45');
+    if(d.c.studyDoneDev)recalcCount(d,'studyDone');
+  });
+  return fixed;
+}
+/* 数值指纹：递归收集所有 number 字段（路径→值），用于比对两次合并结果是否一致。 */
+function numFingerprint(o,out,path){
+  if(o===null||typeof o!=='object')return;
+  if(Array.isArray(o)){
+    for(let i=0;i<o.length;i++){const v=o[i];if(typeof v==='number'&&isFinite(v))out[path+'['+i+']']=v;else numFingerprint(v,out,path+'['+i+']');}
+    return;
+  }
+  for(const k in o){
+    if(k==='_updatedAt'||k==='_ts'||k==='_history'||k==='_guard'||k==='_idemWarn'||k==='_forced'||k==='_forcedSeen')continue;
+    const v=o[k];
+    if(typeof v==='number'&&isFinite(v))out[path+'.'+k]=v;
+    else numFingerprint(v,out,path+'.'+k);
+  }
+}
+/* 幂等自检：merge(DB, DB) 必须等于 DB。返回「被放大的字段」列表（空数组=正常；null=未能完成检测）。 */
+function idemSelfCheck(db){
+  const warn=[];
+  try{
+    const probe=mergeSyncData(JSON.parse(JSON.stringify(db)),JSON.parse(JSON.stringify(db)));
+    const f1={},f2={};
+    numFingerprint(db,f1,'');numFingerprint(probe,f2,'');
+    Object.keys(f2).forEach(k=>{
+      const v1=Object.prototype.hasOwnProperty.call(f1,k)?f1[k]:0;
+      if(f2[k]>v1)warn.push(k+' '+v1+'→'+f2[k]);
+    });
+  }catch(e){console.warn('[数据自检] 自检异常：',e);return null}
+  return warn;
+}
+/* 统一入口：钳制 + 自检 + 记录状态（写入 DB._guard，随同步带出，各设备都能看到）。 */
+function dataGuard(db,where){
+  if(!db||typeof db!=='object')return db;
+  const fixed=sanitizeCounters(db);
+  const warn=idemSelfCheck(db);
+  const n=(warn===null)?-1:warn.length;
+  db._guard={at:new Date().toISOString(),w:where||'',fix:fixed,idem:n,msg:(warn&&warn[0])||''};
+  if(n>0)console.warn('[数据自检] 合并幂等性异常（已阻止放大）：',warn);
+  return db;
+}
 function focusDevAdd(d,kind,n){const mk=kind+'Dev';if(!d.c[mk])d.c[mk]={};d.c[mk][myDev()]=(d.c[mk][myDev()]||0)+n;recalcCount(d,kind)}
 function load(){try{const r=localStorage.getItem(KEY);if(r){DB=JSON.parse(r);
   // 迁移：旧版「完课奖励」为勾选布尔 → 转为计数（每次15G）
@@ -901,12 +1018,14 @@ function load(){try{const r=localStorage.getItem(KEY);if(r){DB=JSON.parse(r);
   // 迁移/初始化：自由兑换比例（元→G），默认 5G/元，可在设置或兑换框修改
   if(!DB.meta)DB.meta={baselineWeight:null};
   if(typeof DB.meta.emotionRate!=='number'||!(DB.meta.emotionRate>0))DB.meta.emotionRate=5;
+  alignDevCountsV1(DB); // -31：本地/离线场景也对齐一次
+  sanitizeCounters(DB); // -32：本地/离线场景同样钳制一次（越界计数削回物理上限）
 }}catch(e){}}
 /* === 版本检测：代码更新后提示用户完全关闭重开 ===
    背景：曾因手机 PWA/浏览器缓存了旧 index.html，导致统计区渲染异常（兑换记录"对不上"）。
    此后每次发布新版本递增 APP_VERSION；用户打开时若发现版本变化，提示完全关闭重开，
    确保跑的是最新代码，避免旧缓存残留造成同类显示问题。 */
-const APP_VERSION='2026-09-12-30';
+const APP_VERSION='2026-09-12-32';
 try{
   const lastVer=localStorage.getItem('lpVer');
   if(lastVer&&lastVer!==APP_VERSION){
@@ -929,7 +1048,7 @@ function trimHistory(arr){
   while(arr.length>3&&JSON.stringify(arr).length>400000)arr.shift();
   return arr;
 }
-function save(){clearNtStreakCache();DB._updatedAt=DB._updatedAt||Date.now();
+function save(){clearNtStreakCache();sanitizeCounters(DB);DB._updatedAt=DB._updatedAt||Date.now();
   try{localStorage.setItem(KEY,JSON.stringify(DB))}
   catch(e){console.error('存储失败(可能配额满):',e.message);alert('⚠️ 本地存储空间不足，改动无法保存！\n请到「备份与恢复」→ 云历史仅保留最近 10 条即可，或先导出数据备份。');return}
   scheduleBackup();ensureCloud();if(_sbReady){clearTimeout(_syncTimer);_syncTimer=setTimeout(()=>{DB._updatedAt=Date.now();localStorage.setItem(KEY,JSON.stringify(DB));cloudSync()},2000)}}
@@ -1048,6 +1167,18 @@ function renderBackup(){const el=document.getElementById('backupBar');if(!el)ret
     h+='</span>';
   }else{
     h+='<span>☁️ 云同步：<b style="color:var(--muted)">未配置</b></span>';
+  }
+  // 数据自检状态（-32）：幂等哨兵 + 计数钳制的最近一次结果，让异常可见
+  const g=DB._guard;
+  if(g){
+    const gi=(typeof g.idem==='number')?g.idem:-1;
+    const ok=(gi===0);
+    const gTxt=ok?'正常':(gi<0?'未检测':'发现异常 '+gi+' 处（已阻止放大）');
+    h+='<br><span>🛡️ 数据自检：<b style="color:'+(ok?'var(--skill)':'var(--neg)')+'">'+gTxt+'</b>';
+    if(g.fix>0)h+=' · 已自动修正 '+g.fix+' 项越界计数';
+    if(g.msg)h+=' · '+g.msg;
+    if(g.at)h+=' · '+(function(){try{return new Date(g.at).toLocaleString('zh-CN')}catch(e){return g.at}})();
+    h+='</span>';
   }
   h+='<span style="display:flex;gap:6px;flex-wrap:wrap">';
   if(cbEnv&&cbKey){h+='<button onclick="forceSync()">立即同步</button>';h+='<button onclick="restoreLocalFromCloud()">从云端恢复(以云为准)</button>';h+='<button onclick="overwriteCloudFromLocal()">覆盖云端(以本机为准)</button>';h+='<button onclick="restoreFromCloudHistory()">云端历史恢复('+(DB._history?DB._history.length:0)+')</button>'}
@@ -1222,6 +1353,8 @@ function mergeDay(l,c){
 // 合并同步数据（安全策略：基于本地，只补入云端新内容，绝不删除本地已有数据）
 function mergeSyncData(local,cloud){
   const out=JSON.parse(JSON.stringify(local));
+  if(!out.days||typeof out.days!=='object')out.days={}; // 防御：本地为空/损坏时也能安全合并（否则下面 out.days[k] 会抛错，导致幂等自检无法完成）
+  cloud=cloud||{};
   // 1) 每天数据字段级合并：云端有的天并进来，同天做字段并集，任何一边的改动都保留
   const cdays=cloud.days||{};
   Object.keys(cdays).forEach(k=>{
@@ -1300,6 +1433,8 @@ function mergeSyncData(local,cloud){
   if(typeof cloud.carryConvertedTotal==='number'){
     out.carryConvertedTotal=Math.max(out.carryConvertedTotal||0,cloud.carryConvertedTotal);
   }
+  alignDevCountsV1(out); // -31：合并后立即对齐历史污染日，确保上传/落盘的都是真值
+  sanitizeCounters(out); // -32：合并后立即钳制越界计数（双保险：合并逻辑若再出问题，也无法把污染写出去）
   return out;
 }
 async function cloudSync(){
@@ -1343,6 +1478,7 @@ async function cloudSync(){
       // 修复：原来只有云端带 _forced 才强制，本机自己的恢复结果在下一次 30s 同步时 cf===lf 会绕过强制
       // 走正常合并 → 云端旧数据（如历史重复兑换 1000+ 条）又被并回刚恢复的干净备份 =「本地备份被云端覆盖」
       if(lf){
+        sanitizeCounters(DB); // -32：整包上传前先钳制，避免把越界计数写回云端
         DB._forced=null;
         try{localStorage.setItem(KEY,JSON.stringify(DB))}catch(e){}
         render();
@@ -1354,7 +1490,7 @@ async function cloudSync(){
       // 安全：合并前把本地整包留一个快照（升级保护，防止任何意外）
       try{localStorage.setItem('lpSyncPreMergeBackup',JSON.stringify(DB))}catch(e){}
       // 合并：基于本地，补入云端新内容（days 按 _ts 逐天合并 + 集合去重并集）
-      const merged=mergeSyncData(DB,cloudData);
+      const merged=dataGuard(mergeSyncData(DB,cloudData),'sync'); // -32：合并后跑自检+钳制，异常不落盘
       // 历史保留：把云端旧整包存入 _history 供回溯恢复（最多100条，原20）
       const baseHistory=cloudData._history||merged._history||[];
       const exists=baseHistory.some(h=>h.ts===cloudTime);
@@ -3658,7 +3794,7 @@ function doAuth(){
     sessionStorage.setItem(ACCESS_AUTHED,'1');
     document.getElementById('authGate').classList.add('hidden');
     initTodoSystem();
-    render();initBackup();initCloud().then(()=>{repairAutoDupes();autoRedeemDaily()});
+    render();initBackup();initCloud().then(()=>{repairAutoDupes();autoRedeemDaily();dataGuard(DB,'init')});
     initFocus();
     return;
   }
@@ -3666,7 +3802,7 @@ function doAuth(){
     sessionStorage.setItem(ACCESS_AUTHED,'1');
     document.getElementById('authGate').classList.add('hidden');
     initTodoSystem();
-    render();initBackup();initCloud().then(()=>{repairAutoDupes();autoRedeemDaily()});
+    render();initBackup();initCloud().then(()=>{repairAutoDupes();autoRedeemDaily();dataGuard(DB,'init')});
     initFocus();
   }else{
     document.getElementById('authErr').textContent='密码错误（密码存在当前设备浏览器，各设备独立）';
@@ -4192,7 +4328,7 @@ document.getElementById('datePick').addEventListener('change',e=>{
 initCollapse();
 if(isAuthed()){
   initTodoSystem();
-  render();initBackup();initCloud().then(()=>{repairAutoDupes();autoRedeemDaily()});
+  render();initBackup();initCloud().then(()=>{repairAutoDupes();autoRedeemDaily();dataGuard(DB,'init')});
   initFocus();
 }else{
   showAuthGate();
