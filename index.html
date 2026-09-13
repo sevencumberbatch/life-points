@@ -1025,7 +1025,7 @@ function load(){try{const r=localStorage.getItem(KEY);if(r){DB=JSON.parse(r);
    背景：曾因手机 PWA/浏览器缓存了旧 index.html，导致统计区渲染异常（兑换记录"对不上"）。
    此后每次发布新版本递增 APP_VERSION；用户打开时若发现版本变化，提示完全关闭重开，
    确保跑的是最新代码，避免旧缓存残留造成同类显示问题。 */
-const APP_VERSION='2026-09-13-35';
+const APP_VERSION='2026-09-13-37';
 try{
   const lastVer=localStorage.getItem('lpVer');
   if(lastVer&&lastVer!==APP_VERSION){
@@ -1891,7 +1891,44 @@ function ensureWheelFields(){
   migrateBuffs();
   Object.keys(DB.doubled).forEach(dk=>{if(!Array.isArray(DB.doubled[dk])){DB.doubled[dk]=[];return}const seen={};DB.doubled[dk]=DB.doubled[dk].filter(x=>{const kk=typeof x==='string'?x:x.k;if(seen[kk])return false;seen[kk]=1;return true})})
 }
-function wheelPick(){const tot=WHEEL.reduce((s,x)=>s+x.w,0);let r=Math.random()*tot;for(const x of WHEEL){if((r-=x.w)<0)return x}return WHEEL[WHEEL.length-1]}
+/* ---- 每日限一种：真实奖励每类一天最多【计分】一次（-37）-------------------
+   谢谢参与 / 破财消灾 / 免费单抽 不受限，照常生效；
+   其余 6 类真实奖励（积分奖励 / 大额暴击 / 日积月累 / 精力充沛 / 经验暴击 / 加学挑战）
+   当天各最多计分一次。注意口径：**候选池与权重完全不动**，奖项照原概率转出；
+   只是当转到的奖项今天已经中过时，界面仍然显示"中了什么"，但不计分（等同谢谢惠顾）。
+   这样概率分布与"运气"手感保持一致，也不会出现"转到却不给"的观感差。
+   判定依据 = wheelLog 当日已出现的奖励类型（随云同步，多设备口径一致）。
+------------------------------------------------------------------------- */
+const WHEEL_CAPPED=['pts','big10','day30','quest','nextStudy','nextAny'];
+const WHEEL_CAP_LABEL={pts:'积分奖励',big10:'大额暴击',day30:'日积月累',quest:'加学30分钟',nextStudy:'精力充沛',nextAny:'经验暴击'};
+function wheelPrizeKindOf(w){
+  if(!w)return null;
+  if(w.pk)return WHEEL_CAPPED.indexOf(w.pk)>=0?w.pk:null; // -37：显式奖项字段优先（dup 行也据此归属）
+  const n=String(w.n||'');
+  if(w.kind==='quest_accept')return 'quest';
+  if(w.kind==='state'){
+    if(n.indexOf('日积月累')>=0)return 'day30';
+    if(n.indexOf('精力充沛')>=0)return 'nextStudy';
+    if(n.indexOf('经验暴击')>=0)return 'nextAny';
+    return null;
+  }
+  if(w.kind==='draw'){
+    if(n.indexOf('积分奖励')>=0)return 'pts';
+    if(n.indexOf('大额')>=0)return 'big10';
+  }
+  return null;
+}
+function wheelWonToday(k){k=k||curDate;const s=new Set();(DB.wheelLog||[]).forEach(w=>{if(w&&w.date===k){const t=wheelPrizeKindOf(w);if(t)s.add(t)}});return s}
+// -37：候选池不再剔除已中奖项（保持原概率分布，避免额外改变运气手感）；
+//      是否计分改由 spinWheel 判定「该奖项今天是否已中过」。保留函数名与签名，便于测试与将来调整。
+function wheelPool(k){return WHEEL}
+function wheelPick(){const pool=wheelPool(curDate);const tot=pool.reduce((s,x)=>s+x.w,0);let r=Math.random()*tot;for(const x of pool){if((r-=x.w)<0)return x}return pool[pool.length-1]}
+function wheelCapLine(){
+  const won=wheelWonToday(curDate);
+  const left=WHEEL_CAPPED.filter(k=>!won.has(k));
+  if(!left.length)return '🎯 今日 6 类奖项均已中过；再转到也只会提示「已中过」，不再计分';
+  return '🎯 今日未中：'+left.map(k=>WHEEL_CAP_LABEL[k]).join('、')+'（已中过的奖项再转到不再计分）';
+}
 function taskMult(tk,k){let m=1;const arr=DB.doubled&&DB.doubled[k];if(arr)arr.forEach(x=>{const xk=typeof x==='string'?x:x.k;if(xk===tk)m*=2});return Math.min(m,2)}
 // 明细展示用：任务行的基础分（不在此处做翻倍）。
 // ⚠️ 故意保持恒等函数：任务被「经验暴击/精力充沛 ×2」多出的那份，已由
@@ -1968,6 +2005,14 @@ function spinWheel(depth,acc){
   if(depth>6){showWheelModal(acc);render();return;}
   const prize=wheelPick();
   const wk={id:uid(),ts:Date.now(),date:curDate};
+  // -37：今天已中过该奖项 → 照常显示中了什么，但不再计分（等同谢谢惠顾）。
+  //      注意：不写入 DB.quest / DB.dayBuff30 / DB.pendingBuffs，g 记 0，故余额分毫不动。
+  if(WHEEL_CAPPED.indexOf(prize.kind)>=0&&wheelWonToday(curDate).has(prize.kind)){
+    const lk=(prize.kind==='quest')?'quest_accept':((prize.kind==='day30'||prize.kind==='nextStudy'||prize.kind==='nextAny')?'state':'draw');
+    DB.wheelLog.push(Object.assign(wk,{kind:lk,n:prize.n+'（已中过）',g:0,pk:prize.kind,dup:true}));
+    acc.push({n:prize.n,eff:'今天已中过该奖项 · 本次不计分（谢谢惠顾）'});
+    save();showWheelModal(acc);render();return;
+  }
   if(prize.kind==='none'){DB.wheelLog.push(Object.assign(wk,{kind:'draw',n:'谢谢参与',g:0}));acc.push({n:prize.n,eff:'什么都没有，下次好运～'})}
   else if(prize.kind==='lose'){DB.wheelLog.push(Object.assign(wk,{kind:'draw',n:'破财消灾',g:-2}));acc.push({n:prize.n,eff:'-2G，认栽～下次好运'})}
   else if(prize.kind==='pts'){const vals=[0.5,1,2,3,4,5];const g=vals[Math.floor(Math.random()*vals.length)];DB.wheelLog.push(Object.assign(wk,{kind:'draw',n:'积分奖励',g}));acc.push({n:prize.n,eff:'+'+(Math.round(g*10)/10)+'G'})}
@@ -2005,6 +2050,7 @@ function questAbandon(){if(!questSettle(false))return;save();render();alert('已
 // 转盘记录分类/图标（供统计与明细展示）
 function wheelClass(w){
   if(!w)return 'other';
+  if(w.dup)return 'dup'; // -37：已中过未计分（与"谢谢参与"区分开，便于统计与明细辨认）
   if(w.kind==='buff')return 'buff';
   if(w.kind==='state')return 'state';
   if(w.kind==='respin')return 'respin';
@@ -2019,10 +2065,10 @@ function wheelIcon(w){
   const c=wheelClass(w);
   if(c==='buff')return '🎯';if(c==='state')return '✨';if(c==='respin')return '🔄';
   if(c==='quest_accept')return '📋';if(c==='quest')return String(w.n).indexOf('放弃')>=0?'🚫':'📚';
-  if(c==='none')return '🎫';if(c==='pts')return '🎡';if(c==='big')return '🎉';return '🎲';
+  if(c==='dup')return '🚫';if(c==='none')return '🎫';if(c==='pts')return '🎡';if(c==='big')return '🎉';return '🎲';
 }
 function wheelClassLabel(c){
-  return {none:'谢谢参与',pts:'积分奖励',big:'大额暴击',respin:'免费单抽',quest_accept:'加学挑战',quest:'挑战结算',buff:'翻倍生效',state:'加成激活'}[c]||'其他';
+  return {none:'谢谢参与',pts:'积分奖励',big:'大额暴击',respin:'免费单抽',quest_accept:'加学挑战',quest:'挑战结算',buff:'翻倍生效',state:'加成激活',dup:'已中过·未计分'}[c]||'其他';
 }
 function wheelStatsHtml(){
   const all=DB.wheelLog||[];
@@ -2040,6 +2086,7 @@ function wheelStatsHtml(){
     <div style="font-weight:700;margin-bottom:4px">📊 转盘统计</div>
     <div>累计开转 <b>${DB.redeemLog.filter(r=>r.n==='🎡 幸运大转盘').length}</b> 次（已投入 <b>${Math.round(cost*10)/10}G</b>） · 转盘累计到账 <b style="color:var(--gold)">${gained>=0?'+':''}${fmt(gained)}G</b></div>
     <div style="opacity:.85;margin-top:2px">今日开转 ${todaySpins} 次 · 今日到账 ${todayGained>=0?'+':''}${fmt(todayGained)}G</div>
+    <div style="opacity:.85;margin-top:2px">${wheelCapLine()}</div>
     <div style="opacity:.75;margin-top:4px">命中：${hit}</div>
   </div>`;
 }
@@ -3590,7 +3637,9 @@ function redeem(lv,i){
     ensureWheelFields();
     const bal=totalBalance();const after=bal-it.c;
     const warn=after<0?`\n\n⚠️ 当前余额 ${bal}G，转盘后将变为 ${after}G（透支）`:'';
-    if(!confirm(`🎡 幸运大转盘？扣除 ${it.c}G${warn}`))return;
+    const capLeft=WHEEL_CAPPED.filter(k=>!wheelWonToday(curDate).has(k));
+    const capTip=capLeft.length?('\n\n今日未中：'+capLeft.map(k=>WHEEL_CAP_LABEL[k]).join('、')+'（已中过的奖项再转到不再计分）'):'\n\n⚠️ 今日 6 类奖项已全部中过，再转到已中过的奖项只显示「已中过」，不再计分';
+    if(!confirm(`🎡 幸运大转盘？扣除 ${it.c}G${warn}${capTip}`))return;
     DB.redeemLog.push({id:uid(),date:curDate,n:it.n,c:it.c});
     save();spinWheel(1,[]);return;
   }
