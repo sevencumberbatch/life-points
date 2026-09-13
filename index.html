@@ -937,26 +937,38 @@ function alignDevCountsV1(db){
     recalcCount(d,'study45');recalcCount(d,'studyDone');
   });
 }
-/* === 一次性计数对齐 V2（2026-09-13-42） ===
-   背景：9/13 忘记关闭「专注听课」计时器，页面长时间在线累积 560 分钟专注，同时该设备的
-   study45Dev 桶被推到物理上限 16；随后手动按 − 14 次抵消（study45FixDev=14）。
-   「Dev 满桶 + Fix 14」这套只增不减的结构会让 + 号彻底失灵（-41 已修好交互，这里清理存量数据）。
-   做法：把这天归一为「净额」——Dev 16 → 2（= 16−14），清空本机 Fix 桶，focusMinDev 清零。
-   **显示次数与积分完全不变**（净额守恒），只是内部状态不再卡上限、不再显示 9.3 小时专注。
-   幂等：仅当仍是挂机遗留态（Dev=16 且 Fix=14）时才执行一次，之后条件不再满足 → 永不重复干预。
-   调用点：① load() ② mergeSyncData 末尾（与 ALIGN_V1 同源，离线/在线都能自愈）。 */
-const ALIGN_V2_DAY='2026-09-13', ALIGN_V2_DEV='dwzaihkg5';
+/* === 一次性计数对齐 V2（2026-09-13-42，-43 改为通用净值归一） ===
+   背景：9/13 忘记关闭「专注听课」计时器，页面长时间在线累积 560 分钟专注，该设备的 study45Dev
+   被推到物理上限 16；随后手动按 − 抵消，全部记进 study45FixDev。「Dev 顶格 + Fix 攒着」有三重危害：
+     ① Dev 已到上限 → 该设备再也 + 不动（-41 修好了交互，但桶本身还是满的）；
+     ② 「今日专注 9.3 小时」这个假数字一直挂在页面上；
+     ③ Fix 越攒越大，万一撞上上限，连减号也会失灵。
+   做法（净额归一）：把「撤销」折进「计数」本身 —— Dev ← Dev−Fix，Fix 清空，focusMinDev 清零。
+   对任意设备键执行，只要 Dev ≥ Fix > 0；这个不等式保证不会把「单设备净额为负」压成 0 而虚增总次数。
+   **净值完全守恒 → 显示次数、获得明细、总积分一分不变**，只是内部状态回到健康区间。
+   幂等：归一后 Fix 变 0 → 条件不再成立 → 永不重复干预。重复运行无副作用。
+   调用点：① load() ② mergeSyncData 末尾（本机离线用、云端旧包回传时同样就地归一）。 */
+const ALIGN_V2_DAY='2026-09-13';
 function alignDevCountsV2(db){
   try{
     const d=db&&db.days&&db.days[ALIGN_V2_DAY];if(!d||!d.c)return 0;
     const dev=d.c.study45Dev,fix=d.c.study45FixDev;
     if(!dev||!fix)return 0;
-    if(dev[ALIGN_V2_DEV]!==16||fix[ALIGN_V2_DEV]!==14)return 0; // 只认挂机遗留态，之后不再干预
-    dev[ALIGN_V2_DEV]=2;
-    delete fix[ALIGN_V2_DEV];
-    if(d.c.focusMinDev&&d.c.focusMinDev[ALIGN_V2_DEV])d.c.focusMinDev[ALIGN_V2_DEV]=0;
-    recalcCount(d,'study45');
-    return 1;
+    let done=0;
+    Object.keys(fix).forEach(dv=>{
+      const fv=fix[dv],v=dev[dv];
+      if(typeof fv!=='number'||fv<=0)return;          // 没有要折的撤销 → 跳过
+      if(typeof v!=='number'||v<fv)return;            // 单设备净额为负 → 不动（否则截断成 0 会虚增总次数）
+      dev[dv]=v-fv;
+      // 关键：Fix 置 0 而不是 delete。若删键，本机键在下一轮合并里就变回「本地没有」，
+      // mergeDay 的「本机键本地优先」分支会拿到 undefined → 退化成信任云端 → 云端旧包一回传
+      // 刚清掉的 Fix 立刻复活，显示被顶回甚至归零。置 0 才是真正不可逆的终态。
+      fix[dv]=0;
+      if(d.c.focusMinDev&&typeof d.c.focusMinDev[dv]==='number')d.c.focusMinDev[dv]=0;
+      done++;
+    });
+    if(done)recalcCount(d,'study45');
+    return done;
   }catch(e){return 0}
 }
 /* ==== 数据自检与污染防护（2026-09-12-32）====
@@ -992,7 +1004,9 @@ function sanitizeCounters(db){
       const isFix=/FixDev$/.test(key);
       if(!isFix&&!/Dev$/.test(key))return;
       const base=isFix?key.slice(0,-6):key.slice(0,-3);
-      const cap=capOf(base);
+      // -43：Fix（撤销）桶的语义是"减"——值大只会让显示更小，不会虚增分数；用与 Dev 相同的上限会误伤
+      //   （一天撤销次数一被钳，显示反而变大），故放宽 4 倍作为「防天文数字」的兜底。
+      const cap=isFix?capOf(base)*4:capOf(base);
       const bucket=d.c[key];
       if(!bucket||typeof bucket!=='object'||Array.isArray(bucket))return;
       Object.keys(bucket).forEach(dv=>{
@@ -1073,7 +1087,7 @@ function load(){try{const r=localStorage.getItem(KEY);if(r){DB=JSON.parse(r);
    背景：曾因手机 PWA/浏览器缓存了旧 index.html，导致统计区渲染异常（兑换记录"对不上"）。
    此后每次发布新版本递增 APP_VERSION；用户打开时若发现版本变化，提示完全关闭重开，
    确保跑的是最新代码，避免旧缓存残留造成同类显示问题。 */
-const APP_VERSION='2026-09-13-42';
+const APP_VERSION='2026-09-13-43';
 try{
   const lastVer=localStorage.getItem('lpVer');
   if(lastVer&&lastVer!==APP_VERSION){
@@ -1342,6 +1356,7 @@ async function initCloud(){
 // 合并单天数据：字段级并集（t/c/w/ld 键并集；resc/todos 按值/id 并集；_ts取新）
 function mergeDay(l,c){
   const out=JSON.parse(JSON.stringify(l));
+  const ME=myDev(); // -43：设备计数桶要区分「本机桶 / 他机桶」，两者合并方向不同（见下方 *Dev 分支）
   const truthyMerge=(a,b)=>{
     Object.keys(b).forEach(k=>{
       const bv=b[k], av=a[k];
@@ -1378,8 +1393,20 @@ function mergeDay(l,c){
           if(typeof bv==='object'&&bv!==null&&!Array.isArray(bv)){
             dst[dv]=isDevBucket(av)?av:{};truthyMerge(dst[dv],bv);
           }else if(typeof bv==='number'){
-            // 同一设备键：两端是同一条累计计数的快照，取较大值（新者胜）。相加会导致每次同步翻倍。
-            dst[dv]=(typeof av==='number')?Math.max(av,bv):(av===undefined?bv:av);
+            // -43 修复「点了不生效 / 刷新弹回 / 两端不一致」的根因。
+            // 旧规则：同设备键取 Math.max（新者胜）。它默认计数只增不减，但 adjCount 的
+            //   + 会回补本机 Fix 桶、− 会扣本机 Dev 桶 —— 全是减法，
+            //   于是每次 cloudSync 都被云端旧大值原样顶回（10s 轮询/回前台/刷新都会触发）→ 点击白费。
+            //   两端交替上传还会互顶，表现为「手机和电脑数据差别很大」。
+            // 新规则分向：
+            //   · 本机键（dv===ME）：本机是它唯一的书写者，本地即权威 → 本地优先，减少能传出去；
+            //   · 他机键：本地只是该设备的一份旧副本，云端才是它最新一次上传 → 信任云端。
+            // 两向都幂等（merge(D,D) 仍等于 D），也依旧不会把同一设备的计数相加（历史上那种指数膨胀）。
+            if(dv===ME){
+              dst[dv]=(typeof av==='number')?av:(bv===undefined?av:bv);
+            }else{
+              dst[dv]=(typeof bv==='number')?bv:(typeof av==='number'?av:bv);
+            }
           }else if(av===undefined){dst[dv]=bv}
         });
       }else if(isDevBucket(cf0[k])){
@@ -1542,12 +1569,16 @@ function mergeSyncData(local,cloud){
     });
     out[field]=loc;
   });
-  // 6) 专注零头跨设备合并：按设备维度记账，同设备取较大值（不丢、不重复）
+  // 6) 专注零头跨设备合并：按设备维度记账（-43 改为与 *Dev 计数同规则）
+  // 旧写法「同设备取较大值」和计数桶犯的是同一个错：把零头减回来（比如清掉挂机时长）会被云端旧值弹回。
   if(cloud.focusCarryDev&&typeof cloud.focusCarryDev==='object'){
     out.focusCarryDev=out.focusCarryDev||{};
+    const ME6=myDev();
     Object.keys(cloud.focusCarryDev).forEach(k=>{
       const cv=cloud.focusCarryDev[k];
-      if(typeof cv==='number')out.focusCarryDev[k]=Math.max(out.focusCarryDev[k]||0,cv);
+      if(typeof cv!=='number')return;
+      const av=out.focusCarryDev[k];
+      out.focusCarryDev[k]=(k===ME6)?(typeof av==='number'?av:cv):cv;
     });
   }
   // 旧版顶层数字 _focusCarry 不参与云端合并：每台设备各自在 load() 时迁移进本机桶，
