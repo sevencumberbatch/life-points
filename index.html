@@ -578,6 +578,8 @@
     .task .tname{font-size:12px}
     .task .tpts{font-size:11px;min-width:36px}
   }
+  .sync-warn{margin:10px 0 0;padding:10px 14px;border-radius:10px;border:1px solid var(--neg);background:rgba(220,38,38,.08);font-size:13px;line-height:1.6;color:var(--text)}
+  .sync-warn .sw-t{font-weight:600;color:var(--neg)}
 </style>
 </head>
 <body>
@@ -603,6 +605,8 @@
       <button id="themeBtn" onclick="toggleTheme()" title="切换深色/浅色模式">🌙</button>
     </div>
   </div></div>
+
+  <div class="sync-warn" id="syncWarn" style="display:none"></div>
 
   <!-- 页面导航 -->
   <div class="page-nav">
@@ -700,7 +704,7 @@
   <!-- 称重 -->
   <div class="section">
     <h2><span class="ic" style="background:#6366f1">⚖️</span>周日称重结算</h2>
-    <div class="sub">每周日早晨称重，与上周对比计算积分变动</div>
+    <div class="sub">每周日早晨称重，与上一个周日的体重对比计算积分变动</div>
     <div class="weight-box">
       <div class="fld"><label>基准体重 (kg)</label><input type="number" step="0.1" id="baseWeight" placeholder="待填写"></div>
       <div class="fld"><label>今日体重 (kg)</label><input type="number" step="0.1" id="todayWeight" placeholder="称重填入"></div>
@@ -1029,6 +1033,9 @@ function load(){try{const r=localStorage.getItem(KEY);if(r){DB=JSON.parse(r);
   if(typeof DB._focusCarry==='number'&&!DB.focusCarryDev){DB.focusCarryDev={};DB.focusCarryDev[myDev()]=DB._focusCarry;delete DB._focusCarry;}
   if(!DB.focusCarryDev)DB.focusCarryDev={};
   if(!DB.carryConvertedTotal)DB.carryConvertedTotal=0;
+  // 迁移/初始化：删除墓碑（-40 删除传播），并裁掉超过保留期的墓碑
+  if(!DB.tombs||typeof DB.tombs!=='object')DB.tombs={};
+  tombPrune();
   // 迁移：兑换/转盘记录补唯一 id（云合并按 id 去重，否则同一天同名多条会被压缩吞账）
   if(Array.isArray(DB.redeemLog))DB.redeemLog.forEach(r=>{if(r&&!r.id)r.id=uid()});
   if(Array.isArray(DB.wheelLog))DB.wheelLog.forEach(w=>{if(!w)return;if(!w.id)w.id=uid();if(!w.ts)w.ts=(parseKey(w.date||todayKey()).getTime()||Date.now())+43200000;if(!w.kind)w.kind=w.buff?'buff':(String(w.n).indexOf('加学30分钟')>=0?'quest':(String(w.n).indexOf('免费单抽')>=0?'respin':'draw'))});
@@ -1043,7 +1050,7 @@ function load(){try{const r=localStorage.getItem(KEY);if(r){DB=JSON.parse(r);
    背景：曾因手机 PWA/浏览器缓存了旧 index.html，导致统计区渲染异常（兑换记录"对不上"）。
    此后每次发布新版本递增 APP_VERSION；用户打开时若发现版本变化，提示完全关闭重开，
    确保跑的是最新代码，避免旧缓存残留造成同类显示问题。 */
-const APP_VERSION='2026-09-13-38';
+const APP_VERSION='2026-09-13-40';
 try{
   const lastVer=localStorage.getItem('lpVer');
   if(lastVer&&lastVer!==APP_VERSION){
@@ -1210,7 +1217,33 @@ function renderBackup(){const el=document.getElementById('backupBar');if(!el)ret
     h+='<span style="display:flex;gap:6px;flex-wrap:wrap"><button onclick="changeAccessPass()">设置访问密码</button></span>';
   }
   h+='<br><span>💾 备份：';if(dir){h+='已连接 <b>'+dir+'</b> · 每次改动留存版本（保留30天） · '}else{h+='<b>浏览器内自动备份</b>（建议连接文件夹加强） · '}h+='上次 '+lbStr;if(needsExportReminder())h+=' · <b style="color:var(--neg)">超7天未导出，建议备份</b>';
-  h+='</span><span style="display:flex;gap:6px;flex-wrap:wrap">';h+='<button onclick="connectBackupDir()">'+(dir?'换目录':'连接文件夹')+'</button>';if(dir)h+='<button onclick="restoreFromFile()">从文件恢复</button>';h+='<button onclick="restoreFromIDB()">从浏览器恢复</button>';h+='</span>';el.innerHTML=h}
+  h+='</span><span style="display:flex;gap:6px;flex-wrap:wrap">';h+='<button onclick="connectBackupDir()">'+(dir?'换目录':'连接文件夹')+'</button>';if(dir)h+='<button onclick="restoreFromFile()">从文件恢复</button>';h+='<button onclick="restoreFromIDB()">从浏览器恢复</button>';h+='</span>';el.innerHTML=h;renderSyncWarn()}
+/* -40：同步异常不能只藏在设置区一行小字里（曾经的坑：看着"开着"，其实一笔都没同步）。
+   未连上 / 上次同步失败 / 长时间没成功 → 页面顶部常驻提示。 */
+var _syncWarnHidden=false;
+function dismissSyncWarn(){_syncWarnHidden=true;const el=document.getElementById('syncWarn');if(el)el.style.display='none'}
+function renderSyncWarn(){
+  const el=document.getElementById('syncWarn');if(!el)return;
+  if(_syncWarnHidden){el.style.display='none';return}
+  if(!(getSbUrl()&&getSbAnonKey()&&getSbSyncKey())){el.style.display='none';return}
+  let msg='',tip='';
+  const last=lastCloudSync();const lastT=last?new Date(last).getTime():0;
+  const mins=lastT?Math.floor((Date.now()-lastT)/60000):-1;
+  if(_sbLastErr){
+    msg='云同步失败';tip='错误：'+_sbLastErr+' —— 改动只保存在本机，其它设备看不到。';
+  }else if(!_sbReady){
+    if(Date.now()-_sbBootAt<8000){el.style.display='none';return}
+    msg='云同步未连接';tip='同步组件可能没加载成功（网络被拦或 CDN 不可达）。改动只保存在本机。';
+  }else if(!lastT||mins>=10){
+    msg='云同步已 '+(lastT?(mins+' 分钟'):'很久')+'没有成功';tip='改动可能还没上传到云端。';
+  }else{el.style.display='none';return}
+  el.style.display='flex';
+  el.style.alignItems='center';
+  el.style.gap='10px';
+  el.style.flexWrap='wrap';
+  el.innerHTML='<span><span class="sw-t">⚠️ '+msg+'</span> · '+escapeHtml(tip)+'</span>'
+    +'<span style="margin-left:auto;white-space:nowrap"><button onclick="retrySync()">立即重试</button><button onclick="dismissSyncWarn()">知道了</button></span>';
+}
 async function initBackup(){await loadDirHandle();if(_dirHandle){await scheduleBackup()}renderBackup();if(!localStorage.getItem(KEY)||Object.keys(DB.days||{}).length===0){const snap=await idbGet('snapshot');if(snap){if(confirm('检测到浏览器内自动备份，但当前无数据。是否恢复？')){DB=snap;save();render()}}}}
 
 /* === 云端同步模块（Supabase）=== */
@@ -1220,6 +1253,7 @@ const SB_ANONKEY_KEY='lpSbAnonKey';
 const SB_SYNCKEY='lpSbSyncKey';
 const SB_LASTSYNC='lpLastSbSync';
 let _sbApp=null,_sbReady=false,_sbSyncing=false,_syncTimer=null,_sbInterval=null,_sbLastErr='';
+let _sbLastKick=0,_sbWinHooked=false;const _sbBootAt=Date.now();
 
 function getSbUrl(){return localStorage.getItem(SB_URL_KEY)||''}
 function getSbAnonKey(){return localStorage.getItem(SB_ANONKEY_KEY)||''}
@@ -1266,7 +1300,17 @@ async function initCloud(){
   try{
     _sbApp=supabase.createClient(url,anonKey);
     _sbReady=true;
-    if(!_sbInterval){_sbInterval=setInterval(()=>cloudSync(),30000)}
+    if(!_sbInterval){_sbInterval=setInterval(()=>cloudSync(),10000)} // -40：30s→10s，缩短"看到旧快照"的窗口
+    // -40：回到前台 / 网络恢复 / 窗口重获焦点时立刻同步一次。
+    // 起因：原来只有 30s 轮询，而手机息屏、切到后台时浏览器会冻结计时器，回到前台也要干等下一轮。
+    if(!_sbWinHooked){_sbWinHooked=true;
+      try{
+        document.addEventListener('visibilitychange',()=>{if(!document.hidden)kickSync()});
+        window.addEventListener('pageshow',()=>kickSync());
+        window.addEventListener('online',()=>kickSync());
+        window.addEventListener('focus',()=>kickSync());
+      }catch(e){}
+    }
     await cloudSync();
   }catch(e){console.error('Supabase init error:',e)}
   renderBackup();
@@ -1328,11 +1372,17 @@ function mergeDay(l,c){
   // t/w/ld：日常任务/状态（如喝水杯、运动、洗衣、卧室整理等）——本机优先。
   // 只补入云端有而本机没有的 key；本机已设的值（含主动取消的 false）绝不被云端旧 true 覆盖，
   // 否则会出现「取消勾选后被云端旧状态自动重新勾上」的回弹。
+  // -40：改为「最后改动者胜」。原先只补云端有、本机没有的键（本机优先），
+  // 导致一端取消勾选后，另一端保存的旧 true 每次同步都把勾选带回 —— 取消操作根本传不过去。
+  // 判据用当天的 _ts（touchDay 在每次改动时都会刷新）：云端这一天更晚 → 同键取云端值。
+  // 粒度说明：_ts 是「天」粒度。同一天两端都改过时，较晚操作的那一端整组 t/w/ld 生效，
+  // 符合"最后一次操作算数"的直觉；不同天互不影响（各自有各自的 _ts）。
+  const _cNewer=(c._ts||0)>(l._ts||0);
   ['t','w','ld'].forEach(f=>{
     const cf=c[f];
     if(cf&&typeof cf==='object'){
       if(!out[f]||typeof out[f]!=='object')out[f]={};
-      Object.keys(cf).forEach(k=>{ if(out[f][k]===undefined) out[f][k]=cf[k]; });
+      Object.keys(cf).forEach(k=>{ if(out[f][k]===undefined||_cNewer) out[f][k]=cf[k]; });
     }
   });
   const lr=out.resc||[];
@@ -1368,7 +1418,30 @@ function mergeDay(l,c){
   out._ts=Math.max(l._ts||0,c._ts||0);
   return out;
 }
-// 合并同步数据（安全策略：基于本地，只补入云端新内容，绝不删除本地已有数据）
+/* === 删除传播：墓碑（-40）===
+   并集合并下「删除」等于没发生：本机删掉的条目，对端旧数据一同步就复活。
+   做法与 -35 的 usedBuffs 同源 —— 删除时不只真删，还给该 id 打一座墓碑 tombstones[id]=时间戳。
+   墓碑只增不减、可安全并集传播；合并末尾统一过滤掉带墓碑的条目。
+   为防无限膨胀，只保留 TOMB_KEEP_DAYS 天（远长于任何设备追上来的时间）。 */
+const TOMB_KEEP_DAYS=180;
+function tombAdd(id){if(!id)return;if(!DB.tombs||typeof DB.tombs!=='object')DB.tombs={};DB.tombs[String(id)]=Date.now()}
+function tombPrune(){try{if(!DB.tombs||typeof DB.tombs!=='object'){DB.tombs={};return}const cut=Date.now()-TOMB_KEEP_DAYS*86400000;Object.keys(DB.tombs).forEach(k=>{if(!(DB.tombs[k]>cut))delete DB.tombs[k]})}catch(e){}}
+function tombFilterById(arr,tm){if(!Array.isArray(arr))return arr;return arr.filter(x=>!(x&&x.id&&tm[x.id]))}
+function applyTombs(db,tm){
+  if(!db||typeof db!=='object'||!tm)return db;
+  const dd=(db.days&&typeof db.days==='object')?db.days:{};
+  Object.keys(dd).forEach(k=>{const day=dd[k];if(day&&Array.isArray(day.todos))day.todos=tombFilterById(day.todos,tm)});
+  ['weekTodos','monthTodos'].forEach(f=>{const m=db[f];if(!m||typeof m!=='object')return;Object.keys(m).forEach(k=>{if(Array.isArray(m[k]))m[k]=tombFilterById(m[k],tm)})});
+  ['wheelLog','redeemLog'].forEach(f=>{if(Array.isArray(db[f]))db[f]=tombFilterById(db[f],tm)});
+  return db;
+}
+function mergeTombs(a,b){
+  const m={};const put=o=>{if(!o||typeof o!=='object')return;Object.keys(o).forEach(k=>{const v=Number(o[k])||0;if(!(m[k]>=v))m[k]=v})};
+  put(b);put(a);
+  return m;
+}
+// 合并同步数据（安全策略：基于本地，只补入云端新内容。唯一会「减少」的路径是墓碑过滤 —— 见 -40 删除传播，
+// 而墓碑本身就是"本机或对端确实删过"的证据，所以不会误删仍有数据的一侧）
 function mergeSyncData(local,cloud){
   const out=JSON.parse(JSON.stringify(local));
   if(!out.days||typeof out.days!=='object')out.days={}; // 防御：本地为空/损坏时也能安全合并（否则下面 out.days[k] 会抛错，导致幂等自检无法完成）
@@ -1459,10 +1532,17 @@ function mergeSyncData(local,cloud){
   if(typeof cloud.carryConvertedTotal==='number'){
     out.carryConvertedTotal=Math.max(out.carryConvertedTotal||0,cloud.carryConvertedTotal);
   }
+  // 7) 删除传播（-40）：墓碑取并集，然后统一清掉带墓碑的条目 —— 本机删掉的，对端不会再带回来
+  out.tombs=mergeTombs(out.tombs,cloud.tombs);
+  applyTombs(out,out.tombs);
   alignDevCountsV1(out); // -31：合并后立即对齐历史污染日，确保上传/落盘的都是真值
   sanitizeCounters(out); // -32：合并后立即钳制越界计数（双保险：合并逻辑若再出问题，也无法把污染写出去）
   return out;
 }
+// -40：外部事件触发的「立即同步」。1.2s 内只跑一次，避免 visibilitychange/focus 连发时打爆请求。
+function kickSync(){const n=Date.now();if(n-_sbLastKick<1200)return;_sbLastKick=n;if(_sbReady)cloudSync()}
+// 提示条上的「立即重试」：已连上就立刻同步，没连上就重新尝试初始化（重下同步组件）
+function retrySync(){if(_sbReady){_sbLastKick=0;cloudSync()}else{ensureCloud()}}
 async function cloudSync(){
   if(!_sbReady||_sbSyncing)return;
   const syncKey=getSbSyncKey();
@@ -2012,7 +2092,7 @@ function revokeBuff(k,opt){
   const nm=taskNameOf(k);
   for(let i=DB.wheelLog.length-1;i>=0;i--){
     const w=DB.wheelLog[i];
-    if(w.date===curDate&&w.buff&&String(w.n).indexOf(nm)>=0){DB.wheelLog.splice(i,1);break}
+    if(w.date===curDate&&w.buff&&String(w.n).indexOf(nm)>=0){tombAdd(w.id);DB.wheelLog.splice(i,1);break}
   }
   if(!opt||opt.recalc!==false)clearNtStreakCache();
   return true;
@@ -2329,28 +2409,45 @@ function zoneDoneInWeek(k,zk){
   });
 }
 
-/* 称重积分：对比上周日体重 */
-function lastSundayWeight(k){
-  // 找本周日之前最近一次称重（不含今天）
-  // 降序(新→旧)后取【第 0 条】才是「上一次」；原代码取 logs[length-1] 拿到的是史上最早一次，
-  // 导致每周称重对比基准恒为初始体重 → 持续虚增减重分
+/* 称重积分：对比体重基准
+   【-39 修正】原实现只取「今天之前最近一条记录」当基准，没限定那条是周几。
+   后果：标题写着「每周日称重·与上周对比」，但只要周六称一次重，周日就变成
+        「较昨天减重」→ 稳拿 +30G，收不到一周的真实趋势（9/13 因此虚增 45G）。
+   现口径：周日结算 → 基准 =【上一个周日】的记录；
+        若一个周日记录都还没有（起始阶段），回退到更早的最近一条记录，避免开局永远无法结算。
+   历史锁定：WEIGHT_FREEZE_UNTIL（含）之前的周日沿用旧口径，已结算分数不回收，
+        避免改口径导致既有余额凭空变动；自 WEIGHT_NEW_RULE_FROM 起按新口径结算。 */
+const WEIGHT_FREEZE_UNTIL='2026-09-13';
+const WEIGHT_NEW_RULE_FROM='2026-09-20';
+function lastSundayWeight(k){ // 旧口径：今天之前最近一条记录（仅历史锁定段使用）
   const logs=DB.weightLog.filter(w=>w.date<k).sort((a,b)=>a.date<b.date?1:-1);
   return logs.length?logs[0].weight:null;
+}
+function weightBaseOf(k){ // 新口径：上一个周日的记录；没有则回退到更早的最近一条
+  const sun=DB.weightLog.filter(w=>isSunday(w.date)&&w.date<k).sort((a,b)=>a.date<b.date?1:-1);
+  if(sun.length)return{weight:sun[0].weight,date:sun[0].date,src:'lastSunday'};
+  const logs=DB.weightLog.filter(w=>w.date<k).sort((a,b)=>a.date<b.date?1:-1);
+  return logs.length?{weight:logs[0].weight,date:logs[0].date,src:'fallback'}:null;
+}
+function weightScoreOf(delta){ // 减轻≥0.5→30 / ≥0.1→15 / ±0.1内→0 / 微增→-8 / 增≥0.5→-15
+  if(delta>=0.5)return 30;
+  if(delta>=0.1)return 15;
+  if(delta>-0.1)return 0;
+  if(delta>=-0.5)return -8;
+  return -15;
 }
 function weightDeltaPts(k){
   if(!isSunday(k))return null;
   const d=getDay(k);if(!d.wt)return null;
-  const prev=lastSundayWeight(k);if(prev===null)return null;
-  // 修复浮点边界：先用 0.1kg 精度四舍五入再判定。
-  // 否则浮点误差（如 70.4-70.3 = 0.10000000000000853 但 70.0-69.9 = 0.09999999999999432）
-  // 会让「同样减重 0.1kg」时好时坏，落进 -8G 的扣分档。
-  const deltaRaw=prev-d.wt; // 正=减轻
-  const delta=Math.round(deltaRaw*10)/10;
-  if(delta>=0.5)return{pts:30,delta,prev};
-  if(delta>=0.1)return{pts:15,delta,prev};
-  if(delta>-0.1)return{pts:0,delta,prev}; // -0.1 < delta < 0.1（含 0），等价于 |delta|<0.1
-  if(delta>=-0.5)return{pts:-8,delta,prev};
-  return{pts:-15,delta,prev};
+  if(k<=WEIGHT_FREEZE_UNTIL){ // 历史锁定段：沿用旧口径，分数保持不变
+    const prev=lastSundayWeight(k);if(prev===null)return null;
+    // 浮点边界：先按 0.1kg 精度四舍五入再判档，否则 70.4-70.3 与 70.0-69.9 会时好时坏
+    const delta=Math.round((prev-d.wt)*10)/10;
+    return{pts:weightScoreOf(delta),delta,prev,rule:'legacy'};
+  }
+  const base=weightBaseOf(k);if(!base)return null;
+  const delta=Math.round((base.weight-d.wt)*10)/10;
+  return{pts:weightScoreOf(delta),delta,prev:base.weight,prevDate:base.date,rule:'lastSunday'};
 }
 function weightPtsToday(k){const wp=weightDeltaPts(k);return wp?wp.pts:0}
 // 某天达成的里程碑积分
@@ -2472,6 +2569,7 @@ function render(){
   if(!document.getElementById('pageTodo').classList.contains('hidden'))renderAllTodos();
   if(!document.getElementById('pageStats').classList.contains('hidden'))renderStatsPage();
   renderFocusPill();
+  if(typeof renderSyncWarn==='function')renderSyncWarn();
 }
 function renderTop(){
   document.getElementById('balVal').textContent=Math.round(totalBalance()*10)/10;
@@ -2756,7 +2854,7 @@ function renderWeight(){
   else{
     info=`基准体重：<b>${DB.meta.baselineWeight}kg</b>`;
     if(d.wt){info+=` · 今日：<b>${d.wt}kg</b>`;const wpt=weightDeltaPts(curDate);
-      if(wpt&&isSunday(curDate)){info+=` · 较上周(${wpt.prev}kg)变动 <b>${wpt.delta>=0?'-':'+'}${Math.abs(wpt.delta).toFixed(1)}kg</b> → <b style="color:${wpt.pts>=0?'var(--skill)':'var(--neg)'}">${wpt.pts>=0?'+':''}${wpt.pts}G</b>`}
+      if(wpt&&isSunday(curDate)){const cp=wpt.rule==='legacy'?'较上次':'较上周日',cq=wpt.rule==='legacy'?'':(wpt.prevDate?' · '+wpt.prevDate:'');info+=` · ${cp}(${wpt.prev}kg${cq})变动 <b>${wpt.delta>=0?'-':'+'}${Math.abs(wpt.delta).toFixed(1)}kg</b> → <b style="color:${wpt.pts>=0?'var(--skill)':'var(--neg)'}">${wpt.pts>=0?'+':''}${wpt.pts}G</b>`;if(wpt.rule==='legacy')info+='<span style="opacity:.6"> · 已按原口径结算（'+WEIGHT_NEW_RULE_FROM.slice(5)+' 起改为对比上周日）</span>'}
       else if(isSunday(curDate)){info+=' · 周日称重日，记录后自动结算'}
       else{info+=' · 非周日，仅记录不结算'}
     }
@@ -3098,7 +3196,7 @@ function renderEarnDetail(){
       });
     }
     dayWeeklyLines(k).forEach(l=>lines.push({...l,type:'week'}));
-    if(isSunday(k)){const wpt=weightDeltaPts(k);if(wpt)lines.push({label:'称重变动（较上周'+(wpt.delta>=0?'-':'+')+Math.abs(wpt.delta).toFixed(1)+'kg）',pts:wpt.pts,type:'week'})}
+    if(isSunday(k)){const wpt=weightDeltaPts(k);if(wpt)lines.push({label:'称重变动（'+(wpt.rule==='legacy'?'较上次':'较上周日')+(wpt.delta>=0?'-':'+')+Math.abs(wpt.delta).toFixed(1)+'kg）',pts:wpt.pts,type:'week'})}
     DB.milestones.filter(m=>m.date===k).forEach(m=>lines.push({label:m.desc,pts:m.pts,type:'earn'}));
     (DB.wheelLog||[]).filter(w=>w.date===k).forEach(w=>lines.push({label:wheelIcon(w)+' '+w.n,pts:w.g,date:k,buff:!!w.buff,type:'wheel'}));
     lines.forEach(l=>{
@@ -3822,7 +3920,7 @@ function exportExcel(){
     if(cred>0)earnRows.push(xlsRow([k,'补救','救赎抵减扣分',cred,'补救']));
     else if((getDay(k).resc||[]).length)earnRows.push(xlsRow([k,'补救','救赎(无扣分可抵,未生效)',0,'补救']));
     dayWeeklyLines(k).forEach(l=>earnRows.push(xlsRow([k,'每周任务',l.label,l.pts,'周任务'])));
-    if(isSunday(k)){const wpt=weightDeltaPts(k);if(wpt)earnRows.push(xlsRow([k,'每周任务','称重变动('+(wpt.delta>=0?'-':'+')+Math.abs(wpt.delta).toFixed(1)+'kg)',wpt.pts,'周任务']))}
+    if(isSunday(k)){const wpt=weightDeltaPts(k);if(wpt)earnRows.push(xlsRow([k,'每周任务','称重变动('+(wpt.rule==='legacy'?'较上次':'较上周日')+(wpt.delta>=0?'-':'+')+Math.abs(wpt.delta).toFixed(1)+'kg)',wpt.pts,'周任务']))}
     DB.milestones.filter(m=>m.date===k).forEach(m=>earnRows.push(xlsRow([k,'里程碑',m.desc,m.pts,'里程碑'])));
     earnRows.push(xlsRow([k,'合计','当日净积分',dayContribution(k),'合计']));
   });
@@ -4177,10 +4275,11 @@ function toggleTodo(id){
 function deleteTodo(id){
   const todos=getTodos(todoViewDate);
   const idx=todos.findIndex(x=>x.id===id);
-  if(idx>=0){todos.splice(idx,1);touchDay(todoViewDate);save();renderTodos();renderTodoHistory();}
+  if(idx>=0){tombAdd(todos[idx].id);todos.splice(idx,1);touchDay(todoViewDate);save();renderTodos();renderTodoHistory();}
 }
 function clearDoneTodos(){
   const d=getDay(todoViewDate);
+  (d.todos||[]).forEach(t=>{if(t&&t.done)tombAdd(t.id)});
   d.todos=(d.todos||[]).filter(t=>!t.done);
   touchDay(todoViewDate);
   save();renderTodos();renderTodoHistory();
@@ -4207,9 +4306,10 @@ function toggleWeekTodo(id){
 function deleteWeekTodo(id){
   const todos=getWeekTodos(todoViewWeek);
   const idx=todos.findIndex(x=>x.id===id);
-  if(idx>=0){todos.splice(idx,1);save();renderWeekTodos();renderTodoHistory();}
+  if(idx>=0){tombAdd(todos[idx].id);todos.splice(idx,1);save();renderWeekTodos();renderTodoHistory();}
 }
 function clearDoneWeekTodos(){
+  (DB.weekTodos[todoViewWeek]||[]).forEach(t=>{if(t&&t.done)tombAdd(t.id)});
   DB.weekTodos[todoViewWeek]=(DB.weekTodos[todoViewWeek]||[]).filter(t=>!t.done);
   save();renderWeekTodos();renderTodoHistory();
 }
@@ -4237,9 +4337,10 @@ function toggleMonthTodo(id){
 function deleteMonthTodo(id){
   const todos=getMonthTodos(todoViewMonth);
   const idx=todos.findIndex(x=>x.id===id);
-  if(idx>=0){todos.splice(idx,1);save();renderMonthTodos();renderTodoHistory();}
+  if(idx>=0){tombAdd(todos[idx].id);todos.splice(idx,1);save();renderMonthTodos();renderTodoHistory();}
 }
 function clearDoneMonthTodos(){
+  (DB.monthTodos[todoViewMonth]||[]).forEach(t=>{if(t&&t.done)tombAdd(t.id)});
   DB.monthTodos[todoViewMonth]=(DB.monthTodos[todoViewMonth]||[]).filter(t=>!t.done);
   save();renderMonthTodos();renderTodoHistory();
 }
