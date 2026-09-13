@@ -1025,7 +1025,7 @@ function load(){try{const r=localStorage.getItem(KEY);if(r){DB=JSON.parse(r);
    背景：曾因手机 PWA/浏览器缓存了旧 index.html，导致统计区渲染异常（兑换记录"对不上"）。
    此后每次发布新版本递增 APP_VERSION；用户打开时若发现版本变化，提示完全关闭重开，
    确保跑的是最新代码，避免旧缓存残留造成同类显示问题。 */
-const APP_VERSION='2026-09-12-32';
+const APP_VERSION='2026-09-13-35';
 try{
   const lastVer=localStorage.getItem('lpVer');
   if(lastVer&&lastVer!==APP_VERSION){
@@ -1397,14 +1397,22 @@ function mergeSyncData(local,cloud){
       src.forEach(x=>{const kk=typeof x==='string'?x:x.k;if(kk&&!have.has(kk)){cur.push(x);have.add(kk)}});
     });
   }
-  // 下项×2 buff 队列：同类型取两端较大计数（防两端各自使用导致超发/丢失）；旧单值 pendingNext 一并并入
-  const pb=(out.pendingBuffs||[]).concat(out.pendingNext==='study'||out.pendingNext==='any'?[out.pendingNext]:[]);
-  const cb=(cloud.pendingBuffs||[]).concat(cloud.pendingNext==='study'||cloud.pendingNext==='any'?[cloud.pendingNext]:[]);
-  const cnt=t=>a=>a.filter(x=>x===t).length;
-  const mk=t=>{const m=Math.max(cnt(t)(pb),cnt(t)(cb));const r=[];for(let i=0;i<m;i++)r.push(t);return r};
-  out.pendingBuffs=mk('study').concat(mk('any'));
+  // 下项×2 buff 队列（-35 幂等化）：按 id 并集，消费用墓碑(usedBuffs)传播，不再"取较大计数"。
+  // 旧写法与"消费=删除"方向相反 → 已消费的 buff 会被对端旧包复活，一次抽奖的 ×2 被用两次。
+  const _pn=v=>(v==='study'||v==='any')?[{id:'lg-pn-'+v,t:v}]:[]; // 旧单值字段并入（确定性 id，两端一致）
+  out.pendingBuffs=mergeBuffById(normBuffList(out.pendingBuffs).concat(_pn(out.pendingNext)),
+                                 normBuffList(cloud.pendingBuffs).concat(_pn(cloud.pendingNext)));
+  out.usedBuffs=mergeUsedById(out.usedBuffs,cloud.usedBuffs);
+  {const _us=new Set(out.usedBuffs);out.pendingBuffs=out.pendingBuffs.filter(x=>!_us.has(x.id))} // 只留未消费
   out.pendingNext=null;
-  if(!out.quest&&cloud.quest)out.quest=cloud.quest;
+  // quest（转盘加学挑战）：已结算的挑战绝不复活。
+  // 结算凭据 = wheelLog 里带同一 questId 的记录；上面第 3b 步已把云端 wheelLog 并入 out.wheelLog，
+  // 所以云端那笔结算记录在这里一定看得到。
+  // 旧写法只判断"本机为空就补云端"，导致结算后云端旧值反复回灌、挑战面板常驻（且会随上传把云端旧值钉死）。
+  const _qSettled=q=>!!(q&&q.id&&(out.wheelLog||[]).some(w=>w&&w.questId===q.id));
+  if(out.quest&&_qSettled(out.quest))out.quest=null;              // 本机残留的已结算挑战 → 清掉
+  if(!out.quest&&cloud.quest&&!_qSettled(cloud.quest))out.quest=cloud.quest;
+  if(out.quest&&_qSettled(out.quest))out.quest=null;              // 云端补进来的若也已结算 → 一并清掉
   // 4) 里程碑按 key 去重
   const mmap={};(out.milestones||[]).forEach(m=>{if(m.k)mmap[m.k]=m});
   (cloud.milestones||[]).forEach(m=>{if(m.k&&!mmap[m.k])mmap[m.k]=m});
@@ -1829,6 +1837,46 @@ const WHEEL=[
   {id:'big',    n:'大额暴击 +10G',             w:10, kind:'big10'},
 ];
 const DAY_BUFF_RATE=0.15; // 日积月累加成比例（原 30% 调低为 15%：一次 0.5G 抽中回报超百倍过强）
+/* ---- 「下项×2」buff 队列：幂等模型（-35）------------------------------
+   旧模型 pendingBuffs:['study','any']，消费 = splice 删除；
+   而合并按"同类型取两端较大计数" → 方向相反，已消费的会被对端旧包复活。
+   新模型：
+     pendingBuffs:[{id,t}]  只保留"未消费"的
+     usedBuffs   :[id]      消费墓碑（只增不减）
+     有效队列 = pendingBuffs 中 id 不在 usedBuffs 里的
+     合并     = 两边各自按 id 并集（真幂等）→ 消费随墓碑传播，旧包复活不了
+   迁移：旧字符串按「同类型序号」生成确定性 id（lg-<t>-<n>）。
+         确定性是必须的——两端各自迁移同一份旧数据必须得到相同 id，
+         否则一条 buff 会变两条，正是要修的 bug。
+--------------------------------------------------------------------- */
+const BUFF_TOMB_CAP=1000; // 墓碑上限（消费次数极少，多年都触不到；留足是为了绝不给旧包留复活窗口）
+function normBuffList(p){
+  const seq={},out=[];
+  (Array.isArray(p)?p:[]).forEach(x=>{
+    if(x&&typeof x==='object'&&x.id&&(x.t==='study'||x.t==='any')){out.push({id:String(x.id),t:x.t});return}
+    const t=(typeof x==='string')?x:(x&&x.t);
+    if(t!=='study'&&t!=='any')return;
+    const n=seq[t]=(seq[t]||0)+1;
+    out.push({id:'lg-'+t+'-'+(n-1),t});
+  });
+  return out;
+}
+function mergeBuffById(a,b){const m=new Map();[...a,...b].forEach(x=>{if(x&&x.id)m.set(x.id,{id:String(x.id),t:x.t})});return [...m.values()]}
+function mergeUsedById(a,b){const s=new Set();[...(Array.isArray(a)?a:[]),...(Array.isArray(b)?b:[])].forEach(x=>{if(typeof x==='string'&&x)s.add(x)});return [...s]}
+// 有效队列：未消费的 ×2（界面计数、消费取用都走这里，口径唯一）
+function buffQueue(){
+  const us=new Set(Array.isArray(DB.usedBuffs)?DB.usedBuffs:[]);
+  return normBuffList(DB.pendingBuffs).filter(x=>!us.has(x.id));
+}
+function migrateBuffs(){
+  DB.pendingBuffs=normBuffList(DB.pendingBuffs);
+  if(DB.pendingNext==='study'||DB.pendingNext==='any'){DB.pendingBuffs.push({id:'lg-pn-'+DB.pendingNext,t:DB.pendingNext});DB.pendingNext=null}
+  let used=Array.isArray(DB.usedBuffs)?DB.usedBuffs.filter(x=>typeof x==='string'&&x):[];
+  const us=new Set(used);
+  DB.pendingBuffs=DB.pendingBuffs.filter(b=>!us.has(b.id)); // 剪枝：只留未消费（已消费的由墓碑记账）
+  if(used.length>BUFF_TOMB_CAP)used=used.slice(-BUFF_TOMB_CAP);
+  DB.usedBuffs=used;
+}
 function ensureWheelFields(){
   // 类型守卫：账目必须是数组、状态必须是对象（损坏备份/误导入会令 .reduce/.forEach 崩溃，此处归一兜底）
   DB.wheelLog=Array.isArray(DB.wheelLog)?DB.wheelLog:[];
@@ -1836,13 +1884,11 @@ function ensureWheelFields(){
   DB.doubled=(DB.doubled&&typeof DB.doubled==='object'&&!Array.isArray(DB.doubled))?DB.doubled:{};
   if(DB.quest&&typeof DB.quest!=='object')DB.quest=null;
   if(DB.quest===undefined)DB.quest=null;
-  // 「下项×2」buff 队列：旧版为单值 DB.pendingNext → 迁移为数组 DB.pendingBuffs（可连续抽中多次、各自生效）
-  if(DB.pendingNext==='study'||DB.pendingNext==='any'){
-    if(!Array.isArray(DB.pendingBuffs))DB.pendingBuffs=[];
-    DB.pendingBuffs.push(DB.pendingNext);
-    DB.pendingNext=null;
-  }
-  DB.pendingBuffs=Array.isArray(DB.pendingBuffs)?DB.pendingBuffs.filter(x=>x==='study'||x==='any'):[];
+  // 已结算的挑战立即清除：结算记录带 questId，命中即说明这个挑战已经用掉了。
+  // 没有这一步，云端/历史备份里的旧值会让「📚 挑战：加学30分钟」面板常驻、点了没反应。
+  if(DB.quest&&DB.quest.id&&(DB.wheelLog||[]).some(w=>w&&w.questId===DB.quest.id))DB.quest=null;
+  // 「下项×2」buff 队列：统一交给 migrateBuffs（旧字符串→{id,t}，并剔除已消费项；见 -35 幂等模型）
+  migrateBuffs();
   Object.keys(DB.doubled).forEach(dk=>{if(!Array.isArray(DB.doubled[dk])){DB.doubled[dk]=[];return}const seen={};DB.doubled[dk]=DB.doubled[dk].filter(x=>{const kk=typeof x==='string'?x:x.k;if(seen[kk])return false;seen[kk]=1;return true})})
 }
 function wheelPick(){const tot=WHEEL.reduce((s,x)=>s+x.w,0);let r=Math.random()*tot;for(const x of WHEEL){if((r-=x.w)<0)return x}return WHEEL[WHEEL.length-1]}
@@ -1871,14 +1917,18 @@ function taskNameOf(tk){
   return t?t.n:tk;
 }
 function maybeConsumeNext(k){
-  const q=DB.pendingBuffs||[];
+  const q=buffQueue(); // 有效队列（已剔除消费过的）
   const arr=DB.doubled[curDate]=DB.doubled[curDate]||[];
   if(arr.some(x=>(typeof x==='string'?x:x.k)===k))return false; // 同任务已翻倍则不消耗 buff（勾选回弹等场景保护队列）
   // 取队列中「第一个能匹配当前任务」的 buff：any 匹配一切；study 只匹配学习任务。
   // 连续抽中多次 ×2 会依次消费：勾一个任务消耗一条，剩余 buff 保留给下一个任务。
-  const idx=q.findIndex(t=>t==='any'||(t==='study'&&isStudyTask(k)));
+  const idx=q.findIndex(b=>b.t==='any'||(b.t==='study'&&isStudyTask(k)));
   if(idx<0)return false;
-  const src=q.splice(idx,1)[0];
+  const src=q[idx].t;
+  // 消费 = 打墓碑（usedBuffs 只增不减，可安全并集/传播），不再靠"从数组删除"表达消费
+  if(!Array.isArray(DB.usedBuffs))DB.usedBuffs=[];
+  DB.usedBuffs.push(q[idx].id);
+  DB.pendingBuffs=normBuffList(DB.pendingBuffs).filter(b=>b.id!==q[idx].id); // 剪枝：只留未消费
   arr.push({k,src});
   // buff:true 仅作记录展示，不计入 totalBalance（翻倍收益已通过 dayCapBreakdown.bonus 全额入账）
   // 故 g 直接用该任务「多给的一份」原始分，不再用 dayNet 前后差（后者会因软上限边际而失真）
@@ -1888,7 +1938,7 @@ function maybeConsumeNext(k){
   const tag=src==='study'?'精力充沛':'经验暴击';
   DB.wheelLog.push({id:uid(),kind:'buff',ts:Date.now(),date:curDate,n:tag+'翻倍·'+taskNameOf(k),g,buff:true});
   // 提示剩余：让用户清楚队列里还有几个 ×2（同任务当日只触发一次，剩余会跨天保留给后续学习/任务）
-  const left=q.filter(x=>x==='study'||x==='any').length;
+  const left=buffQueue().length;
   try{if(left>0&&window.showFocusToast)showFocusToast(tag+'已生效：'+taskNameOf(k)+' 得分 ×2（队列还剩 ×2 共 '+left+' 个）')}catch(e){}
   return true;
 }
@@ -1929,8 +1979,8 @@ function spinWheel(depth,acc){
     DB.wheelLog.push(Object.assign(wk,{kind:'state',n:already?'日积月累·重复抽到（不叠加）':'日积月累·今日任务+15%',g:0}));
     acc.push({n:prize.n,eff:already?'今日任务 +15% 已生效，本次重复抽到不会叠加（0.5G 已扣除）':'今日所有任务积分 +15%（立即生效）'});
   }
-  else if(prize.kind==='nextStudy'){DB.pendingBuffs=(DB.pendingBuffs||[]).concat('study');DB.wheelLog.push(Object.assign(wk,{kind:'state',n:'精力充沛·下项学习任务×2',g:0}));acc.push({n:prize.n,eff:'下一项学习任务积分 ×2（勾选即触发，可累计）'})}
-  else if(prize.kind==='nextAny'){DB.pendingBuffs=(DB.pendingBuffs||[]).concat('any');DB.wheelLog.push(Object.assign(wk,{kind:'state',n:'经验暴击·下项任务×2',g:0}));acc.push({n:prize.n,eff:'下一项任务积分 ×2（勾选即触发，可累计）'})}
+  else if(prize.kind==='nextStudy'){DB.pendingBuffs=(DB.pendingBuffs||[]).concat({id:uid(),t:'study'});DB.wheelLog.push(Object.assign(wk,{kind:'state',n:'精力充沛·下项学习任务×2',g:0}));acc.push({n:prize.n,eff:'下一项学习任务积分 ×2（勾选即触发，可累计）'})}
+  else if(prize.kind==='nextAny'){DB.pendingBuffs=(DB.pendingBuffs||[]).concat({id:uid(),t:'any'});DB.wheelLog.push(Object.assign(wk,{kind:'state',n:'经验暴击·下项任务×2',g:0}));acc.push({n:prize.n,eff:'下一项任务积分 ×2（勾选即触发，可累计）'})}
   else if(prize.kind==='respin'){DB.wheelLog.push(Object.assign(wk,{kind:'respin',n:'免费单抽',g:0}));acc.push({n:prize.n,eff:'免费再转一次！'});save();spinWheel(depth+1,acc);return;}
   save();showWheelModal(acc);render();
 }
@@ -2012,8 +2062,8 @@ function wheelStatusHtml(){
   if(DB.quest){h+='<div style="border:1px solid var(--accent);border-radius:10px;padding:10px;margin-top:10px;background:rgba(157,139,182,.08)"><b>📚 挑战：加学30分钟</b><div style="margin-top:6px"><button onclick="questDone()" style="margin-right:6px">完成 +20G</button><button onclick="questAbandon()">放弃 -20G</button></div></div>'}
   const buffs=[];
   if(DB.dayBuff30[curDate])buffs.push('日积月累（今日任务+15%）');
-  const qb=DB.pendingBuffs||[];
-  const nStudy=qb.filter(t=>t==='study').length,nAny=qb.filter(t=>t==='any').length;
+  const qb=buffQueue();
+  const nStudy=qb.filter(b=>b.t==='study').length,nAny=qb.filter(b=>b.t==='any').length;
   if(nStudy)buffs.push('精力充沛（下项学习任务×2）'+(nStudy>1?'×'+nStudy:''));
   if(nAny)buffs.push('经验暴击（下项任务×2）'+(nAny>1?'×'+nAny:''));
   if(buffs.length)h+='<div style="border:1px solid var(--border);border-radius:10px;padding:10px;margin-top:8px"><b>🎯 生效中</b><div style="margin-top:4px;font-size:13px">'+buffs.join('、')+'</div></div>';
@@ -3376,8 +3426,7 @@ function renderFocusPill(){
   const runningTxt=running.length?('⏱ '+running.map(s=>s.n).join('、')):'';
   const nTxt=list.length?'进行中 '+list.length+' 项':(total?('今日专注 '+total+' 分钟'):'');
   if(!expanded){
-    const q=DB.pendingBuffs||[];
-    const bCnt=q.filter(x=>x==='study'||x==='any').length;
+    const bCnt=buffQueue().length;
     const hintPaused=list.length>running.length?'（暂停 '+ (list.length-running.length) +'）':'';
     pill.innerHTML='<div style="text-align:center;padding:6px 4px;min-width:130px">'
       +'<div class="fp-name" style="margin-bottom:2px">'+nTxt+'</div>'
@@ -3426,8 +3475,8 @@ function renderFocusPill(){
     +'<button class="fp-sync" style="padding:5px 12px" onclick="event.stopPropagation();openManualAdd()">手动补录</button>'
     +'<button class="fp-reset" style="padding:5px 12px" onclick="event.stopPropagation();resetTodayFocus()">清空今日</button></div>';
   // 待用 ×2 buff 提示（保持现状：同任务当日只翻倍一次，队列跨天保留）
-  const q=DB.pendingBuffs||[];
-  const nStudy=q.filter(x=>x==='study').length,nAny=q.filter(x=>x==='any').length;
+  const q=buffQueue();
+  const nStudy=q.filter(b=>b.t==='study').length,nAny=q.filter(b=>b.t==='any').length;
   let bufLine='';
   if(nStudy||nAny){
     const parts=[];
@@ -3651,7 +3700,8 @@ function importData(e){
       if(obj[key]!==undefined&&(typeof obj[key]!=='object'||Array.isArray(obj[key]))){alert('导入失败：'+key+' 字段格式不对（原数据未动）');return}
     }
     if(obj.carryConvertedTotal!==undefined&&typeof obj.carryConvertedTotal!=='number'){alert('导入失败：carryConvertedTotal 字段格式不对（原数据未动）');return}
-    if(obj.pendingBuffs!==undefined&&(!Array.isArray(obj.pendingBuffs)||obj.pendingBuffs.some(x=>x!=='study'&&x!=='any'))){alert('导入失败：pendingBuffs 字段格式不对（原数据未动）');return}
+    if(obj.pendingBuffs!==undefined&&(!Array.isArray(obj.pendingBuffs)||obj.pendingBuffs.some(x=>x!=='study'&&x!=='any'&&!(x&&typeof x==='object'&&x.id&&(x.t==='study'||x.t==='any'))))){alert('导入失败：pendingBuffs 字段格式不对（原数据未动）');return}
+    if(obj.usedBuffs!==undefined&&(!Array.isArray(obj.usedBuffs)||obj.usedBuffs.some(x=>typeof x!=='string'))){alert('导入失败：usedBuffs 字段格式不对（原数据未动）');return}
     if(obj.meta!==undefined&&(typeof obj.meta!=='object'||Array.isArray(obj.meta))){alert('导入失败：meta 字段格式不对（原数据未动）');return}
     try{
       localStorage.setItem(KEY,JSON.stringify(obj));
