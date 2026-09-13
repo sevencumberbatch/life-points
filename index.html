@@ -359,6 +359,13 @@
   .step-status{font-size:12px;color:var(--muted);white-space:nowrap}
   .step-status.ok{color:var(--skill);font-weight:600}
 
+  /* 工间操格子：4 列等宽网格，列内纵向排列，窄屏只缩字号不挤压 */
+  .gjc-grid{display:flex;gap:6px;flex-wrap:nowrap}
+  .gjc-grid .gjc-cell{flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:6px 2px;text-align:center}
+  .gjc-grid .gjc-cell .box{margin:0 auto}
+  .gjc-grid .gjc-cell .tname{flex:none;white-space:nowrap;font-size:12px;line-height:1.25}
+  .gjc-grid .gjc-cell .tpts{min-width:0;text-align:center;font-size:11px;line-height:1.25}
+
   /* 便签待办 */
   .todo-input-row{display:flex;gap:8px;margin-bottom:10px}
   .todo-input-row input{flex:1;border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:14px;outline:none;transition:border-color .2s;background:var(--input-bg);color:var(--text)}
@@ -548,6 +555,17 @@
     .auth-card h2{font-size:18px}
     .auth-card input{padding:10px 12px;font-size:14px}
     .auth-card button{padding:10px;font-size:14px}
+    /* 工间操：窄屏进一步压缩字号与内边距，避免 +2G 与相邻勾选框重叠 */
+    .gjc-grid{gap:4px}
+    .gjc-grid .gjc-cell{padding:5px 1px;gap:3px}
+    .gjc-grid .gjc-cell .box{width:20px;height:20px}
+    .gjc-grid .gjc-cell .tname{font-size:11px}
+    .gjc-grid .gjc-cell .tpts{font-size:10px}
+    /* 步行步数：输入框独占一行 + 占位提示缩小，保证文字完整可见 */
+    .step-zone .step-row{flex-wrap:wrap;gap:8px}
+    .step-zone .step-row input{flex:1 1 100%}
+    .step-zone .step-row input::placeholder{font-size:13px}
+    .step-status{font-size:11px}
   }
   /* 超小屏（老旧手机） */
   @media(max-width:360px){
@@ -1025,7 +1043,7 @@ function load(){try{const r=localStorage.getItem(KEY);if(r){DB=JSON.parse(r);
    背景：曾因手机 PWA/浏览器缓存了旧 index.html，导致统计区渲染异常（兑换记录"对不上"）。
    此后每次发布新版本递增 APP_VERSION；用户打开时若发现版本变化，提示完全关闭重开，
    确保跑的是最新代码，避免旧缓存残留造成同类显示问题。 */
-const APP_VERSION='2026-09-13-37';
+const APP_VERSION='2026-09-13-38';
 try{
   const lastVer=localStorage.getItem('lpVer');
   if(lastVer&&lastVer!==APP_VERSION){
@@ -2639,10 +2657,10 @@ function gjcHtml(d){
   const done=gjcDone(d);
   const combo=done>=GJC_CUPS;
   let h='<div style="font-size:13px;font-weight:600;margin:8px 0 6px">🏢 工间操<span style="float:right;color:var(--skill);font-weight:600">'+done+'/'+GJC_CUPS+'次 · +'+gjcTotalPts(d)+'G'+(combo?'（含全勤+'+GJC_COMBO_PTS+'G）':'')+'</span></div>';
-  h+='<div style="display:flex;gap:6px;flex-wrap:wrap">';
+  h+='<div class="gjc-grid">';
   for(let i=1;i<=GJC_CUPS;i++){
     const isDone=!!d.t['gjc'+i];
-    h+='<div class="task'+(isDone?' done':'')+'" onclick="toggleGjc('+i+')" style="flex:1 1 0;min-width:0;padding:6px 4px;text-align:center"><div class="box" style="margin:0 auto"></div><div class="tname" style="white-space:nowrap;font-size:12px">第'+i+'次</div><div class="tpts" style="font-size:11px">+'+GJC_PTS+'G</div></div>';
+    h+='<div class="task gjc-cell'+(isDone?' done':'')+'" onclick="toggleGjc('+i+')"><div class="box"></div><div class="tname">第'+i+'次</div><div class="tpts">+'+GJC_PTS+'G</div></div>';
   }
   h+='</div>';
   h+='<div class="combo'+(combo?' active':'')+'" style="margin-top:6px"><span>🏢 工间操4次全勤</span><span id="combo-gjc-st">'+(combo?'已达成 +'+GJC_COMBO_PTS+'G':'未达成（做满4次 +'+GJC_COMBO_PTS+'G）')+'</span></div>';
