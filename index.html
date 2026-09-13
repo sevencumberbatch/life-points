@@ -937,6 +937,28 @@ function alignDevCountsV1(db){
     recalcCount(d,'study45');recalcCount(d,'studyDone');
   });
 }
+/* === 一次性计数对齐 V2（2026-09-13-42） ===
+   背景：9/13 忘记关闭「专注听课」计时器，页面长时间在线累积 560 分钟专注，同时该设备的
+   study45Dev 桶被推到物理上限 16；随后手动按 − 14 次抵消（study45FixDev=14）。
+   「Dev 满桶 + Fix 14」这套只增不减的结构会让 + 号彻底失灵（-41 已修好交互，这里清理存量数据）。
+   做法：把这天归一为「净额」——Dev 16 → 2（= 16−14），清空本机 Fix 桶，focusMinDev 清零。
+   **显示次数与积分完全不变**（净额守恒），只是内部状态不再卡上限、不再显示 9.3 小时专注。
+   幂等：仅当仍是挂机遗留态（Dev=16 且 Fix=14）时才执行一次，之后条件不再满足 → 永不重复干预。
+   调用点：① load() ② mergeSyncData 末尾（与 ALIGN_V1 同源，离线/在线都能自愈）。 */
+const ALIGN_V2_DAY='2026-09-13', ALIGN_V2_DEV='dwzaihkg5';
+function alignDevCountsV2(db){
+  try{
+    const d=db&&db.days&&db.days[ALIGN_V2_DAY];if(!d||!d.c)return 0;
+    const dev=d.c.study45Dev,fix=d.c.study45FixDev;
+    if(!dev||!fix)return 0;
+    if(dev[ALIGN_V2_DEV]!==16||fix[ALIGN_V2_DEV]!==14)return 0; // 只认挂机遗留态，之后不再干预
+    dev[ALIGN_V2_DEV]=2;
+    delete fix[ALIGN_V2_DEV];
+    if(d.c.focusMinDev&&d.c.focusMinDev[ALIGN_V2_DEV])d.c.focusMinDev[ALIGN_V2_DEV]=0;
+    recalcCount(d,'study45');
+    return 1;
+  }catch(e){return 0}
+}
 /* ==== 数据自检与污染防护（2026-09-12-32）====
    本系统是「多设备 + 云端双向合并」，合并天生要求**幂等**：同一条数据合并 1 次和 N 次，结果必须一模一样。
    历史上几次「莫名叠加」全部踩在这条线上：
@@ -1044,13 +1066,14 @@ function load(){try{const r=localStorage.getItem(KEY);if(r){DB=JSON.parse(r);
   if(!DB.meta)DB.meta={baselineWeight:null};
   if(typeof DB.meta.emotionRate!=='number'||!(DB.meta.emotionRate>0))DB.meta.emotionRate=5;
   alignDevCountsV1(DB); // -31：本地/离线场景也对齐一次
+  alignDevCountsV2(DB); // -42：清理 9/13 挂机遗留（净额守恒，不改分数）
   sanitizeCounters(DB); // -32：本地/离线场景同样钳制一次（越界计数削回物理上限）
 }}catch(e){}}
 /* === 版本检测：代码更新后提示用户完全关闭重开 ===
    背景：曾因手机 PWA/浏览器缓存了旧 index.html，导致统计区渲染异常（兑换记录"对不上"）。
    此后每次发布新版本递增 APP_VERSION；用户打开时若发现版本变化，提示完全关闭重开，
    确保跑的是最新代码，避免旧缓存残留造成同类显示问题。 */
-const APP_VERSION='2026-09-13-40';
+const APP_VERSION='2026-09-13-42';
 try{
   const lastVer=localStorage.getItem('lpVer');
   if(lastVer&&lastVer!==APP_VERSION){
@@ -1536,6 +1559,7 @@ function mergeSyncData(local,cloud){
   out.tombs=mergeTombs(out.tombs,cloud.tombs);
   applyTombs(out,out.tombs);
   alignDevCountsV1(out); // -31：合并后立即对齐历史污染日，确保上传/落盘的都是真值
+  alignDevCountsV2(out); // -42：合并后同样清理一次（云端旧包回传也会被就地归一）
   sanitizeCounters(out); // -32：合并后立即钳制越界计数（双保险：合并逻辑若再出问题，也无法把污染写出去）
   return out;
 }
@@ -3319,9 +3343,24 @@ function toggleMedPack(){const d=touchDay(curDate);d.t.medPack=!d.t.medPack;save
 // 会凭空翻倍却不经过转盘。故归零时必须撤销。revokeBuff 内部只挑最后一条匹配的 buff 行删除，可逆。
 function revokeIfZeroCount(d,k){if(!['study45','studyDone'].includes(k))return false;if((d.c[k]||0)>0)return false;return revokeBuff(k,{recalc:false})}
 function adjCount(k,n){const d=touchDay(curDate);if(k==='study45'||k==='studyDone'){
-  if(n>0){focusDevAdd(d,k,n);maybeConsumeNext(k);} // 先 +1 计数再触发翻倍，否则 taskBasePts 读到旧值(0→1 时精力充沛会记成 0)
-  else if(n<0){
-    const fk=k+'FixDev';if(!d.c[fk])d.c[fk]={};d.c[fk][myDev()]=(d.c[fk][myDev()]||0)+(-n);recalcCount(d,k);
+  const mk=k+'Dev',fk=k+'FixDev',me=myDev();
+  if(n>0){
+    // -41 修复「+ 号点不动」：先回补本机「手动撤销」桶 (FixDev)。
+    //   旧写法一味往 Dev 桶加，而 sanitizeCounters 把单桶钳在物理上限（study45/studyDone 各 16），
+    //   Dev 顶到上限后每次 +1 都被钳回，显示值一动不动 → 看起来就是按钮失灵（且毫无提示）。
+    //   先吃掉 FixDev 既让按钮恢复，也符合「把刚才撤销掉的那次加回来」的直觉。
+    if(d.c[fk]&&d.c[fk][me]>0){d.c[fk][me]-=1;recalcCount(d,k);}
+    else{
+      const cap=capOf(k),cur=(d.c[mk]&&d.c[mk][me])||0;
+      if(cur>=cap){try{showFocusToast('「'+taskNameOf(k)+'」本机今日计数已达上限 '+cap+' 次，无法再增加')}catch(e){}}
+      else focusDevAdd(d,k,n);
+    }
+    maybeConsumeNext(k); // 先 +1 计数再触发翻倍，否则 taskBasePts 读到旧值(0→1 时精力充沛会记成 0)
+  } else if(n<0){
+    // -41：减号优先扣本机 Dev 桶（自己的记录自己撤），避免 Dev 只增不减、很快撞上限；
+    //   本机没有可扣的（数值来自其它设备）才记 FixDev 做全局扣减。
+    if(d.c[mk]&&d.c[mk][me]>0){d.c[mk][me]-=1;recalcCount(d,k);}
+    else{if(!d.c[fk])d.c[fk]={};d.c[fk][me]=(d.c[fk][me]||0)+(-n);recalcCount(d,k);}
     revokeIfZeroCount(d,k); // 计数被减到 0：同步撤销翻倍
   }
   save();render();return;
