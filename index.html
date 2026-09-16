@@ -387,6 +387,70 @@
   .todo-clear-btn{background:var(--panel);border:1px solid var(--border);border-radius:6px;padding:3px 8px;cursor:pointer;font-size:11px;color:var(--muted)}
   .todo-clear-btn:hover{color:var(--neg);border-color:var(--neg)}
 
+  /* 次数包（疗程/储值次数：买了多少次、用了几次、还剩几次） */
+  .pack-input-row{display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+  .pack-input-row input{border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:14px;outline:none;transition:border-color .2s;background:var(--input-bg);color:var(--text);font-family:inherit}
+  .pack-input-row input:focus{border-color:var(--study)}
+  .pack-input-row #packName{flex:1;min-width:130px}
+  .pack-input-row #packTotal{width:96px}
+  .pack-input-row button{background:var(--btn);color:#fff;border:none;border-radius:8px;padding:8px 16px;cursor:pointer;font-size:13px;font-weight:600;white-space:nowrap}
+  .pack-input-row button:hover{opacity:.9}
+  .pack-summary{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+  .pack-sum-chip{font-size:12px;font-weight:600;padding:3px 10px;border-radius:20px;background:var(--panel);color:var(--muted);border:1px solid var(--border)}
+  .pack-sum-chip.warn{background:var(--full-bg);color:var(--full);border-color:var(--full-badge-bg)}
+  .pack-sum-chip.empty{background:var(--fat-bg);color:var(--fat);border-color:var(--fat)}
+  .pack-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px}
+  .pack-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 14px;box-shadow:var(--shadow);transition:border-color .15s}
+  .pack-card.low{border-color:var(--full)}
+  .pack-card.empty{border-color:var(--fat)}
+  .pack-card.archived{opacity:.62}
+  .pack-head{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+  .pack-name{font-size:15px;font-weight:700}
+  .pack-badge{font-size:10px;font-weight:700;padding:1px 7px;border-radius:20px;background:var(--full-bg);color:var(--full);white-space:nowrap}
+  .pack-badge.done{background:var(--fat-bg);color:var(--fat)}
+  .pack-badge.arch{background:var(--panel);color:var(--muted)}
+  /* 编辑/归档/删除收进标题行右侧：放到底部操作行会和「用一次/撤销」挤到换行 */
+  .pack-tools{margin-left:auto;display:flex;gap:2px;align-items:center}
+  .pack-tools button{background:none;border:none;color:var(--muted);cursor:pointer;font-size:15px;line-height:1;padding:3px 5px;border-radius:6px;transition:background .15s,opacity .15s;opacity:.85;font-family:inherit}
+  .pack-tools button:hover{background:var(--hover);opacity:1}
+  .pack-tools button.danger:hover{background:var(--fat-bg)}
+  .pack-sub{font-size:11px;color:var(--muted);margin-top:3px;line-height:1.5;overflow-wrap:anywhere;word-break:normal}
+  .pack-sub .exp-soon{color:var(--fat);font-weight:600}
+  .pack-main{display:flex;align-items:baseline;gap:5px;margin:8px 0 7px}
+  .pack-left{font-size:30px;font-weight:800;line-height:1;color:var(--study)}
+  .pack-card.low .pack-left{color:var(--full)}
+  .pack-card.empty .pack-left{color:var(--fat)}
+  .pack-unit{font-size:12px;color:var(--muted)}
+  .pack-bar{height:6px;background:var(--panel);border-radius:4px;overflow:hidden;margin-bottom:9px}
+  .pack-bar i{display:block;height:100%;background:var(--study);border-radius:4px;transition:width .25s}
+  .pack-card.low .pack-bar i{background:var(--full)}
+  .pack-card.empty .pack-bar i{background:var(--fat)}
+  .pack-acts{display:flex;gap:6px;align-items:center}
+  .pack-acts button{border:1px solid var(--border);background:var(--panel);color:var(--text);border-radius:8px;padding:5px 10px;cursor:pointer;font-size:12px;font-weight:600;font-family:inherit;transition:all .15s}
+  .pack-acts button:hover{background:var(--hover)}
+  .pack-acts button.primary{background:var(--btn);border-color:var(--btn);color:#fff;flex:1}
+  .pack-acts button.primary:hover{background:var(--btn-hover);opacity:.95}
+  .pack-acts button.danger:hover{color:var(--fat);border-color:var(--fat)}
+  .pack-edit-row{margin-bottom:8px}
+  .pack-edit-row label{display:block;font-size:11px;color:var(--muted);margin-bottom:3px;font-weight:600}
+  .pack-edit-row input{width:100%;border:1px solid var(--border);border-radius:8px;padding:6px 10px;font-size:13px;background:var(--input-bg);color:var(--text);outline:none;font-family:inherit}
+  .pack-edit-row input:focus{border-color:var(--study)}
+  /* 编辑态占满整行：一是字段有地方铺开，二是不会把同一排的卡片顶高留出空档 */
+  .pack-card.editing{grid-column:1/-1;border-color:var(--study)}
+  .pack-card.editing .pack-acts button.primary{flex:0 0 auto;min-width:96px}
+  .pack-edit-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px 12px;margin-bottom:10px}
+  .pack-edit-grid .pack-edit-row{margin-bottom:0}
+  .pack-arch-head{display:flex;align-items:center;gap:8px;margin:18px 0 8px;font-size:12px;color:var(--muted);font-weight:600}
+  .pack-arch-head::after{content:"";flex:1;height:1px;background:var(--border)}
+  .pack-empty-tip{font-size:13px;color:var(--muted);text-align:center;padding:24px 12px;border:1px dashed var(--border);border-radius:12px;line-height:1.8;grid-column:1/-1}
+  @media(hover:none){.pack-acts button:active{opacity:.75}}
+  /* 每日签到：一行 = 一条可勾选任务 + 右侧「改名/删除」图标按钮（复用 .task / .pack-tools 的观感） */
+  .signin-row{display:flex;align-items:center;gap:2px}
+  .signin-row .signin-task{flex:1;min-width:0}
+  .signin-row .pack-tools{flex-shrink:0}
+  .signin-edit{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin:6px 0;grid-column:1/-1}
+  .signin-edit .pack-acts button.primary{flex:0 0 auto;min-width:96px}
+
   /* 页面导航 */
   .page-nav{display:flex;gap:8px;margin-bottom:14px}
   .page-tab{flex:1;padding:10px 16px;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;border:2px solid var(--border);background:var(--card);color:var(--muted);transition:all .15s}
@@ -613,6 +677,7 @@
     <button class="page-tab active" id="tabMain" onclick="switchPage('main')">📋 积分主页</button>
     <button class="page-tab" id="tabStats" onclick="switchPage('stats')">📊 统计看板</button>
     <button class="page-tab" id="tabTodo" onclick="switchPage('todo')">📝 便签待办</button>
+    <button class="page-tab" id="tabPacks" onclick="switchPage('packs')">🎫 次数包</button>
   </div>
 
   <div id="pageMain">
@@ -685,6 +750,19 @@
     <div id="suppTasks"></div>
     <div class="combo" id="combo-supp">早午下晚睡五补剂都吃额外 +2G（总计7G）<span id="combo-supp-st">未达成</span></div>
     <div id="lifeTasks2"></div>
+  </div>
+
+  <!-- 每日签到 · 平台羊毛 -->
+  <div class="section">
+    <h2><span class="ic" style="background:#f59e0b">🧧</span>每日签到 · 平台羊毛</h2>
+    <div class="sub">每天一轮，签了就拿分 · 门槛低所以每条只 +1G（受软上限）· 不做不扣分 · 平台名自己加自己改</div>
+    <div class="pack-input-row">
+      <input type="text" id="signinName" placeholder="平台名，随便写，如：京东签到" onkeydown="if(event.key==='Enter')addSignin()">
+      <button onclick="addSignin()">添加</button>
+    </div>
+    <div class="pack-summary" id="signinSummary"></div>
+    <div id="signinList"></div>
+    <div class="combo" id="combo-signin">全部签完额外 +2G<span id="signinComboSt">未达成</span></div>
   </div>
 
   <!-- 周任务 -->
@@ -864,12 +942,27 @@
       <button onclick="exportExcel()">导出Excel（积分+便签）</button>
     </div>
   </div>
+
+  <div id="pagePacks" class="hidden">
+    <div class="section">
+      <h2><span class="ic" style="background:#0ea5e9">🎫</span>次数包 · 剩余次数</h2>
+      <div class="sub">买了多少次、用了几次、还剩几次一目了然 · 剩余 ≤2 会标黄提醒 · 纯记录，不参与积分</div>
+      <div class="pack-input-row">
+        <input type="text" id="packName" placeholder="名称，随便写，如：针灸" onkeydown="if(event.key==='Enter')addPack()">
+        <input type="number" id="packTotal" min="1" step="1" placeholder="总次数" onkeydown="if(event.key==='Enter')addPack()">
+        <button onclick="addPack()">添加</button>
+      </div>
+      <div class="pack-summary" id="packSummary"></div>
+      <div class="pack-grid" id="packGrid"></div>
+      <div id="packArchived"></div>
+    </div>
+  </div>
 </div>
 
 <script>
 /* ============ 数据层 ============ */
 const KEY='lifePointsV1';
-let DB={meta:{baselineWeight:null},days:{},weightLog:[],redeemLog:[],milestones:[],rescues:{},autoRedeem:true,weekTodos:{},monthTodos:{},lastTodoDate:null,lastTodoWeek:null,lastTodoMonth:null};
+let DB={meta:{baselineWeight:null},days:{},weightLog:[],redeemLog:[],milestones:[],rescues:{},autoRedeem:true,weekTodos:{},monthTodos:{},lastTodoDate:null,lastTodoWeek:null,lastTodoMonth:null,packs:[],signins:[]};
 let curDate=todayKey();
 let todoViewDate=todayKey();
 let todoViewWeek=weekStart(todayKey());
@@ -1072,6 +1165,32 @@ function load(){try{const r=localStorage.getItem(KEY);if(r){DB=JSON.parse(r);
   // 迁移/初始化：删除墓碑（-40 删除传播），并裁掉超过保留期的墓碑
   if(!DB.tombs||typeof DB.tombs!=='object')DB.tombs={};
   tombPrune();
+  // 初始化/迁移：次数包（疗程/储值次数）。老备份没有这个字段，必须补空数组；
+  // 并逐个归一设备桶与标量，避免手工改过的备份/导入的残缺数据让 render 崩溃。
+  if(!Array.isArray(DB.packs))DB.packs=[];
+  DB.packs=DB.packs.filter(p=>p&&typeof p==='object'&&p.id);
+  DB.packs.forEach(p=>{
+    if(!p.useDev||typeof p.useDev!=='object'||Array.isArray(p.useDev))p.useDev={};
+    if(!p.fixDev||typeof p.fixDev!=='object'||Array.isArray(p.fixDev))p.fixDev={};
+    p.total=(typeof p.total==='number'&&p.total>0)?Math.floor(p.total):Math.max(1,Math.floor(Number(p.total)||1));
+    if(typeof p.name!=='string')p.name=String(p.name==null?'':p.name)||'未命名';
+    if(typeof p.unit!=='string'||!p.unit)p.unit='次';
+    if(typeof p.org!=='string')p.org='';
+    if(typeof p.expire!=='string')p.expire='';
+    if(typeof p.note!=='string')p.note='';
+    if(typeof p.ts!=='number')p.ts=Date.now();
+    p.archived=!!p.archived;
+  });
+  // 初始化/迁移：每日签到平台清单。
+  // 只有当这个字段「从不存在」时才写入预置平台 —— 用户把预置项全删光后是空数组，
+  // 空数组同样满足 Array.isArray，所以不会又被塞回来（否则删了又长出来很烦人）。
+  if(!Array.isArray(DB.signins))seedSignins();
+  DB.signins=DB.signins.filter(s=>s&&typeof s==='object'&&s.id);
+  DB.signins.forEach(s=>{
+    if(typeof s.name!=='string'||!s.name.trim())s.name='未命名平台';
+    s.pts=(isFinite(Number(s.pts))&&Number(s.pts)>=0)?Math.round(Number(s.pts)*10)/10:SIGNIN_PTS;
+    if(typeof s.ts!=='number')s.ts=0;
+  });
   // 迁移：兑换/转盘记录补唯一 id（云合并按 id 去重，否则同一天同名多条会被压缩吞账）
   if(Array.isArray(DB.redeemLog))DB.redeemLog.forEach(r=>{if(r&&!r.id)r.id=uid()});
   if(Array.isArray(DB.wheelLog))DB.wheelLog.forEach(w=>{if(!w)return;if(!w.id)w.id=uid();if(!w.ts)w.ts=(parseKey(w.date||todayKey()).getTime()||Date.now())+43200000;if(!w.kind)w.kind=w.buff?'buff':(String(w.n).indexOf('加学30分钟')>=0?'quest':(String(w.n).indexOf('免费单抽')>=0?'respin':'draw'))});
@@ -1087,7 +1206,7 @@ function load(){try{const r=localStorage.getItem(KEY);if(r){DB=JSON.parse(r);
    背景：曾因手机 PWA/浏览器缓存了旧 index.html，导致统计区渲染异常（兑换记录"对不上"）。
    此后每次发布新版本递增 APP_VERSION；用户打开时若发现版本变化，提示完全关闭重开，
    确保跑的是最新代码，避免旧缓存残留造成同类显示问题。 */
-const APP_VERSION='2026-09-13-43';
+const APP_VERSION='2026-09-16-46';
 try{
   const lastVer=localStorage.getItem('lpVer');
   if(lastVer&&lastVer!==APP_VERSION){
@@ -1483,6 +1602,8 @@ function applyTombs(db,tm){
   Object.keys(dd).forEach(k=>{const day=dd[k];if(day&&Array.isArray(day.todos))day.todos=tombFilterById(day.todos,tm)});
   ['weekTodos','monthTodos'].forEach(f=>{const m=db[f];if(!m||typeof m!=='object')return;Object.keys(m).forEach(k=>{if(Array.isArray(m[k]))m[k]=tombFilterById(m[k],tm)})});
   ['wheelLog','redeemLog'].forEach(f=>{if(Array.isArray(db[f]))db[f]=tombFilterById(db[f],tm)});
+  if(Array.isArray(db.packs))db.packs=tombFilterById(db.packs,tm); // 次数包：删除靠墓碑传播，否则被删的包会被云端旧副本拉回来
+  if(Array.isArray(db.signins))db.signins=tombFilterById(db.signins,tm); // 每日签到平台：同理
   return db;
 }
 function mergeTombs(a,b){
@@ -1569,6 +1690,56 @@ function mergeSyncData(local,cloud){
     });
     out[field]=loc;
   });
+  // 5b) 次数包按 id 合并。两条规则：
+  //     · 设备桶(useDev/fixDev)：本机桶本地权威（「撤销」这类减量必须能传出去）、他机桶信任云端
+  //       —— 与 mergeDay 的 *Dev 规则完全一致；绝不能两端相加，否则「用一次」会翻倍。
+  //     · 标量字段(名称/总次数/单位/机构/有效期/备注/归档)：最后改动者胜（按包级 ts）。
+  //     删除不在这里处理，靠墓碑传播（applyTombs 过滤）。
+  {
+    const _ME=myDev();
+    const map={};
+    (Array.isArray(out.packs)?out.packs:[]).forEach(p=>{if(p&&p.id)map[p.id]=JSON.parse(JSON.stringify(p))});
+    (Array.isArray(cloud.packs)?cloud.packs:[]).forEach(cp=>{
+      if(!cp||!cp.id)return;
+      const lp=map[cp.id];
+      if(!lp){map[cp.id]=JSON.parse(JSON.stringify(cp));return}
+      ['useDev','fixDev'].forEach(f=>{
+        const a=(lp[f]&&typeof lp[f]==='object'&&!Array.isArray(lp[f]))?lp[f]:{};
+        const b=(cp[f]&&typeof cp[f]==='object'&&!Array.isArray(cp[f]))?cp[f]:{};
+        const dst={};
+        Object.keys(b).forEach(dv=>{dst[dv]=b[dv]});          // 他机桶：云端才是它最新一次上传
+        Object.keys(a).forEach(dv=>{
+          if(dv===_ME)dst[dv]=a[dv];                          // 本机桶：本地唯一书写者 → 本地权威
+          else if(dst[dv]===undefined)dst[dv]=a[dv];          // 云端没有的桶（本地新设备/离线）保留
+        });
+        lp[f]=dst;
+      });
+      if((cp.ts||0)>(lp.ts||0)){
+        ['name','total','unit','org','expire','note','archived'].forEach(k=>{if(cp[k]!==undefined)lp[k]=cp[k]});
+        lp.ts=cp.ts;
+      }
+    });
+    out.packs=Object.values(map);
+  }
+  // 5c) 每日签到平台清单按 id 合并。比次数包简单：没有设备桶，名称/分值都只是标量。
+  //     · 同名但 id 不同 = 两条独立平台（不做名字去重，免得用户故意建两条同名）
+  //     · 标量（名称/分值）最后改动者胜（按条目 ts）
+  //     · 删除不在这里处理，靠墓碑传播（applyTombs 过滤）
+  //     打卡记录本身在 days[k].t['sg_'+id] 里，走 mergeDay 的 t 合并，这里不用管。
+  {
+    const map={};
+    (Array.isArray(out.signins)?out.signins:[]).forEach(s=>{if(s&&s.id)map[s.id]=JSON.parse(JSON.stringify(s))});
+    (Array.isArray(cloud.signins)?cloud.signins:[]).forEach(cs=>{
+      if(!cs||!cs.id)return;
+      const ls=map[cs.id];
+      if(!ls){map[cs.id]=JSON.parse(JSON.stringify(cs));return}
+      if((cs.ts||0)>(ls.ts||0)){
+        ['name','pts'].forEach(k=>{if(cs[k]!==undefined)ls[k]=cs[k]});
+        ls.ts=cs.ts;
+      }
+    });
+    out.signins=Object.values(map);
+  }
   // 6) 专注零头跨设备合并：按设备维度记账（-43 改为与 *Dev 计数同规则）
   // 旧写法「同设备取较大值」和计数桶犯的是同一个错：把零头减回来（比如清掉挂机时长）会被云端旧值弹回。
   if(cloud.focusCarryDev&&typeof cloud.focusCarryDev==='object'){
@@ -2295,6 +2466,9 @@ function dayRawPts(k){
   LIFE2.forEach(t=>{if(d.t[t.k])add(t.k,t.pts)});
   base+=lampPts(d);
   base+=gjcTotalPts(d);
+  // 每日签到：直接进 base，不走 add()/taskMult —— 1G 的小事不参与 ×2 翻倍，
+  // 也就不必配合 maybeConsumeNext，buff 队列不会被签到白白消耗掉。
+  base+=signinTotalPts(d);
   let p=base+bonus;
   // 日积月累+15%：只对基础分(base，不含翻倍 bonus)加成，翻倍奖励不再乘 15%
   if(DB.dayBuff30&&DB.dayBuff30[k])p=base+bonus+Math.round(base*DAY_BUFF_RATE);
@@ -2332,6 +2506,7 @@ function dayCapBreakdown(k){
   normal+=waterCupsPts(d);
   normal+=lampPts(d);
   normal+=gjcTotalPts(d);
+  normal+=signinTotalPts(d);   // 每日签到：走普通渠道，受 50G 软上限（不给全额待遇）
   SKILL.forEach(t=>{if(d.t[t.k])reg(t.k,t.pts,!!t.full)});
   LIFE1.forEach(t=>{if(d.t[t.k])reg(t.k,t.pts,false)});
   if(LIFE1_COMBO.need.every(x=>d.t[x]))normal+=LIFE1_COMBO.pts;
@@ -2617,12 +2792,13 @@ function checkMilestones(){
 /* ============ 渲染 ============ */
 function render(){
   renderTop();
-  renderFat();renderStudy();renderSkill();renderLife();
+  renderFat();renderStudy();renderSkill();renderLife();renderSignin();
   renderWeekly();renderWeight();renderPenalty();renderRescue();
   renderShop();renderStats();renderDetail();
   if(typeof renderBackup==='function')renderBackup();
   if(!document.getElementById('pageTodo').classList.contains('hidden'))renderAllTodos();
   if(!document.getElementById('pageStats').classList.contains('hidden'))renderStatsPage();
+  if(!document.getElementById('pagePacks').classList.contains('hidden'))renderPacks();
   renderFocusPill();
   if(typeof renderSyncWarn==='function')renderSyncWarn();
 }
@@ -4032,7 +4208,7 @@ function exportExcel(){
 async function resetConfirm(){
   if(!confirm('⚠️ 确认清空全部数据？此操作不可逆！\n\n所有打卡、积分、记录都将删除。\n建议先点「导出数据」留一份备份。'))return;
   if(!confirm('再次确认：所有打卡、积分、记录都将删除。\n（若已连接云同步，云端数据也会一并清空，从 0 开始）'))return;
-  DB={meta:{baselineWeight:null},days:{},weightLog:[],redeemLog:[],milestones:[],rescues:{},autoRedeem:true,weekTodos:{},monthTodos:{},lastTodoDate:null,lastTodoWeek:null,lastTodoMonth:null};
+  DB={meta:{baselineWeight:null},days:{},weightLog:[],redeemLog:[],milestones:[],rescues:{},autoRedeem:true,weekTodos:{},monthTodos:{},lastTodoDate:null,lastTodoWeek:null,lastTodoMonth:null,packs:[],signins:[]};
   clearAutoRedeemDoneMark(); // 重置后从 0 开始，当天可重新自动兑换
   // 专注计时数据存在独立的 localStorage 键（lpFocus），不属于 DB，必须单独清，
   // 否则清空后侧边胶囊里还挂着上一份数据的计时任务（甚至可继续打卡进新账，凭空多分）。
@@ -4120,6 +4296,313 @@ function toggleWater(n){
   const k='water'+n;
   d.t[k]=!d.t[k];
   save();render();
+}
+
+/* ============ 每日签到（平台羊毛 · 每日任务） ============
+   用途：把「各大平台每天签到领积分」变成每日任务里的一类，做了打勾拿分。
+   定位：门槛极低的小事，所以每条只给 1G（受 50G 软上限，不是白送）；不做不扣分，
+        平台羊毛是可选项，没做不该罚 —— 但会在汇总条上显示「未完成」，起催促作用。
+
+   数据结构：DB.signins = [{id, name, pts, ts}]
+   打卡记录：写在当天 days[k].t['sg_'+id] 里，值 = 打勾那一刻的分值（**冻结**）。
+     为什么冻结分值、而不是只存 true：
+     历史分数是按 days[k].t 实时重算的（totalBalance 逐日重算 dayNet）。若只存 true、
+     分值却每次从条目上取，那改一次分值会把过去每一天的分数一起改掉。把当时的分值存下来，
+     改分值就只影响将来（当天已打勾的那条会跟着更新，见 saveSigninEdit）。
+
+   删除走墓碑（tombAdd）—— 与次数包同源，否则云同步会把删掉的平台从云端旧副本拉回来。
+   不参与 ×2 翻倍 buff：加分时不走 reg()/taskMult，也不会消费「下次任意任务翻倍」队列。 */
+let signinEditId=null;              // 正在编辑的平台 id（纯 UI 状态，不持久化）
+const SIGNIN_PTS=1;                 // 新增平台默认分值
+const SIGNIN_COMBO_PTS=2;           // 全部签完的额外奖励（与「洗漱三项 +1G」同一套路）
+const SIGNIN_PREFIX='sg_';
+/* 预置平台：只在「DB.signins 这个字段从不存在」时写入一次。
+   id 用固定值（sgd1…）而不是随机 uid —— 两台设备同时升级会各自初始化一次，
+   随机 id 会合出两份重复项，固定 id 天然去重。 */
+const SIGNIN_SEED=[
+  {id:'sgd1',name:'京东签到'},
+  {id:'sgd2',name:'支付宝签到'},
+  {id:'sgd3',name:'淘宝签到'},
+  {id:'sgd4',name:'银行 App 签到'},
+];
+function seedSignins(){
+  DB.signins=SIGNIN_SEED.map(s=>({id:s.id,name:s.name,pts:SIGNIN_PTS,ts:0}));
+}
+function getSignins(){if(!Array.isArray(DB.signins))DB.signins=[];return DB.signins}
+function signinFind(id){return getSignins().find(s=>s&&s.id===id)}
+function signinKey(id){return SIGNIN_PREFIX+id}
+function signinDone(d,sg){return !!(d&&d.t&&d.t[signinKey(sg.id)])}
+function signinDoneCount(d){let n=0;getSignins().forEach(sg=>{if(signinDone(d,sg))n++});return n}
+function signinAllDone(d){const l=getSignins();return l.length>0&&signinDoneCount(d)===l.length}
+/* 逐条分值之和。取记录里存下的值（冻结）；老数据若是布尔 true 则按 1 计。 */
+function signinPtsOf(d){
+  let s=0;
+  getSignins().forEach(sg=>{
+    const v=d&&d.t?d.t[signinKey(sg.id)]:0;
+    if(v)s+=(v===true?1:(Number(v)||0));
+  });
+  return Math.round(s*10)/10;
+}
+function signinComboPts(d){return signinAllDone(d)?SIGNIN_COMBO_PTS:0}
+function signinTotalPts(d){return Math.round((signinPtsOf(d)+signinComboPts(d))*10)/10}
+
+function addSignin(){
+  const el=document.getElementById('signinName');if(!el)return;
+  const name=(el.value||'').trim();
+  if(!name){alert('先填平台名，比如「京东签到」');el.focus();return}
+  getSignins().push({id:uid(),name:name,pts:SIGNIN_PTS,ts:Date.now()});
+  el.value='';save();render();el.focus();
+}
+function toggleSignin(id){
+  const sg=signinFind(id);if(!sg)return;
+  const d=touchDay(curDate),key=signinKey(id);
+  if(d.t[key])d.t[key]=false;                        // 取消：置 false（与 toggle 同规则）
+  else d.t[key]=Number(sg.pts)||SIGNIN_PTS;          // 打勾：把当时分值冻结进当天记录
+  save();render();
+}
+function editSignin(id){signinEditId=(signinEditId===id?null:id);renderSignin()}
+function saveSigninEdit(id){
+  const sg=signinFind(id);if(!sg)return;
+  const g=f=>{const el=document.getElementById('sgn-'+f+'-'+id);return el?el.value:''};
+  const name=(g('name')||'').trim();
+  if(!name){alert('名称不能为空');return}
+  let pts=Number(g('pts'));
+  if(!isFinite(pts)||pts<0){alert('分值要填一个 ≥0 的数字');return}
+  pts=Math.round(pts*10)/10;
+  sg.name=name;sg.pts=pts;sg.ts=Date.now();
+  // 今天已经打过卡的那条跟着新分值走（历史日期不动，仍是当时冻结的值）
+  const tk=signinKey(id),td=DB.days&&DB.days[todayKey()];
+  if(td&&td.t&&td.t[tk])td.t[tk]=pts;
+  signinEditId=null;save();render();
+}
+function delSignin(id){
+  const sg=signinFind(id);if(!sg)return;
+  if(!confirm('删除「'+sg.name+'」？\n（本机记下这次删除，同步后其他设备也会删掉；历史打卡记录不再计分）'))return;
+  DB.signins=getSignins().filter(x=>x.id!==id);
+  tombAdd(id);                                       // 删除传播：否则下次云同步会被云端旧副本拉回来
+  if(signinEditId===id)signinEditId=null;
+  save();render();
+}
+
+function renderSignin(){
+  const box=document.getElementById('signinList');if(!box)return;
+  const d=getDay(curDate),list=getSignins();
+  const v=s=>escapeHtml(s==null?'':String(s));
+  if(!list.length){
+    box.innerHTML='<div class="pack-empty-tip">还没有平台。<br>在上面输入框里加一个，比如「京东签到」</div>';
+  }else{
+    box.innerHTML=list.map(sg=>{
+      // 编辑态：原地展开成表单
+      if(signinEditId===sg.id){
+        return '<div class="signin-edit">'
+          +'<div class="pack-edit-grid">'
+            +'<div class="pack-edit-row"><label>平台名</label><input id="sgn-name-'+sg.id+'" value="'+v(sg.name)+'"></div>'
+            +'<div class="pack-edit-row"><label>分值</label><input type="number" min="0" step="0.5" id="sgn-pts-'+sg.id+'" value="'+(Number(sg.pts)||0)+'"></div>'
+          +'</div>'
+          +'<div class="pack-acts">'
+            +'<button class="primary" onclick="saveSigninEdit(\''+sg.id+'\')">保存</button>'
+            +'<button onclick="editSignin(\''+sg.id+'\')">取消</button>'
+          +'</div></div>';
+      }
+      const pts=Number(sg.pts)||0;
+      return '<div class="signin-row">'
+        +'<div class="signin-task">'
+          +taskRow({k:signinKey(sg.id),n:sg.name,std:'',pts:pts},signinDone(d,sg),'toggleSignin(\''+sg.id+'\')')
+        +'</div>'
+        +'<span class="pack-tools">'
+          +'<button onclick="editSignin(\''+sg.id+'\')" title="改名 / 改分值">✏️</button>'
+          +'<button class="danger" onclick="delSignin(\''+sg.id+'\')" title="删除">🗑</button>'
+        +'</span></div>';
+    }).join('');
+  }
+  // 汇总条：已签几个 + 「未完成」提示（不扣分，只做视觉催促）
+  const done=signinDoneCount(d),total=list.length;
+  const sumEl=document.getElementById('signinSummary');
+  if(sumEl){
+    if(!total)sumEl.innerHTML='<span class="pack-sum-chip">还没有签名平台</span>';
+    else if(done===total)sumEl.innerHTML='<span class="pack-sum-chip">已签 '+done+' / '+total+' · 全部完成</span>';
+    else sumEl.innerHTML='<span class="pack-sum-chip warn">已签 '+done+' / '+total+' · 未完成</span>';
+  }
+  const stEl=document.getElementById('signinComboSt');
+  if(stEl){
+    const ok=(total>0&&done===total);
+    stEl.textContent=ok?('已达成 +'+SIGNIN_COMBO_PTS+'G'):(total?'未达成':'无平台');
+  }
+}
+
+/* ============ 次数包（疗程 / 储值次数） ============
+   用途：记录「买了多少次、用了几次、还剩几次」，比如针灸 10 次。
+   纯提醒模块 —— 不参与任何计分，改动它不会影响余额、软上限或任何分数口径。
+
+   数据结构：DB.packs = [{
+     id, name, total, unit, org, expire, note, archived, ts,
+     useDev:{设备id:次数},   // 各设备记下的「用掉」
+     fixDev:{设备id:次数}    // 各设备记下的「撤销」
+   }]
+   已用 = max(0, sumDev(useDev) - sumDev(fixDev))；剩余 = max(0, 总次数 - 已用)
+
+   为什么按设备分桶记账，而不是存一个 used 数字：
+   与 study45/studyDone 是同一个坑 —— 「用一次」是加法、「撤销」是减法，只存单个总数时，
+   云同步里任意一端的旧值都会把对方的修正顶回去（-43 修的正是这个根因）。
+   分桶后沿用既有规则：本机桶本地权威（减量能传出去）、他机桶信任云端，幂等且不会两端相加翻倍。
+   删除走墓碑（tombAdd），否则刚删掉的包会被云端旧副本拉回来。 */
+let packEditId=null;   // 正在编辑的包 id（纯 UI 状态，不持久化）
+const PACK_LOW=2;      // 剩余 ≤ 此值时标黄提醒「快用完了」
+
+// 注意：getPacks 必须返回 DB 上的**原数组**，不能返回过滤后的副本 ——
+// addPack 依赖它直接 push，若返回副本则 push 只写进临时数组，表现为「填了名称点添加没反应」。
+function getPacks(){if(!Array.isArray(DB.packs))DB.packs=[];return DB.packs}
+function validPacks(){return getPacks().filter(p=>p&&typeof p==='object'&&p.id)}
+function packFind(id){return getPacks().find(p=>p&&p.id===id)}
+function packUsed(p){return Math.max(0,sumDev(p&&p.useDev)-sumDev(p&&p.fixDev))}
+function packLeft(p){return Math.max(0,(Number(p&&p.total)||0)-packUsed(p))}
+function packPct(p){const t=Number(p&&p.total)||0;if(t<=0)return 0;return Math.min(100,Math.round(packUsed(p)/t*100))}
+// 有效期还剩几天：没填/格式不对返回 null；今天到期=0；已过期=负数
+function packDaysLeft(p){
+  if(!p||typeof p.expire!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(p.expire))return null;
+  try{return Math.round((parseKey(p.expire).getTime()-parseKey(todayKey()).getTime())/86400000)}catch(e){return null}
+}
+
+function addPack(){
+  const nmEl=document.getElementById('packName'),ttEl=document.getElementById('packTotal');
+  if(!nmEl||!ttEl)return;
+  const name=(nmEl.value||'').trim();
+  const total=Math.floor(Number(ttEl.value));
+  if(!name){alert('先填名称，比如「针灸」');nmEl.focus();return}
+  if(!(total>0)){alert('总次数要填一个大于 0 的整数');ttEl.focus();return}
+  getPacks().push({id:uid(),name:name,total:total,unit:'次',org:'',expire:'',note:'',archived:false,ts:Date.now(),useDev:{},fixDev:{}});
+  nmEl.value='';ttEl.value='';
+  save();renderPacks();
+  nmEl.focus();
+}
+function usePack(id){const p=packFind(id);if(!p)return;
+  if(!p.useDev||typeof p.useDev!=='object')p.useDev={};
+  p.useDev[myDev()]=(p.useDev[myDev()]||0)+1;
+  p.ts=Date.now();save();renderPacks();
+}
+function undoPack(id){const p=packFind(id);if(!p)return;
+  if(packUsed(p)<=0)return;                      // 一次都还没用，没有可撤销的
+  if(!p.fixDev||typeof p.fixDev!=='object')p.fixDev={};
+  p.fixDev[myDev()]=(p.fixDev[myDev()]||0)+1;
+  p.ts=Date.now();save();renderPacks();
+}
+function editPack(id){packEditId=(packEditId===id?null:id);renderPacks()}
+function savePackEdit(id){const p=packFind(id);if(!p)return;
+  const g=f=>{const el=document.getElementById('pk-'+f+'-'+id);return el?el.value:''};
+  const name=(g('name')||'').trim();
+  const total=Math.floor(Number(g('total')));
+  if(!name){alert('名称不能为空');return}
+  if(!(total>0)){alert('总次数要大于 0');return}
+  const used=packUsed(p);
+  if(total<used&&!confirm('总次数（'+total+'）比已用的（'+used+'）还少，保存后剩余会显示成 0。要继续吗？'))return;
+  p.name=name;p.total=total;
+  p.unit=((g('unit')||'').trim())||'次';
+  p.org=(g('org')||'').trim();
+  p.expire=(g('expire')||'').trim();
+  p.note=(g('note')||'').trim();
+  p.ts=Date.now();packEditId=null;save();renderPacks();
+}
+function archivePack(id){const p=packFind(id);if(!p)return;
+  p.archived=!p.archived;p.ts=Date.now();
+  if(packEditId===id)packEditId=null;
+  save();renderPacks();
+}
+function delPack(id){const p=packFind(id);if(!p)return;
+  if(!confirm('删除「'+p.name+'」？\n（本机记下这次删除，同步后其他设备也会删掉）'))return;
+  DB.packs=getPacks().filter(x=>x.id!==id);
+  tombAdd(id);                                   // 删除传播：否则下次云同步会把云端那份拉回来
+  if(packEditId===id)packEditId=null;
+  save();renderPacks();
+}
+
+function packCardHtml(p){
+  const left=packLeft(p),used=packUsed(p),total=Number(p.total)||0;
+  const cls=left<=0?'empty':(left<=PACK_LOW?'low':'');
+  const v=s=>escapeHtml(s==null?'':String(s));
+  // 编辑态：卡片原地展开成表单
+  if(packEditId===p.id){
+    return '<div class="pack-card editing">'
+      +'<div class="pack-edit-grid">'
+        +'<div class="pack-edit-row"><label>名称</label><input id="pk-name-'+p.id+'" value="'+v(p.name)+'"></div>'
+        +'<div class="pack-edit-row"><label>总次数</label><input type="number" min="1" step="1" id="pk-total-'+p.id+'" value="'+(total||1)+'"></div>'
+        +'<div class="pack-edit-row"><label>单位</label><input id="pk-unit-'+p.id+'" value="'+v(p.unit||'次')+'"></div>'
+        +'<div class="pack-edit-row"><label>机构 / 地点（可选）</label><input id="pk-org-'+p.id+'" value="'+v(p.org)+'" placeholder="如：XX中医院"></div>'
+        +'<div class="pack-edit-row"><label>有效期（可选）</label><input type="date" id="pk-expire-'+p.id+'" value="'+v(p.expire)+'"></div>'
+        +'<div class="pack-edit-row"><label>备注（可选）</label><input id="pk-note-'+p.id+'" value="'+v(p.note)+'" placeholder="如：卡号 8899 / 还剩 3 次可退"></div>'
+      +'</div>'
+      +'<div class="pack-acts">'
+        +'<button class="primary" onclick="savePackEdit(\''+p.id+'\')">保存</button>'
+        +'<button onclick="editPack(\''+p.id+'\')">取消</button>'
+      +'</div></div>';
+  }
+  const dl=packDaysLeft(p);
+  let sub='';
+  if(p.org)sub+=escapeHtml(p.org);
+  if(dl!==null){
+    const txt=dl<0?'已过期':(dl===0?'今天到期':('还剩 '+dl+' 天'));
+    sub+=(sub?' · ':'')+'<span class="'+(dl<=30?'exp-soon':'')+'">'+escapeHtml(p.expire)+'（'+txt+'）</span>';
+  }
+  if(p.note)sub+=(sub?' · ':'')+escapeHtml(p.note);
+  const badge=p.archived
+    ?'<span class="pack-badge arch">已归档</span>'
+    :(left<=0?'<span class="pack-badge done">已用完</span>'
+      :(left<=PACK_LOW?'<span class="pack-badge">快用完了</span>':''));
+  const tools='<span class="pack-tools">'
+    +'<button onclick="editPack(\''+p.id+'\')" title="编辑">✏️</button>'
+    +(p.archived?'':'<button onclick="archivePack(\''+p.id+'\')" title="归档（收起来，不再提醒）">📦</button>')
+    +'<button class="danger" onclick="delPack(\''+p.id+'\')" title="删除">🗑</button>'
+    +'</span>';
+  return '<div class="pack-card '+cls+(p.archived?' archived':'')+'">'
+    +'<div class="pack-head"><span class="pack-name">'+escapeHtml(p.name)+'</span>'+badge+tools+'</div>'
+    +(sub?'<div class="pack-sub">'+sub+'</div>':'')
+    +'<div class="pack-main"><span class="pack-left">'+left+'</span><span class="pack-unit">/ '+total+' '+escapeHtml(p.unit||'次')+'</span></div>'
+    +'<div class="pack-bar"><i style="width:'+packPct(p)+'%"></i></div>'
+    +'<div class="pack-acts">'
+      +(p.archived
+        ?'<button class="primary" onclick="archivePack(\''+p.id+'\')">恢复</button>'
+        :'<button class="primary" onclick="usePack(\''+p.id+'\')">用一次</button>'
+         +'<button onclick="undoPack(\''+p.id+'\')"'+(used<=0?' disabled style="opacity:.45;cursor:default"':'')+'>撤销</button>')
+    +'</div></div>';
+}
+
+function renderPacks(){
+  const grid=document.getElementById('packGrid');if(!grid)return;
+  const sumEl=document.getElementById('packSummary'),archEl=document.getElementById('packArchived');
+  const all=validPacks();
+  const active=all.filter(p=>!p.archived).sort((a,b)=>{
+    const la=packLeft(a),lb=packLeft(b);
+    if((la<=0)!==(lb<=0))return la<=0?1:-1;   // 用完的沉到底部
+    if(la!==lb)return la-lb;                  // 剩余少的排前面（快用完的先看见）
+    return (a.ts||0)-(b.ts||0);               // 其余按创建先后
+  });
+  const arch=all.filter(p=>p.archived).sort((a,b)=>(b.ts||0)-(a.ts||0));
+  // 汇总条：进行中 / 合计剩余 / 已用完 / 快用完 / 30 天内到期
+  if(sumEl){
+    const totalLeft=active.reduce((s,p)=>s+packLeft(p),0);
+    const low=active.filter(p=>{const l=packLeft(p);return l>0&&l<=PACK_LOW});
+    const empty=active.filter(p=>packLeft(p)<=0);
+    const expSoon=active.filter(p=>{const d=packDaysLeft(p);return d!==null&&d<=30});
+    const units=new Set(active.map(p=>p.unit||'次'));
+    let h='';
+    if(active.length){
+      h+='<span class="pack-sum-chip">进行中 '+active.length+' 个</span>';
+      h+='<span class="pack-sum-chip">合计剩余 '+totalLeft+(units.size===1?' '+escapeHtml([...units][0]):'')+'</span>';
+    }
+    if(low.length)h+='<span class="pack-sum-chip warn">快用完 '+low.length+' 个：'+low.map(p=>escapeHtml(p.name)).join('、')+'</span>';
+    if(empty.length)h+='<span class="pack-sum-chip empty">已用完 '+empty.length+' 个：'+empty.map(p=>escapeHtml(p.name)).join('、')+'</span>';
+    if(expSoon.length)h+='<span class="pack-sum-chip empty">30 天内到期 '+expSoon.length+' 个：'+expSoon.map(p=>escapeHtml(p.name)).join('、')+'</span>';
+    sumEl.innerHTML=h;
+  }
+  if(!active.length&&!arch.length){
+    grid.innerHTML='<div class="pack-empty-tip">还没有次数包。<br>在上面填「名称 + 总次数」就能记下，比如：针灸 · 10 次</div>';
+    if(archEl)archEl.innerHTML='';
+    return;
+  }
+  grid.innerHTML=active.length?active.map(packCardHtml).join('')
+    :'<div class="pack-empty-tip">进行中的次数包都清空了（用完的包可以「📦 归档」收起来）</div>';
+  if(archEl)archEl.innerHTML=arch.length
+    ?('<div class="pack-arch-head"><span>已归档（'+arch.length+'）</span></div><div class="pack-grid">'+arch.map(packCardHtml).join('')+'</div>')
+    :'';
 }
 
 /* ============ 便签待办 ============ */
@@ -4485,21 +4968,23 @@ function initCollapse(){
 
 /* ============ 页面切换 ============ */
 function switchPage(p){
-  const page=(p==='todo'||p==='stats')?p:'main';
+  const page=(p==='todo'||p==='stats'||p==='packs')?p:'main';
   const main=document.getElementById('pageMain');
   const todo=document.getElementById('pageTodo');
   const stats=document.getElementById('pageStats');
+  const packs=document.getElementById('pagePacks');
   // 顶部 tab 与底部导航栏（移动端）同步高亮
-  const TABS={main:['tabMain','navMain'],todo:['tabTodo','navTodo'],stats:['tabStats','navStats']};
-  [main,todo,stats].forEach(el=>{if(el)el.classList.add('hidden')});
+  const TABS={main:['tabMain','navMain'],todo:['tabTodo','navTodo'],stats:['tabStats','navStats'],packs:['tabPacks','navPacks']};
+  [main,todo,stats,packs].forEach(el=>{if(el)el.classList.add('hidden')});
   Object.keys(TABS).forEach(k=>TABS[k].forEach(id=>{
     const el=document.getElementById(id);if(el)el.classList.remove('active');
   }));
   TABS[page].forEach(id=>{const el=document.getElementById(id);if(el)el.classList.add('active')});
-  const panel=page==='todo'?todo:page==='stats'?stats:main;
+  const panel=page==='todo'?todo:page==='stats'?stats:page==='packs'?packs:main;
   if(panel)panel.classList.remove('hidden');
   if(page==='todo')renderAllTodos();
   else if(page==='stats')renderStatsPage();
+  else if(page==='packs')renderPacks();
   else render();
   // 切页回到顶部，并让可能因滚动而收起的顶栏复位
   try{window.scrollTo({top:0,behavior:'smooth'})}catch(e){try{window.scrollTo(0,0)}catch(e2){}}
@@ -4629,6 +5114,7 @@ if(isAuthed()){
   <button class="tab active" id="navMain" onclick="switchPage('main')"><span class="ti">📋</span><span>积分</span></button>
   <button class="tab" id="navStats" onclick="switchPage('stats')"><span class="ti">📊</span><span>统计</span></button>
   <button class="tab" id="navTodo" onclick="switchPage('todo')"><span class="ti">📝</span><span>便签</span></button>
+  <button class="tab" id="navPacks" onclick="switchPage('packs')"><span class="ti">🎫</span><span>次数</span></button>
 </nav>
 </body>
 </html>
