@@ -670,6 +670,7 @@
     </div>
   </div></div>
 
+  <div id="updateBar" style="display:none;margin:0 0 8px;padding:9px 12px;border-radius:10px;background:#eef6ff;border:1px solid #b9d8ff;color:#1b4b8f;font-size:13px;line-height:1.5;display:flex;align-items:center;gap:10px;flex-wrap:wrap"></div>
   <div class="sync-warn" id="syncWarn" style="display:none"></div>
 
   <!-- 页面导航 -->
@@ -1206,7 +1207,7 @@ function load(){try{const r=localStorage.getItem(KEY);if(r){DB=JSON.parse(r);
    背景：曾因手机 PWA/浏览器缓存了旧 index.html，导致统计区渲染异常（兑换记录"对不上"）。
    此后每次发布新版本递增 APP_VERSION；用户打开时若发现版本变化，提示完全关闭重开，
    确保跑的是最新代码，避免旧缓存残留造成同类显示问题。 */
-const APP_VERSION='2026-09-18-47';
+const APP_VERSION='2026-09-19-48';
 try{
   const lastVer=localStorage.getItem('lpVer');
   if(lastVer&&lastVer!==APP_VERSION){
@@ -1345,7 +1346,12 @@ function renderBackup(){const el=document.getElementById('backupBar');if(!el)ret
     let stColor=_sbReady?'var(--skill)':'var(--neg)', stText=_sbReady?'已连接':'连接中…';
     h+='<span>☁️ 云同步：<b style="color:'+stColor+'">'+stText+'</b> · 上次同步 '+cbStr;
     if(_sbLastErr)h+=' · <b style="color:var(--neg)">失败：'+_sbLastErr+'</b>';
+    else{let _same=false;try{_same=(contentSig()===_sbLocalSig)}catch(e){}
+      h+=_same?' · <b style="color:var(--skill)">改动已上传</b>':' · <b style="color:var(--neg)">有改动待上传</b>'}
     h+='</span>';
+    // -48：版本号与设备标识可见 —— 两端「版本必须相同、设备必须不同」，一眼可比，不必再猜
+    h+='<br><span>📦 版本 <b>'+APP_VERSION+'</b> · 本机设备 <b>'+String(myDev())+'</b>'
+      +' <span style="color:var(--muted)">（两台设备版本号应一致、设备号应不同）</span></span>';
   }else{
     h+='<span>☁️ 云同步：<b style="color:var(--muted)">未配置</b></span>';
   }
@@ -1362,8 +1368,8 @@ function renderBackup(){const el=document.getElementById('backupBar');if(!el)ret
     h+='</span>';
   }
   h+='<span style="display:flex;gap:6px;flex-wrap:wrap">';
-  if(cbEnv&&cbKey){h+='<button onclick="forceSync()">立即同步</button>';h+='<button onclick="syncDoctor()">🩺 同步诊断</button>';h+='<button onclick="restoreLocalFromCloud()">从云端恢复(以云为准)</button>';h+='<button onclick="overwriteCloudFromLocal()">覆盖云端(以本机为准)</button>';h+='<button onclick="restoreFromCloudHistory()">历史版本恢复('+(DB._history?DB._history.length:0)+')</button>'}
-  h+='<button onclick="configCloud()">'+(cbEnv?'同步设置':'配置云同步')+'</button></span>';
+  if(cbEnv&&cbKey){h+='<button onclick="forceSync()">立即同步</button>';h+='<button onclick="syncDoctor()">🩺 同步诊断</button>';h+='<button onclick="reconcile()">🔍 一键对账</button>';h+='<button onclick="restoreLocalFromCloud()">从云端恢复(以云为准)</button>';h+='<button onclick="overwriteCloudFromLocal()">覆盖云端(以本机为准)</button>';h+='<button onclick="restoreFromCloudHistory()">历史版本恢复('+(DB._history?DB._history.length:0)+')</button>'}
+  h+='<button onclick="exportAllData()">⬇️ 导出数据文件</button>';h+='<button onclick="importAllData()">⬆️ 导入数据文件</button>';h+='<button onclick="configCloud()">'+(cbEnv?'同步设置':'配置云同步')+'</button></span>';
   // 访问密码状态：必须真实反映是否设置过，不能无条件写死"已设置"，否则用户以为有密码保护、实际裸奔
   if(getAccessPass()){
     h+='<br><span>🔒 访问密码：<b style="color:var(--skill)">已设置</b> · 同一设备当天只需输一次</span>';
@@ -1894,6 +1900,187 @@ async function syncDoctor(){
   try{if(navigator.clipboard&&navigator.clipboard.writeText)await navigator.clipboard.writeText(txt)}catch(e){}
   prompt('云同步诊断（已尝试复制到剪贴板，可全选复制后发给我）',txt);
 }
+/* ===== -48 数据可观测性（2026-09-19）=====
+   背景：两端「对不上」时，过去只能靠猜 —— 因为页面上看不到版本号、看不到设备标识、
+   也看不到本机和云端到底哪一天哪一项不同。这一版把三件事都变成可见：
+     ① 设置区显示 版本号 / 本机设备号 / 本机改动是否已上传
+     ② 「一键对账」逐日 diff 本机 vs 云端，直接说出差异（只读，不改任何数据）
+     ③ 「导出/导入数据文件」把全部数据落成 JSON 文件，可自行留存、换设备恢复
+   同时新增「新版本提示条」：服务器上版本比自己新时，页面上直接提示刷新，
+   避免一端已升级、另一端还在跑旧缓存（这正是历史上多次「对不上」的源头）。 */
+
+// 用任意一份 DB 副本算总余额（临时换 DB，算完恢复）
+function balanceOf(db){
+  const bak=DB;
+  try{ DB=db; return totalBalance(); }
+  catch(e){ return NaN; }
+  finally{ DB=bak; }
+}
+
+function friendlyTs(t){ if(!t)return '0'; try{ return new Date(t).toLocaleString('zh-CN'); }catch(e){ return String(t); } }
+
+// 只读对账：拉云端 → 逐日逐项比对本机与云端，输出差异清单
+async function reconcile(){
+  if(!_sbReady){ alert('请先连接云同步（设置区 → 配置云同步）'); return; }
+  const sk=getSbSyncKey(); if(!sk){ alert('未设置同步密码'); return; }
+  let cloudData=null,cloudUpdated='';
+  try{
+    const r=await withTimeout(_sbApp.from('life_points').select('*').eq('sync_key',sk),30000,'对账·下载');
+    if(r.error)throw r.error;
+    if(r.data&&r.data.length){ cloudData=r.data[0].data; cloudUpdated=r.data[0].updated_at; }
+  }catch(e){ alert('拉取云端失败：'+humanErr(e)); return; }
+
+  const L=[];
+  L.push('【人生积分 · 数据对账】本机 vs 云端');
+  L.push('时间：'+new Date().toLocaleString('zh-CN')+'｜版本：'+APP_VERSION+'｜本机设备：'+myDev());
+  L.push('本机打开方式：'+location.protocol+'//'+location.host);
+  if(!cloudData){
+    L.push('');
+    L.push('云端暂无数据 —— 本机数据从未成功上传过。');
+    try{ if(navigator.clipboard&&navigator.clipboard.writeText)await navigator.clipboard.writeText(L.join('\n')); }catch(e){}
+    prompt('对账结果（已尝试复制到剪贴板）',L.join('\n'));
+    return;
+  }
+  L.push('云端更新于：'+(cloudUpdated?new Date(cloudUpdated).toLocaleString('zh-CN'):'?'));
+
+  let lb=NaN,cb=NaN;
+  lb=balanceOf(DB);
+  cb=balanceOf(JSON.parse(JSON.stringify(cloudData)));
+  const diff=Math.round((lb-cb)*10)/10;
+  L.push('');
+  L.push('本机总余额：'+lb);
+  L.push('云端总余额：'+cb);
+  L.push('差额（本机 − 云端）：'+diff+(diff===0?'   ✅ 一致':'   ⚠️ 不一致'));
+
+  L.push('');
+  L.push('—— 逐日差异 ——');
+  const dk=new Set([...Object.keys(DB.days||{}),...Object.keys(cloudData.days||{})]);
+  const issues=[];
+  [...dk].sort().forEach(k=>{
+    const a=(DB.days||{})[k]||{}, b=(cloudData.days||{})[k]||{};
+    const lines=[];
+    const ta=a.t||{}, tb=b.t||{};
+    const onlyLocal=[],onlyCloud=[];
+    new Set([...Object.keys(ta),...Object.keys(tb)]).forEach(x=>{
+      if((!!ta[x])!==(!!tb[x])){ if(ta[x])onlyLocal.push(x); else onlyCloud.push(x); }
+    });
+    if(onlyLocal.length)lines.push('只有本机打了勾：'+onlyLocal.join('、'));
+    if(onlyCloud.length)lines.push('只有云端打了勾：'+onlyCloud.join('、'));
+    const ca=a.c||{}, cz=b.c||{};
+    ['study45','studyDone','steps'].forEach(x=>{
+      const va=ca[x]||0, vb=cz[x]||0;
+      if(va!==vb)lines.push(x+'：本机 '+va+' / 云端 '+vb);
+    });
+    if((a._ts||0)!==(b._ts||0))lines.push('当天最后改动：本机 '+friendlyTs(a._ts)+' / 云端 '+friendlyTs(b._ts));
+    if((a.wt||null)!==(b.wt||null))lines.push('称重：本机 '+(a.wt===null||a.wt===undefined?'无':a.wt)+' / 云端 '+(b.wt===null||b.wt===undefined?'无':b.wt));
+    if(lines.length)issues.push({k,lines});
+  });
+  if(!issues.length)L.push('（逐日数据没有差异）');
+  else{
+    issues.slice(-40).forEach(x=>{ L.push(x.k+'：'); x.lines.forEach(t=>L.push('    · '+t)); });
+    if(issues.length>40)L.push('…另有 '+(issues.length-40)+' 天存在差异');
+  }
+
+  L.push('');
+  L.push('—— 其它字段 ——');
+  const cnt=x=>Array.isArray(x)?x.length:0;
+  const g=[];
+  if(cnt(DB.redeemLog)!==cnt(cloudData.redeemLog))g.push('兑换记录 本机 '+cnt(DB.redeemLog)+' 条 / 云端 '+cnt(cloudData.redeemLog)+' 条');
+  if(cnt(DB.wheelLog)!==cnt(cloudData.wheelLog))g.push('转盘记录 本机 '+cnt(DB.wheelLog)+' 条 / 云端 '+cnt(cloudData.wheelLog)+' 条');
+  if(cnt(DB.weightLog)!==cnt(cloudData.weightLog))g.push('称重记录 本机 '+cnt(DB.weightLog)+' 条 / 云端 '+cnt(cloudData.weightLog)+' 条');
+  if(cnt(DB.signins)!==cnt(cloudData.signins))g.push('签到平台 本机 '+cnt(DB.signins)+' 个 / 云端 '+cnt(cloudData.signins)+' 个');
+  if(cnt(DB.packs)!==cnt(cloudData.packs))g.push('次数包 本机 '+cnt(DB.packs)+' 个 / 云端 '+cnt(cloudData.packs)+' 个');
+  if(cnt(DB.milestones)!==cnt(cloudData.milestones))g.push('里程碑 本机 '+cnt(DB.milestones)+' 个 / 云端 '+cnt(cloudData.milestones)+' 个');
+  if(String(DB.autoRedeem)!==String(cloudData.autoRedeem))g.push('自动兑换开关 本机 '+DB.autoRedeem+' / 云端 '+cloudData.autoRedeem);
+  if(!g.length)g.push('（一致）');
+  g.forEach(x=>L.push('  · '+x));
+
+  L.push('');
+  L.push('说明：对账只读，不会改动任何数据。若本机余额偏低且上面列出了「只有云端打了勾」的项，');
+  L.push('说明那一项在云端有、本机丢了 —— 点「立即同步」合并一次即可补齐。');
+
+  const txt=L.join('\n');
+  try{ console.log(txt); }catch(e){}
+  try{ if(navigator.clipboard&&navigator.clipboard.writeText)await navigator.clipboard.writeText(txt); }catch(e){}
+  prompt('数据对账结果（已尝试复制到剪贴板，可全选复制后发我）',txt);
+}
+
+// 导出全部数据为 JSON 文件（可直接发给他人/换设备导入）
+function exportAllData(){
+  try{
+    const payload={app:'life-points',appVersion:APP_VERSION,exportedAt:new Date().toISOString(),device:myDev(),data:DB};
+    const txt=JSON.stringify(payload);
+    const name='人生积分-备份-'+todayKey()+'-'+Date.now().toString(36)+'.json';
+    const blob=new Blob([txt],{type:'application/json'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');a.href=url;a.download=name;
+    document.body.appendChild(a);a.click();
+    setTimeout(function(){try{document.body.removeChild(a);URL.revokeObjectURL(url)}catch(e){}},1500);
+    alert('已导出：'+name+'\n\n含 '+Object.keys(DB.days||{}).length+' 天数据，约 '+(txt.length/1024).toFixed(0)+'KB。\n建议存网盘或发给自己留一份。');
+  }catch(e){ alert('导出失败：'+((e&&e.message)||e)); }
+}
+
+// 从 JSON 文件导入（覆盖本机；导入前自动把本机旧数据存进浏览器备份）
+function importAllData(){
+  const inp=document.createElement('input');
+  inp.type='file';inp.accept='.json,application/json';inp.style.display='none';
+  document.body.appendChild(inp);
+  inp.onchange=function(){
+    const f=inp.files&&inp.files[0];
+    try{ document.body.removeChild(inp); }catch(e){}
+    if(!f)return;
+    const rd=new FileReader();
+    rd.onload=function(){
+      try{
+        let obj=null;
+        try{ obj=JSON.parse(rd.result); }catch(e){ throw new Error('文件不是有效的 JSON'); }
+        const data=(obj&&obj.data&&typeof obj.data==='object')?obj.data:obj;
+        if(!data||typeof data!=='object'||!data.days||typeof data.days!=='object')throw new Error('文件里没有 days 数据，可能不是本系统的备份');
+        const days=Object.keys(data.days).length;
+        const bal=balanceOf(JSON.parse(JSON.stringify(data)));
+        if(!confirm('导入文件：'+f.name+'\n含 '+days+' 天数据，余额 '+bal+'\n\n⚠️ 将【覆盖本机当前数据】。\n本机当前数据会先存入浏览器备份（可经「从浏览器恢复」找回）。\n\n确定继续？'))return;
+        try{ localStorage.setItem('lpSyncPreMergeBackup',JSON.stringify(DB)); }catch(e){}
+        const oldLocal=JSON.parse(JSON.stringify(DB));delete oldLocal._history;
+        let hist=Array.isArray(data._history)?data._history.slice():(DB._history||[]).slice();
+        hist.push({data:oldLocal,updated_at:new Date().toISOString(),ts:Date.now()});
+        data._history=trimHistory(hist);
+        data._updatedAt=Date.now();
+        DB=data;
+        try{ sanitizeCounters(DB);alignDevCountsV1(DB);alignDevCountsV2(DB); }catch(e){}
+        save();render();
+        alert('导入完成：'+days+' 天数据，余额 '+balanceOf(DB)+'。');
+        if(_sbReady&&getSbSyncKey()){
+          if(confirm('是否现在把导入的数据同步到云端？（会与云端做并集合并）'))cloudSync();
+        }
+      }catch(e){ alert('导入失败：'+((e&&e.message)||e)); }
+    };
+    rd.onerror=function(){ alert('读取文件失败'); };
+    rd.readAsText(f);
+  };
+  inp.click();
+}
+
+// 新版本提示：检查服务器上的 index.html 版本号，比本机新就弹提示条
+function hideUpdateBar(){ const e=document.getElementById('updateBar'); if(e)e.style.display='none'; }
+function showUpdateBar(ver){
+  const el=document.getElementById('updateBar'); if(!el)return;
+  el.style.display='flex';
+  el.innerHTML='<span>🆕 服务器上已有新版本 <b>'+ver+'</b>（你正在用 '+APP_VERSION+'）。点右侧刷新，并确认另一台设备也刷到同一版本。</span>'
+    +'<span style="margin-left:auto;white-space:nowrap"><button onclick="location.reload()">立即刷新</button><button onclick="hideUpdateBar()">稍后</button></span>';
+}
+async function checkNewVersion(){
+  try{
+    if(location.protocol!=='http:'&&location.protocol!=='https:')return; // 本地文件打开时跳过
+    if(!navigator.onLine)return;
+    const res=await fetch(location.pathname+'?_ver='+Date.now(),{cache:'no-store'});
+    if(!res.ok)return;
+    const txt=await res.text();
+    const m=txt.match(/APP_VERSION\s*=\s*'([^']+)'/);
+    if(m&&m[1]&&m[1]!==APP_VERSION)showUpdateBar(m[1]);
+  }catch(e){}
+}
+try{ setTimeout(checkNewVersion,4000); }catch(e){}
+
 async function cloudSync(){
   if(!_sbReady||_sbSyncing)return;
   const syncKey=getSbSyncKey();
