@@ -1207,7 +1207,7 @@ function load(){try{const r=localStorage.getItem(KEY);if(r){DB=JSON.parse(r);
    背景：曾因手机 PWA/浏览器缓存了旧 index.html，导致统计区渲染异常（兑换记录"对不上"）。
    此后每次发布新版本递增 APP_VERSION；用户打开时若发现版本变化，提示完全关闭重开，
    确保跑的是最新代码，避免旧缓存残留造成同类显示问题。 */
-const APP_VERSION='2026-09-19-48';
+const APP_VERSION='2026-09-19-49';
 try{
   const lastVer=localStorage.getItem('lpVer');
   if(lastVer&&lastVer!==APP_VERSION){
@@ -1344,7 +1344,7 @@ function renderBackup(){const el=document.getElementById('backupBar');if(!el)ret
   const cbEnv=getSbUrl();const cbKey=getSbAnonKey();const cbSync=lastCloudSync();const cbStr=cbSync?new Date(cbSync).toLocaleString('zh-CN'):'从未';
   if(cbEnv&&cbKey){
     let stColor=_sbReady?'var(--skill)':'var(--neg)', stText=_sbReady?'已连接':'连接中…';
-    h+='<span>☁️ 云同步：<b style="color:'+stColor+'">'+stText+'</b> · 上次同步 '+cbStr;
+    h+='<span>☁️ 云同步：<b style="color:'+stColor+'">'+stText+'</b> · 上次写入 '+cbStr+(_sbLastCheckAt?(' · 云端检查 '+_sbAgo(Date.now()-_sbLastCheckAt)):'');
     if(_sbLastErr)h+=' · <b style="color:var(--neg)">失败：'+_sbLastErr+'</b>';
     else{let _same=false;try{_same=(contentSig()===_sbLocalSig)}catch(e){}
       h+=_same?' · <b style="color:var(--skill)">改动已上传</b>':' · <b style="color:var(--neg)">有改动待上传</b>'}
@@ -1352,6 +1352,7 @@ function renderBackup(){const el=document.getElementById('backupBar');if(!el)ret
     // -48：版本号与设备标识可见 —— 两端「版本必须相同、设备必须不同」，一眼可比，不必再猜
     h+='<br><span>📦 版本 <b>'+APP_VERSION+'</b> · 本机设备 <b>'+String(myDev())+'</b>'
       +' <span style="color:var(--muted)">（两台设备版本号应一致、设备号应不同）</span></span>';
+    try{h+=_sbBalRow()}catch(e){}
   }else{
     h+='<span>☁️ 云同步：<b style="color:var(--muted)">未配置</b></span>';
   }
@@ -1389,7 +1390,12 @@ function renderSyncWarn(){
   if(_syncWarnHidden){el.style.display='none';return}
   if(!(getSbUrl()&&getSbAnonKey()&&getSbSyncKey())){el.style.display='none';return}
   let msg='',tip='';
-  const last=lastCloudSync();const lastT=last?new Date(last).getTime():0;
+  let btns='<button onclick="syncDoctor()">🩺 诊断</button><button onclick="retrySync()">立即重试</button><button onclick="dismissSyncWarn()">知道了</button>';
+  // -49：判据从「上次上传」改为「上次成功连上云端（探测即可）」。
+  //   -47 之后空闲时不再上传，若仍用上传时间，静置 10 分钟就会误报「云同步很久没有成功」。
+  const last=lastCloudSync();const lastCk=lastCloudCheck();
+  //   还并入本会话内存里的 _sbLastCheckAt（比落盘值更新，落盘有 60 秒节流）
+  const lastT=Math.max(last?((Date.parse(last)||0)):0,lastCk?((Date.parse(lastCk)||0)):0,_sbLastCheckAt||0);
   const mins=lastT?Math.floor((Date.now()-lastT)/60000):-1;
   if(_sbLastErr){
     msg='云同步失败';tip=_sbLastErr+'（改动只保存在本机，其它设备看不到）'+(_sbErrAt?('｜'+new Date(_sbErrAt).toLocaleTimeString('zh-CN')):'');
@@ -1397,15 +1403,20 @@ function renderSyncWarn(){
   }else if(!_sbReady){
     if(Date.now()-_sbBootAt<8000){el.style.display='none';return}
     msg='云同步未连接';tip='同步组件可能没加载成功（网络被拦或 CDN 不可达）。改动只保存在本机。';
+  }else if(_sbBalDiff()!==null&&_sbBalDiff()!==0){
+    const _d49=_sbBalDiff(),_lb49=Math.round(totalBalance()*10)/10;
+    msg="两端数据不一致";
+    tip="本机余额 "+_lb49+" · 云端余额 "+_sbCloudBalCache+"（本机"+(_d49>0?"多 ":"少 ")+Math.abs(_d49)+" 分）。点「立即同步」会按并集合并，把缺的记录补回来 —— 合并只增不减，不会丢东西。";
+    btns='<button onclick="forceSync()">立即同步</button><button onclick="reconcile()">🔍 一键对账</button><button onclick="dismissSyncWarn()">知道了</button>';
   }else if(!lastT||mins>=10){
-    msg='云同步已 '+(lastT?(mins+' 分钟'):'很久')+'没有成功';tip='改动可能还没上传到云端。';
+    msg='云同步已 '+(lastT?(mins+' 分钟'):'很久')+'没能连上云端';tip='可能是断网、代理/VPN 异常。改动仍保存在本机，联网后会自动补传。';
   }else{el.style.display='none';return}
   el.style.display='flex';
   el.style.alignItems='center';
   el.style.gap='10px';
   el.style.flexWrap='wrap';
   el.innerHTML='<span><span class="sw-t">⚠️ '+msg+'</span> · '+escapeHtml(tip)+'</span>'
-    +'<span style="margin-left:auto;white-space:nowrap"><button onclick="syncDoctor()">🩺 诊断</button><button onclick="retrySync()">立即重试</button><button onclick="dismissSyncWarn()">知道了</button></span>';
+    +'<span style="margin-left:auto;white-space:nowrap">'+btns+'</span>';
 }
 async function initBackup(){await loadDirHandle();if(_dirHandle){await scheduleBackup()}renderBackup();if(!localStorage.getItem(KEY)||Object.keys(DB.days||{}).length===0){const snap=await idbGet('snapshot');if(snap){if(confirm('检测到浏览器内自动备份，但当前无数据。是否恢复？')){DB=snap;save();render()}}}}
 
@@ -1421,6 +1432,29 @@ let _sbLastKick=0,_sbWinHooked=false;const _sbBootAt=Date.now();
 let _sbLastErrRaw='',_sbErrAt=0,_sbFailN=0,_sbSyncingAt=0,_sbPollOn=false,_sbPollTimer=null;
 let _sbCloudTsMs=parseInt(localStorage.getItem('lpSbCloudTs')||'0',10)||0;
 let _sbLocalSig=localStorage.getItem('lpSbLocalSig')||'';
+/* -49：本机 ↔ 云端 余额对照（纯内存，零网络开销）
+   背景：两端「对不上」时用户只能凭记忆比数字、凭猜定位。现在把两边余额与差额直接摆在设置区，
+   并在不一致时于页面顶部常驻提示 —— 差多少、差在哪端、下一步点什么，全写在明面上。 */
+let _sbCloudBalCache=null,_sbCloudBalAt=0,_sbLastCheckAt=0,_sbLastCheckSavedAt=0;
+function lastCloudCheck(){return localStorage.getItem("lpLastCheck")||""}   // -49：最近一次「成功连上云端」的时间（探测即可，不要求有上传）
+function _sbSetCloudBal(v){try{if(v===null||v===undefined){_sbCloudBalCache=null;_sbCloudBalAt=0;return}var _n=Number(v);if(isFinite(_n)){_sbCloudBalCache=Math.round(_n*10)/10;_sbCloudBalAt=Date.now()}}catch(e){}}
+function _sbAgo(ms){try{if(ms<0)return"—";const s=Math.floor(ms/1000);if(s<15)return"刚刚";if(s<60)return s+" 秒前";const m=Math.floor(s/60);if(m<60)return m+" 分钟前";const h=Math.floor(m/60);if(h<24)return h+" 小时前";return Math.floor(h/24)+" 天前"}catch(e){return"—"}}
+function _sbBalDiff(){try{if(_sbCloudBalCache===null)return null;return Math.round((totalBalance()-_sbCloudBalCache)*10)/10}catch(e){return null}}
+function _sbBalRow(){
+  try{
+    const lb=Math.round(totalBalance()*10)/10;
+    let s="<br><span>💰 本机余额 <b>"+lb+"</b>";
+    if(_sbCloudBalCache===null){s+=" · <span style=\"color:var(--muted)\">云端余额：同步一次后显示</span>"}
+    else{
+      const d=_sbBalDiff();
+      s+=" · 云端余额 <b>"+_sbCloudBalCache+"</b> · "+(d===0
+        ?"<b style=\"color:var(--skill)\">一致 ✅</b>"
+        :"<b style=\"color:var(--neg)\">不一致：本机"+(d>0?"多 ":"少 ")+Math.abs(d)+" 分</b>（点「立即同步」按并集合并补齐）");
+    }
+    return s+"</span>";
+  }catch(e){return""}
+}
+function _sbToastBal(before){try{const after=Math.round(totalBalance()*10)/10;if(Math.round((after-before)*10)/10!==0)showFocusToast("已与云端合并：余额 "+before+" → "+after)}catch(e){}}
 
 function getSbUrl(){return localStorage.getItem(SB_URL_KEY)||''}
 function getSbAnonKey(){return localStorage.getItem(SB_ANONKEY_KEY)||''}
@@ -1830,6 +1864,8 @@ function _sbMarkOk(iso){
   try{localStorage.setItem(KEY,JSON.stringify(DB))}catch(e){}
   try{localStorage.setItem('lpSbCloudTs',String(_sbCloudTsMs));localStorage.setItem('lpSbLocalSig',_sbLocalSig)}catch(e){}
   localStorage.setItem(SB_LASTSYNC,new Date().toISOString());
+  _sbSetCloudBal(balanceOf(DB));_sbLastCheckAt=Date.now();   // -49：推送成功后云端内容=本机内容，可直接对账
+  try{_sbLastCheckSavedAt=Date.now();localStorage.setItem('lpLastCheck',new Date().toISOString())}catch(e){}
   _sbClearErr();
 }
 async function sbInsert(syncKey){
@@ -2000,6 +2036,14 @@ async function reconcile(){
   L.push('说明那一项在云端有、本机丢了 —— 点「立即同步」合并一次即可补齐。');
 
   const txt=L.join('\n');
+  // -49：对账结果同时落成一个 txt（进「下载」文件夹），方便直接发给开发者核对
+  try{
+    const _blob=new Blob([txt],{type:'text/plain;charset=utf-8'});
+    const _u=URL.createObjectURL(_blob);
+    const _a=document.createElement('a');_a.href=_u;_a.download='人生积分-对账-'+todayKey()+'.txt';
+    document.body.appendChild(_a);_a.click();
+    setTimeout(function(){try{document.body.removeChild(_a);URL.revokeObjectURL(_u)}catch(e){}},1500);
+  }catch(e){}
   try{ console.log(txt); }catch(e){}
   try{ if(navigator.clipboard&&navigator.clipboard.writeText)await navigator.clipboard.writeText(txt); }catch(e){}
   prompt('数据对账结果（已尝试复制到剪贴板，可全选复制后发我）',txt);
@@ -2092,6 +2136,8 @@ async function cloudSync(){
     if(p.error)throw p.error;
     const prows=p.data||[];
     const cloudMs=prows.length?(Date.parse(prows[0].updated_at)||0):0;
+    _sbLastCheckAt=Date.now();   // -49：探测成功即「云端已检查」，与「上次写入」区分开
+    if(Date.now()-_sbLastCheckSavedAt>60000){_sbLastCheckSavedAt=Date.now();try{localStorage.setItem('lpLastCheck',new Date().toISOString())}catch(e){}}
     const needUpload=contentSig()!==_sbLocalSig;
     if(prows.length&&cloudMs===_sbCloudTsMs&&!needUpload){_sbClearErr();return} // 两端都没变 → 一个字节都不传
     if(prows.length&&cloudMs===_sbCloudTsMs){await sbPush(syncKey);return}      // 只有本机变了 → 只上传，不下载
@@ -2140,6 +2186,7 @@ async function cloudSync(){
     // 安全：合并前把本地整包留一个快照（升级保护，防止任何意外）
     try{localStorage.setItem('lpSyncPreMergeBackup',JSON.stringify(DB))}catch(e){}
     // 合并：基于本地，补入云端新内容（days 按 _ts 逐天合并 + 集合去重并集）
+    const _balBefore49=Math.round(balanceOf(DB)*10)/10;   // -49：合并前后对比，有变化时提示
     const merged=dataGuard(mergeSyncData(DB,cloudData),'sync'); // -32：合并后跑自检+钳制，异常不落盘
     // 历史保留（-47：只存本机）：把云端这一版存入本机历史，供「历史版本恢复」回溯
     let hist=prevHist;
@@ -2153,6 +2200,7 @@ async function cloudSync(){
     settleCarry();
     localStorage.setItem(KEY,JSON.stringify(DB));
     await sbPush(syncKey);
+    _sbToastBal(_balBefore49);
     render();
   }catch(e){
     _sbSetErr(e);
