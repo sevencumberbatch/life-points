@@ -1206,7 +1206,7 @@ function load(){try{const r=localStorage.getItem(KEY);if(r){DB=JSON.parse(r);
    背景：曾因手机 PWA/浏览器缓存了旧 index.html，导致统计区渲染异常（兑换记录"对不上"）。
    此后每次发布新版本递增 APP_VERSION；用户打开时若发现版本变化，提示完全关闭重开，
    确保跑的是最新代码，避免旧缓存残留造成同类显示问题。 */
-const APP_VERSION='2026-09-16-46';
+const APP_VERSION='2026-09-18-47';
 try{
   const lastVer=localStorage.getItem('lpVer');
   if(lastVer&&lastVer!==APP_VERSION){
@@ -1362,7 +1362,7 @@ function renderBackup(){const el=document.getElementById('backupBar');if(!el)ret
     h+='</span>';
   }
   h+='<span style="display:flex;gap:6px;flex-wrap:wrap">';
-  if(cbEnv&&cbKey){h+='<button onclick="forceSync()">立即同步</button>';h+='<button onclick="restoreLocalFromCloud()">从云端恢复(以云为准)</button>';h+='<button onclick="overwriteCloudFromLocal()">覆盖云端(以本机为准)</button>';h+='<button onclick="restoreFromCloudHistory()">云端历史恢复('+(DB._history?DB._history.length:0)+')</button>'}
+  if(cbEnv&&cbKey){h+='<button onclick="forceSync()">立即同步</button>';h+='<button onclick="syncDoctor()">🩺 同步诊断</button>';h+='<button onclick="restoreLocalFromCloud()">从云端恢复(以云为准)</button>';h+='<button onclick="overwriteCloudFromLocal()">覆盖云端(以本机为准)</button>';h+='<button onclick="restoreFromCloudHistory()">历史版本恢复('+(DB._history?DB._history.length:0)+')</button>'}
   h+='<button onclick="configCloud()">'+(cbEnv?'同步设置':'配置云同步')+'</button></span>';
   // 访问密码状态：必须真实反映是否设置过，不能无条件写死"已设置"，否则用户以为有密码保护、实际裸奔
   if(getAccessPass()){
@@ -1386,7 +1386,8 @@ function renderSyncWarn(){
   const last=lastCloudSync();const lastT=last?new Date(last).getTime():0;
   const mins=lastT?Math.floor((Date.now()-lastT)/60000):-1;
   if(_sbLastErr){
-    msg='云同步失败';tip='错误：'+_sbLastErr+' —— 改动只保存在本机，其它设备看不到。';
+    msg='云同步失败';tip=_sbLastErr+'（改动只保存在本机，其它设备看不到）'+(_sbErrAt?('｜'+new Date(_sbErrAt).toLocaleTimeString('zh-CN')):'');
+    if(_sbLastErrRaw&&_sbLastErrRaw!==_sbLastErr)tip+='｜原始信息：'+_sbLastErrRaw;
   }else if(!_sbReady){
     if(Date.now()-_sbBootAt<8000){el.style.display='none';return}
     msg='云同步未连接';tip='同步组件可能没加载成功（网络被拦或 CDN 不可达）。改动只保存在本机。';
@@ -1398,7 +1399,7 @@ function renderSyncWarn(){
   el.style.gap='10px';
   el.style.flexWrap='wrap';
   el.innerHTML='<span><span class="sw-t">⚠️ '+msg+'</span> · '+escapeHtml(tip)+'</span>'
-    +'<span style="margin-left:auto;white-space:nowrap"><button onclick="retrySync()">立即重试</button><button onclick="dismissSyncWarn()">知道了</button></span>';
+    +'<span style="margin-left:auto;white-space:nowrap"><button onclick="syncDoctor()">🩺 诊断</button><button onclick="retrySync()">立即重试</button><button onclick="dismissSyncWarn()">知道了</button></span>';
 }
 async function initBackup(){await loadDirHandle();if(_dirHandle){await scheduleBackup()}renderBackup();if(!localStorage.getItem(KEY)||Object.keys(DB.days||{}).length===0){const snap=await idbGet('snapshot');if(snap){if(confirm('检测到浏览器内自动备份，但当前无数据。是否恢复？')){DB=snap;save();render()}}}}
 
@@ -1410,6 +1411,10 @@ const SB_SYNCKEY='lpSbSyncKey';
 const SB_LASTSYNC='lpLastSbSync';
 let _sbApp=null,_sbReady=false,_sbSyncing=false,_syncTimer=null,_sbInterval=null,_sbLastErr='';
 let _sbLastKick=0,_sbWinHooked=false;const _sbBootAt=Date.now();
+/* -47：同步可靠性状态。云端时间戳基线/本机内容指纹持久化，刷新页面不重复传；失败计数用于退避 */
+let _sbLastErrRaw='',_sbErrAt=0,_sbFailN=0,_sbSyncingAt=0,_sbPollOn=false,_sbPollTimer=null;
+let _sbCloudTsMs=parseInt(localStorage.getItem('lpSbCloudTs')||'0',10)||0;
+let _sbLocalSig=localStorage.getItem('lpSbLocalSig')||'';
 
 function getSbUrl(){return localStorage.getItem(SB_URL_KEY)||''}
 function getSbAnonKey(){return localStorage.getItem(SB_ANONKEY_KEY)||''}
@@ -1456,7 +1461,7 @@ async function initCloud(){
   try{
     _sbApp=supabase.createClient(url,anonKey);
     _sbReady=true;
-    if(!_sbInterval){_sbInterval=setInterval(()=>cloudSync(),10000)} // -40：30s→10s，缩短"看到旧快照"的窗口
+    if(!_sbPollOn){_sbPollOn=true;scheduleNextPoll()} // -47：自适应轮询（正常 10s；连续失败自动退避到 60s）
     // -40：回到前台 / 网络恢复 / 窗口重获焦点时立刻同步一次。
     // 起因：原来只有 30s 轮询，而手机息屏、切到后台时浏览器会冻结计时器，回到前台也要干等下一轮。
     if(!_sbWinHooked){_sbWinHooked=true;
@@ -1767,87 +1772,205 @@ function mergeSyncData(local,cloud){
 }
 // -40：外部事件触发的「立即同步」。1.2s 内只跑一次，避免 visibilitychange/focus 连发时打爆请求。
 function kickSync(){const n=Date.now();if(n-_sbLastKick<1200)return;_sbLastKick=n;if(_sbReady)cloudSync()}
-// 提示条上的「立即重试」：已连上就立刻同步，没连上就重新尝试初始化（重下同步组件）
-function retrySync(){if(_sbReady){_sbLastKick=0;cloudSync()}else{ensureCloud()}}
+// 提示条上的「立即重试」：清掉失败退避，立刻同步一次，然后重排轮询
+function retrySync(){_sbFailN=0;if(_sbReady){_sbLastKick=0;cloudSync().then(scheduleNextPoll,scheduleNextPoll)}else{ensureCloud()}}
+
+/* ===== -47 云同步可靠性改造（2026-09-18）=====
+   症状：顶部常驻「云同步失败 · TypeError: Failed to fetch」，改动长期上不去。
+   实测：云端服务端完全正常（读 200 / 写 204，0.8~2.5 秒），问题出在「请求量」：
+     · 旧版每 10 秒无条件 select('*') 拉整包 —— 实测 478KB；
+     · 再无条件把整包传回去 —— 实测 410KB，其中 86%（351KB）是 _history 历史快照；
+     · 合起来一天约 3.4GB 流量；代理/移动网络下稍一抖动就 fetch 失败，而失败后没有任何退避，
+       于是"一直失败"且永远好不了。真正有用的数据其实只有 60KB 左右。
+   改造五点：
+     ① 轻量探测：每轮先只取 updated_at（约 0.1KB）。云端没变 + 本机没改 → 立刻返回，一个字节都不传；
+     ② 内容指纹：本机内容没变化就不重复上传（指纹持久化，刷新页面也不会重复传）；
+     ③ 上传包剔除 _history（历史快照只留本机），单次上传 410KB → 约 60KB；
+     ④ 15~45 秒超时保护 + 人话报错 + 连续失败自动退避（10s→20s→40s→60s）+ 卡死自愈；
+     ⑤ 新增「🩺 同步诊断」：一键测出到底是断网、密钥、权限还是体积问题。
+   ============================================ */
+const SIG_SKIP={_updatedAt:1,_guard:1,_history:1,_forcedSeen:1};
+function cloudPayload(){const o={};for(const k in DB){if(k==='_history')continue;o[k]=DB[k]}return o}
+function contentSig(){try{return JSON.stringify(cloudPayload(),function(k,v){return SIG_SKIP[k]?undefined:v})}catch(e){return ''}}
+function withTimeout(p,ms,label){
+  let timer=null;
+  const guard=new Promise(function(_,rej){timer=setTimeout(function(){const e=new Error('网络超时：'+(label||'请求')+'超过 '+(ms/1000)+' 秒没有响应');e._timeout=true;e._label=label||'请求';rej(e)},ms)});
+  return Promise.race([Promise.resolve(p),guard]).then(function(v){clearTimeout(timer);return v},function(e){clearTimeout(timer);throw e});
+}
+function humanErr(e){
+  const m=(e&&e.message)?e.message:String(e);
+  if(e&&e._timeout)return /超时/.test(m)?m:('网络超时：'+(e&&e._label?e._label:'请求')+'没有响应');
+  if(/Failed to fetch|NetworkError|Load failed|network error|ERR_/i.test(m))return '连不上云端服务器（断网、代理/VPN 异常，或该域名被拦截）';
+  if(/Invalid API key|No API key|apikey/i.test(m))return 'API Key 无效（可能已重置，请在「同步设置」里重新填写）';
+  if(/JWT|401/i.test(m))return '身份校验失败（API Key 不正确）';
+  if(/403|permission denied|row-level security|violates row-level/i.test(m))return '没有读写权限（云端权限设置问题）';
+  if(/42P01|does not exist/i.test(m))return '云端数据表不存在（缺少 life_points 表）';
+  if(/Payload Too Large|413/i.test(m))return '数据包太大被服务器拒绝';
+  if(/Invalid URL|Failed to parse URL/i.test(m))return '云端地址填写有误';
+  if(/\b5\d\d\b/.test(m))return '云端服务器暂时故障，稍后会自动重试';
+  return '未知错误：'+m;
+}
+function _sbSetErr(raw,human){
+  _sbLastErrRaw=(raw&&raw.message)?raw.message:String(raw);
+  _sbLastErr=human||humanErr(raw);
+  _sbErrAt=Date.now();_sbFailN=(_sbFailN||0)+1;
+}
+function _sbClearErr(){_sbLastErr='';_sbLastErrRaw='';_sbErrAt=0;_sbFailN=0}
+// 一次成功上传后统一收尾：刷新云端时间戳基线 + 本机内容指纹 + 成功时间
+function _sbMarkOk(iso){
+  DB._updatedAt=Date.now();
+  _sbCloudTsMs=Date.parse(iso)||Date.now();
+  _sbLocalSig=contentSig();
+  try{localStorage.setItem(KEY,JSON.stringify(DB))}catch(e){}
+  try{localStorage.setItem('lpSbCloudTs',String(_sbCloudTsMs));localStorage.setItem('lpSbLocalSig',_sbLocalSig)}catch(e){}
+  localStorage.setItem(SB_LASTSYNC,new Date().toISOString());
+  _sbClearErr();
+}
+async function sbInsert(syncKey){
+  const payload=cloudPayload();payload._updatedAt=Date.now();
+  const iso=new Date().toISOString();
+  const r=await withTimeout(_sbApp.from('life_points').insert({sync_key:syncKey,data:payload,updated_at:iso}).select('sync_key'),45000,'首次上传');
+  if(r.error)throw r.error;
+  _sbMarkOk(iso);
+}
+// 上传：包体已剔除 _history（历史只留本机）。用 .select('sync_key') 拿受影响行，
+// 一行都没更新到 = 云端还没有这条记录 → 自动改为新建，避免"更新成功但什么都没存"。
+async function sbPush(syncKey){
+  const payload=cloudPayload();payload._updatedAt=Date.now();
+  const iso=new Date().toISOString();
+  const r=await withTimeout(_sbApp.from('life_points').update({data:payload,updated_at:iso}).eq('sync_key',syncKey).select('sync_key'),45000,'上传');
+  if(r.error)throw r.error;
+  if(!r.data||!r.data.length){await sbInsert(syncKey);return}
+  _sbMarkOk(iso);
+}
+// 自适应轮询：正常 10 秒一轮；连续失败则 10s→20s→40s→60s 退避，成功即恢复 10 秒
+function scheduleNextPoll(){
+  if(!_sbPollOn)return;
+  if(_sbPollTimer)clearTimeout(_sbPollTimer);
+  const ms=_sbFailN?Math.min(60000,10000*Math.pow(2,Math.min(_sbFailN,3))):10000;
+  _sbPollTimer=setTimeout(async function(){
+    // 卡死自愈：上一轮超过 70 秒还没回来（网络假连接），强制解锁并重试
+    if(_sbSyncing&&Date.now()-_sbSyncingAt>70000){_sbSyncing=false;_sbSetErr('上一次同步长时间无响应，已自动重置','上一次同步长时间无响应，已自动重置，稍后重试')}
+    try{await cloudSync()}catch(e){}
+    scheduleNextPoll();
+  },ms);
+}
+// 一键诊断：把「连不上」拆成 读/下载/写 三步分别测，并报出本机与上传包体积
+async function syncDoctor(){
+  const L=[];
+  L.push('【人生积分系统 · 云同步诊断】');
+  L.push('时间：'+new Date().toLocaleString('zh-CN'));
+  L.push('版本：'+APP_VERSION+'｜打开方式：'+location.protocol+'//'+location.host);
+  L.push('网络：'+(navigator.onLine?'在线':'离线'));
+  L.push('浏览器：'+String(navigator.userAgent).slice(0,110));
+  L.push('云端地址：'+(getSbUrl()||'(未填)'));
+  L.push('API Key：'+(getSbAnonKey()?('已填，结尾 …'+getSbAnonKey().slice(-8)):'(未填)')+'｜同步密码：'+(getSbSyncKey()?'已设置':'未设置'));
+  const sk=getSbSyncKey();
+  if(_sbReady&&sk){
+    let t=Date.now();
+    try{const r=await withTimeout(_sbApp.from('life_points').select('updated_at').eq('sync_key',sk),15000,'诊断·读');
+      if(r.error)throw r.error;
+      L.push('① 读云端：✅ '+(r.data&&r.data.length?('成功，云端更新于 '+r.data[0].updated_at):'成功（云端暂无记录）')+' · '+(Date.now()-t)+'ms');
+    }catch(e){L.push('① 读云端：❌ '+(e&&e._timeout?e.message:humanErr(e))+'｜原始：'+(e&&e.message)+' · '+(Date.now()-t)+'ms')}
+    t=Date.now();
+    try{const r=await withTimeout(_sbApp.from('life_points').select('*').eq('sync_key',sk),30000,'诊断·下载');
+      if(r.error)throw r.error;
+      const sz=(r.data&&r.data.length)?JSON.stringify(r.data[0].data).length:0;
+      L.push('② 下载整包：✅ 云端包 '+(sz/1024).toFixed(0)+'KB · '+(Date.now()-t)+'ms');
+    }catch(e){L.push('② 下载整包：❌ '+(e&&e._timeout?e.message:humanErr(e))+'｜原始：'+(e&&e.message)+' · '+(Date.now()-t)+'ms')}
+    t=Date.now();
+    try{const r=await withTimeout(_sbApp.from('life_points').update({}).eq('sync_key',sk),15000,'诊断·写');
+      if(r.error)throw r.error;
+      L.push('③ 写入权限：✅ 成功（未改动任何数据）· '+(Date.now()-t)+'ms');
+    }catch(e){L.push('③ 写入权限：❌ '+(e&&e._timeout?e.message:humanErr(e))+'｜原始：'+(e&&e.message)+' · '+(Date.now()-t)+'ms')}
+  }else{
+    L.push('① 云同步未就绪：'+(_sbReady?'同步密码未设置':'同步组件未加载或未配置'));
+  }
+  const loc=JSON.stringify(DB).length,up=JSON.stringify(cloudPayload()).length;
+  L.push('④ 本机数据：'+(loc/1024).toFixed(0)+'KB｜上传包：'+(up/1024).toFixed(0)+'KB｜历史快照：'+((loc-up)/1024).toFixed(0)+'KB（只留本机，不上传）');
+  L.push('⑤ 上次成功同步：'+(lastCloudSync()?new Date(lastCloudSync()).toLocaleString('zh-CN'):'从未')+'｜连续失败：'+(_sbFailN||0)+' 次');
+  const txt=L.join('\n');
+  try{console.log(txt)}catch(e){}
+  try{if(navigator.clipboard&&navigator.clipboard.writeText)await navigator.clipboard.writeText(txt)}catch(e){}
+  prompt('云同步诊断（已尝试复制到剪贴板，可全选复制后发给我）',txt);
+}
 async function cloudSync(){
   if(!_sbReady||_sbSyncing)return;
   const syncKey=getSbSyncKey();
-  if(!syncKey){return}
-  _sbSyncing=true;
+  if(!syncKey)return;
+  _sbSyncing=true;_sbSyncingAt=Date.now();
   try{
-    const{data:rows,error}=await _sbApp.from('life_points').select('*').eq('sync_key',syncKey);
-    if(error)throw error;
-    const localTime=DB._updatedAt||0;
-    if(rows&&rows.length>0){
-      const cloud=rows[0];
-      const cloudTime=new Date(cloud.updated_at).getTime()||0;
-      const cloudData=JSON.parse(JSON.stringify(cloud.data));
-      // —— 权威版本机制（2026-09-12-30 拆除「自动整包覆盖」）——
-      // 旧逻辑：云端带 _forced 且本机版本不同 → DB=cloudData 整包覆盖本机。
-      // 事故根因：本机当天新记的打卡/兑换（如当天下午的自动兑换）尚未上传云端，
-      //   一旦命中该分支就被整包抹掉，且 autoRedeemDaily 的独立标记已置位 → 不会自动补回（9/12 事故）。
-      // 现逻辑：**永不自动整包覆盖本机**。改为「安全合并」——云端内容并进来，本机独有记录一律保留；
-      //   处理完记下 _forcedSeen 并把 _forced 置空随上传写回云端，令该标记一次性消费。
-      //   「以云为准」的强制覆盖仍保留，但只在你手动点按钮时发生（restoreLocalFromCloud）。
-      const cf=(cloudData._forced&&cloudData._forced.ver)||null;
-      const lf=DB._forced&&DB._forced.ver;
-      if(cf&&lf!==cf&&DB._forcedSeen!==cf){
-        try{localStorage.setItem('lpSyncPreMergeBackup',JSON.stringify(DB))}catch(e){}
-        let mForce;
-        try{mForce=mergeSyncData(DB,cloudData)}catch(e){mForce=DB}
-        mForce._forced=null;
-        mForce._forcedSeen=cf;
-        mForce._updatedAt=Date.now();
-        DB=mForce;
-        try{localStorage.setItem(KEY,JSON.stringify(DB))}catch(e){}
-        render();
-        const{error:upErr}=await _sbApp.from('life_points').update({data:DB,updated_at:new Date().toISOString()}).eq('sync_key',syncKey);
-        if(upErr)throw upErr;
-        localStorage.setItem(SB_LASTSYNC,new Date().toISOString());_sbLastErr='';
-        return;
-      }
-      // 本机带权威标记（刚手动恢复/本机覆盖过）：以本机为准整包上传覆盖一次，然后清标记恢复正常合并。
-      // 修复：原来只有云端带 _forced 才强制，本机自己的恢复结果在下一次 30s 同步时 cf===lf 会绕过强制
-      // 走正常合并 → 云端旧数据（如历史重复兑换 1000+ 条）又被并回刚恢复的干净备份 =「本地备份被云端覆盖」
-      if(lf){
-        sanitizeCounters(DB); // -32：整包上传前先钳制，避免把越界计数写回云端
-        DB._forced=null;
-        try{localStorage.setItem(KEY,JSON.stringify(DB))}catch(e){}
-        render();
-        const{error:upErr}=await _sbApp.from('life_points').update({data:DB,updated_at:new Date().toISOString()}).eq('sync_key',syncKey);
-        if(upErr)throw upErr;
-        localStorage.setItem(SB_LASTSYNC,new Date().toISOString());_sbLastErr='';
-        return;
-      }
-      // 安全：合并前把本地整包留一个快照（升级保护，防止任何意外）
+    // ① 轻量探测（约 0.1KB）。旧版这里直接 select('*') 拉 478KB 整包，是流量爆炸的第一来源。
+    const p=await withTimeout(_sbApp.from('life_points').select('updated_at').eq('sync_key',syncKey),15000,'探测云端');
+    if(p.error)throw p.error;
+    const prows=p.data||[];
+    const cloudMs=prows.length?(Date.parse(prows[0].updated_at)||0):0;
+    const needUpload=contentSig()!==_sbLocalSig;
+    if(prows.length&&cloudMs===_sbCloudTsMs&&!needUpload){_sbClearErr();return} // 两端都没变 → 一个字节都不传
+    if(prows.length&&cloudMs===_sbCloudTsMs){await sbPush(syncKey);return}      // 只有本机变了 → 只上传，不下载
+    // ② 云端有变化（或本机首次）→ 拉整包
+    const g=await withTimeout(_sbApp.from('life_points').select('*').eq('sync_key',syncKey),30000,'下载云端');
+    if(g.error)throw g.error;
+    const rows=g.data||[];
+    if(!rows.length){await sbInsert(syncKey);return}
+    const cloud=rows[0];
+    const cloudTime=Date.parse(cloud.updated_at)||0;
+    const cloudData=JSON.parse(JSON.stringify(cloud.data));
+    const prevHist=(DB._history||[]).slice(); // -47：历史快照以本机为准（不再上传，也不会被云端覆盖）
+    // —— 权威版本机制（2026-09-12-30 拆除「自动整包覆盖」）——
+    // 旧逻辑：云端带 _forced 且本机版本不同 → DB=cloudData 整包覆盖本机。
+    // 事故根因：本机当天新记的打卡/兑换（如当天下午的自动兑换）尚未上传云端，
+    //   一旦命中该分支就被整包抹掉，且 autoRedeemDaily 的独立标记已置位 → 不会自动补回（9/12 事故）。
+    // 现逻辑：**永不自动整包覆盖本机**。改为「安全合并」——云端内容并进来，本机独有记录一律保留；
+    //   处理完记下 _forcedSeen 并把 _forced 置空随上传写回云端，令该标记一次性消费。
+    //   「以云为准」的强制覆盖仍保留，但只在你手动点按钮时发生（restoreLocalFromCloud）。
+    const cf=(cloudData._forced&&cloudData._forced.ver)||null;
+    const lf=DB._forced&&DB._forced.ver;
+    if(cf&&lf!==cf&&DB._forcedSeen!==cf){
       try{localStorage.setItem('lpSyncPreMergeBackup',JSON.stringify(DB))}catch(e){}
-      // 合并：基于本地，补入云端新内容（days 按 _ts 逐天合并 + 集合去重并集）
-      const merged=dataGuard(mergeSyncData(DB,cloudData),'sync'); // -32：合并后跑自检+钳制，异常不落盘
-      // 历史保留：把云端旧整包存入 _history 供回溯恢复（最多100条，原20）
-      const baseHistory=cloudData._history||merged._history||[];
-      const exists=baseHistory.some(h=>h.ts===cloudTime);
-      if(!exists&&cloudTime>0){
-        const oldSnap=JSON.parse(JSON.stringify(cloudData));delete oldSnap._history;
-        merged._history=baseHistory.concat([{data:oldSnap,updated_at:cloud.updated_at,ts:cloudTime}]);
-        merged._history=trimHistory(merged._history);
-      }else{merged._history=baseHistory}
-      merged._updatedAt=Date.now();
-      DB=merged;
-      settleCarry();
-      localStorage.setItem(KEY,JSON.stringify(DB));
-      const{error:upErr}=await _sbApp.from('life_points').update({data:DB,updated_at:new Date().toISOString()}).eq('sync_key',syncKey);
-      if(upErr)throw upErr;
+      let mForce;
+      try{mForce=mergeSyncData(DB,cloudData)}catch(e){mForce=DB}
+      mForce._forced=null;
+      mForce._forcedSeen=cf;
+      mForce._history=prevHist;
+      DB=mForce;
+      try{localStorage.setItem(KEY,JSON.stringify(DB))}catch(e){}
       render();
-    }else{
-      DB._updatedAt=Date.now();
-      const{error:insErr}=await _sbApp.from('life_points').insert({sync_key:syncKey,data:DB,updated_at:new Date().toISOString()});
-      if(insErr)throw insErr;
-      localStorage.setItem(KEY,JSON.stringify(DB));
+      await sbPush(syncKey);
+      return;
     }
-    localStorage.setItem(SB_LASTSYNC,new Date().toISOString());
-    _sbLastErr='';
-  }catch(e){_sbLastErr=(e&&e.message)?e.message:String(e);console.error('Sync error:',e)}
-  finally{_sbSyncing=false;renderBackup()}
+    // 本机带权威标记（刚手动恢复/本机覆盖过）：以本机为准整包上传覆盖一次，然后清标记恢复正常合并。
+    // 修复：原来只有云端带 _forced 才强制，本机自己的恢复结果在下一次同步时 cf===lf 会绕过强制
+    // 走正常合并 → 云端旧数据（如历史重复兑换 1000+ 条）又被并回刚恢复的干净备份 =「本地备份被云端覆盖」
+    if(lf){
+      sanitizeCounters(DB); // -32：整包上传前先钳制，避免把越界计数写回云端
+      DB._forced=null;
+      try{localStorage.setItem(KEY,JSON.stringify(DB))}catch(e){}
+      render();
+      await sbPush(syncKey);
+      return;
+    }
+    // 安全：合并前把本地整包留一个快照（升级保护，防止任何意外）
+    try{localStorage.setItem('lpSyncPreMergeBackup',JSON.stringify(DB))}catch(e){}
+    // 合并：基于本地，补入云端新内容（days 按 _ts 逐天合并 + 集合去重并集）
+    const merged=dataGuard(mergeSyncData(DB,cloudData),'sync'); // -32：合并后跑自检+钳制，异常不落盘
+    // 历史保留（-47：只存本机）：把云端这一版存入本机历史，供「历史版本恢复」回溯
+    let hist=prevHist;
+    if(cloudTime>0&&!hist.some(h=>h.ts===cloudTime)){
+      const oldSnap=JSON.parse(JSON.stringify(cloudData));delete oldSnap._history;
+      hist=hist.concat([{data:oldSnap,updated_at:cloud.updated_at,ts:cloudTime}]);
+    }
+    merged._history=trimHistory(hist);
+    merged._updatedAt=Date.now();
+    DB=merged;
+    settleCarry();
+    localStorage.setItem(KEY,JSON.stringify(DB));
+    await sbPush(syncKey);
+    render();
+  }catch(e){
+    _sbSetErr(e);
+    try{console.error('Sync error:',e)}catch(_){}
+  }finally{_sbSyncing=false;renderBackup()}
 }
 
 function configCloud(){
@@ -1897,9 +2020,7 @@ async function overwriteCloudFromLocal(skipConfirm){
       DB._history=hist;
     }
     DB._updatedAt=Date.now();
-    const{error:upErr}=await _sbApp.from('life_points').update({data:DB,updated_at:new Date().toISOString()}).eq('sync_key',syncKey);
-    if(upErr)throw upErr;
-    localStorage.setItem(SB_LASTSYNC,new Date().toISOString());_sbLastErr='';
+    await sbPush(syncKey); // -47：统一走带超时的上传（历史只留本机，不再上传 410KB 整包）
     localStorage.setItem(KEY,JSON.stringify(DB));await scheduleBackup();render();
     if(!skipConfirm)alert('已用本机数据覆盖云端。');
   }catch(e){_sbLastErr=(e&&e.message)?e.message:String(e);alert('覆盖失败：'+_sbLastErr);renderBackup()}
@@ -1922,9 +2043,7 @@ async function restoreLocalFromCloud(){
     cloudData._history=hist;cloudData._updatedAt=Date.now();
     DB=cloudData;DB._forced={ver:Date.now().toString(36)+Math.random().toString(36).slice(2,7),at:new Date().toISOString()}; // 以云为准恢复 → 权威版本
     localStorage.setItem(KEY,JSON.stringify(DB));await scheduleBackup();render();
-    const{error:upErr}=await _sbApp.from('life_points').update({data:DB,updated_at:new Date().toISOString()}).eq('sync_key',syncKey);
-    if(upErr)throw upErr;
-    localStorage.setItem(SB_LASTSYNC,new Date().toISOString());_sbLastErr='';
+    await sbPush(syncKey); // -47：统一走带超时的上传
     alert('已用云端数据覆盖本机。');
   }catch(e){_sbLastErr=(e&&e.message)?e.message:String(e);alert('恢复失败：'+_sbLastErr);renderBackup()}
 }
