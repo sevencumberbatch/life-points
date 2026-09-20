@@ -1225,7 +1225,7 @@ function load(){try{const r=localStorage.getItem(KEY);if(r){DB=JSON.parse(r);
    背景：曾因手机 PWA/浏览器缓存了旧 index.html，导致统计区渲染异常（兑换记录"对不上"）。
    此后每次发布新版本递增 APP_VERSION；用户打开时若发现版本变化，提示完全关闭重开，
    确保跑的是最新代码，避免旧缓存残留造成同类显示问题。 */
-const APP_VERSION='2026-09-20-50';
+const APP_VERSION='2026-09-20-51';
 try{
   const lastVer=localStorage.getItem('lpVer');
   if(lastVer&&lastVer!==APP_VERSION){
@@ -1540,9 +1540,54 @@ async function initCloud(){
 }
 
 // 合并单天数据：字段级并集（t/c/w/ld 键并集；resc/todos 按值/id 并集；_ts取新）
+/* ==== 叶子级合并工具（2026-09-20-47 修复「电脑端和手机端分数差值巨大」的根因）====
+   【故障现象】两端余额差出几十上百 G，且越用差得越多，重开/重装都不恢复。
+   【根因】blankDay() 会给每天预置一批**假值**：
+             c.steps=0 · w.<区域>.{o,s,m}=false · ld.{wash,dry}=false · wt=null
+           而 mergeDay 原来的规则是「只补本地 undefined 的键」。这些键在本地**永远不是 undefined**，
+           于是对端记的值**一次都合不进来** —— 两端各自死守自己那份默认值。
+   【为什么后果巨大】isBlankDay() 靠这些字段判断「这天是不是完全空白」，
+           空白日会被 totalBalance() **整天跳过**。
+           手机记了步数（steps=8000）→ 那天不算空白；电脑 steps=0 → 那天被判空白、整日不计。
+           连带 noTakeout 连击链（空白日会断链）、未完成扣分、周任务奖金全部两端算得不一样。
+   【修复】把这类字段改成**逐叶子合并**，并保证结果与合并顺序无关（即两端必然收敛）：
+             · 某叶子只有一边有值 → 取值的那边（补全，不至于丢）
+             · 两边都有值 + 云端这天更晚改动（_cNewer）→ 云端为准（保留 -40「最后改动者胜」语义）
+             · 两边都有值 + 本地更晚 → 本地为准
+             · 两边都有值 + _ts 完全相同 → tiePick() 兜底：布尔取「或」、数字取 max
+   【收敛性】_ts 不同 → 两端都收敛到更晚一方的值；_ts 相同 → tiePick 满足交换律与幂等
+             （a∨b = b∨a，a∨a = a；max 同理），与合并顺序无关。
+   注意：这里**不碰** *_Dev 设备计数桶 —— 那是按设备记账的，另有专门规则（见下方分支）。 */
+function isPlainObj(v){return !!v&&typeof v==='object'&&!Array.isArray(v)}
+function tiePick(a,b){
+  if(typeof a==='number'&&typeof b==='number')return Math.max(a,b);
+  if(a===true||b===true)return true;
+  if(a===false||b===false)return false;
+  return a===undefined?b:a;
+}
+function mergeLeaves(local,cloud,cNewer,tsEqual){
+  const out=isPlainObj(local)?JSON.parse(JSON.stringify(local)):{};
+  if(!isPlainObj(cloud))return out;
+  Object.keys(cloud).forEach(k=>{
+    const cv=cloud[k],lv=out[k];
+    if(isPlainObj(cv)){
+      out[k]=mergeLeaves(isPlainObj(lv)?lv:{},cv,cNewer,tsEqual);
+    }else if(lv===undefined){
+      out[k]=cv;                                   // 本地缺 → 补上（两端都不丢）
+    }else if(cNewer){
+      out[k]=cv;                                   // 云端这天更晚改过 → 云端为准（含取消勾选）
+    }else if(tsEqual){
+      out[k]=tiePick(lv,cv);                        // 同刻改动 → 确定性兜底，保证两端收敛
+    }                                              // 其余：本地更晚 → 保留本地
+  });
+  return out;
+}
 function mergeDay(l,c){
   const out=JSON.parse(JSON.stringify(l));
   const ME=myDev(); // -43：设备计数桶要区分「本机桶 / 他机桶」，两者合并方向不同（见下方 *Dev 分支）
+  // 这一天谁改得更晚（供下面 c 标量 / t / w / ld / wt 各分支共用）
+  const _cNewer=(c._ts||0)>(l._ts||0);    // 云端更晚
+  const _tsEqual=(c._ts||0)===(l._ts||0);  // 同刻改动
   const truthyMerge=(a,b)=>{
     Object.keys(b).forEach(k=>{
       const bv=b[k], av=a[k];
@@ -1600,8 +1645,28 @@ function mergeDay(l,c){
         if(!isDevBucket(out['c'][k]))out['c'][k]={};
         truthyMerge(out['c'][k],cf0[k]);
       }else{
-        // 标量/布尔键：本机优先，仅补云端有而本机没有的
-        if(out['c'][k]===undefined)out['c'][k]=cf0[k];
+        // 标量键 —— 这里是最致命的一处：blankDay() 预置 c.steps=0，
+        // 而「只补本地 undefined 的键」对这个恒有值的 0 永远不成立 → 对端记的步数**一次都合不进来**。
+        // 于是手机有步数（那天不算空白）、电脑没有（那天被判空白、整天跳过 totalBalance），
+        // 余额/扣分/连击全部算不一样 = 「电脑端和手机端分数差值巨大」。
+        //
+        // 数值规则（以 steps 为典型）：
+        //   · 0 视为「本机没记」而非真实数据 —— 一端 0、另一端非 0 时取非 0 的那个。
+        //     （一天真是 0 步的情况不影响得分：stepTierOf(0) 本来就是 0 分）
+        //   · 两端都非 0 → 更晚改动的一方为准。这样「填错了再改小」也能传出去，
+        //     不会像取 max 那样把错误的大数字永久钉死。
+        //   · 同刻改动 → 取较大值兜底（只需确定性，保证两端收敛）。
+        // 布尔键取「或」。其余类型（字符串等）保持「本机优先」，不做无据推断。
+        const lv=out['c'][k],cv2=cf0[k];
+        if(lv===undefined)out['c'][k]=cv2;
+        else if(cv2===undefined)out['c'][k]=lv;
+        else if(typeof lv==='number'&&typeof cv2==='number'){
+          if(lv===0&&cv2!==0)out['c'][k]=cv2;
+          else if(cv2===0&&lv!==0)out['c'][k]=lv;
+          else if(_cNewer)out['c'][k]=cv2;
+          else if(_tsEqual)out['c'][k]=Math.max(lv,cv2);
+        }
+        else if(lv===true||cv2===true)out['c'][k]=true;
       }
     });
   }
@@ -1613,12 +1678,23 @@ function mergeDay(l,c){
   // 判据用当天的 _ts（touchDay 在每次改动时都会刷新）：云端这一天更晚 → 同键取云端值。
   // 粒度说明：_ts 是「天」粒度。同一天两端都改过时，较晚操作的那一端整组 t/w/ld 生效，
   // 符合"最后一次操作算数"的直觉；不同天互不影响（各自有各自的 _ts）。
-  const _cNewer=(c._ts||0)>(l._ts||0);
+  // t/w/ld：改为**逐叶子**合并。原来只判一层（out.w['bath']===undefined），
+  // 而 blankDay() 已把四个区域、o/s/m 全部预置成 false → 对端的周任务进度永远合不进来，
+  // 两端各自为政。详见上方 mergeLeaves 的说明。
+  //   · t  —— 稀疏结构（blankDay 给的是空对象），键只在真正设过时才存在。
+  //            → 沿用 -40「最后改动者胜」，既不丢没冲突的键，又保留「取消勾选能传出去」。
+  //   · w / ld —— blankDay 预置了 {o:false,s:false,m:false} 这样的**固定全 false 结构**，
+  //            分不清「用户明确取消」与「从未做过」。若同样用「最后改动者胜」，
+  //            云端那份全 false 会把对端真正做过的区域**整片抹掉**
+  //            （A 勾了厨房、B 勾了浴室 → 只剩浴室，A 的厨房白做且积分少算）。
+  //            故改用**真值并集**（任一为真即为真）：与合并顺序无关 → 必然收敛，且永不丢做过的事。
+  //            代价：跨设备「取消勾选」传不过去（在本机再取消一次即可）。这是刻意取舍 ——
+  //            「做过的事被悄悄抹掉、积分莫名少掉」远比「取消偶尔传不过去」严重。
   ['t','w','ld'].forEach(f=>{
     const cf=c[f];
     if(cf&&typeof cf==='object'){
-      if(!out[f]||typeof out[f]!=='object')out[f]={};
-      Object.keys(cf).forEach(k=>{ if(out[f][k]===undefined||_cNewer) out[f][k]=cf[k]; });
+      out[f]=(f==='t')?mergeLeaves(out[f]||{},cf,_cNewer,_tsEqual)
+                      :mergeLeaves(out[f]||{},cf,false,true);
     }
   });
   const lr=out.resc||[];
@@ -1628,7 +1704,13 @@ function mergeDay(l,c){
   const ids=new Set(lt.map(t=>t&&t.id));
   (c.todos||[]).forEach(t=>{if(t&&!ids.has(t.id)){lt.push(t);ids.add(t.id)}});
   out.todos=lt;
-  if(c.wt!==undefined&&c.wt!==null&&out.wt===undefined)out.wt=c.wt;
+  // wt（当天体重）：blankDay() 预置 null，同样不能只判 undefined —— 否则对端称的体重永远合不进来，
+  // 而 isBlankDay()（hasWt）与 weightPtsToday() 都要看它。
+  if(c.wt!==undefined&&c.wt!==null){
+    if(out.wt===undefined||out.wt===null)out.wt=c.wt;      // 本地没称 → 取对端的
+    else if(_cNewer)out.wt=c.wt;                            // 云端这天更晚称的 → 云端为准
+    else if(_tsEqual)out.wt=tiePick(out.wt,c.wt);           // 同刻 → 确定性兜底（保证收敛）
+  }
   if(!out.c)out.c={};
   // 专注计数跨设备累加：按设备维度记账，合并时求和（不覆盖、不丢）；显示值扣除「手动撤销」FixDev
   // 旧版标量迁移：某端只有 d.c[kind]（无 *_Dev）时，把该标量搬进 _legacy 当"设备"参与求和。
@@ -1691,9 +1773,24 @@ function mergeSyncData(local,cloud){
     if(!l){out.days[k]=JSON.parse(JSON.stringify(c));return}
     out.days[k]=mergeDay(l,c);
   });
-  // 2) 称重日志按日期去重
-  const wmap={};(out.weightLog||[]).forEach(w=>{wmap[w.date]=w});
-  (cloud.weightLog||[]).forEach(w=>{if(!wmap[w.date])wmap[w.date]=w});
+  // 2) 称重日志按日期去重。
+  //    同一天两端都有记录时必须**选定一个**：原来写成「本地优先、云端只补缺失日期」，
+  //    同一天双方各自保留自己的数值 → 两端永远差着一个体重，连带 weightDeltaPts、
+  //    里程碑检测、isBlankDay(hasWt) 一起分叉。
+  //    改为按当天的 _ts 决定（更晚改动的为准）；_ts 相同则取较大值兜底（只需确定性，保证两端一致）。
+  const _dts=dk=>{const a=(out.days&&out.days[dk]&&out.days[dk]._ts)||0;const b=(cloud.days&&cloud.days[dk]&&cloud.days[dk]._ts)||0;return a===b?0:(b>a?-1:1)};
+  const wmap={};(out.weightLog||[]).forEach(w=>{if(w&&w.date)wmap[w.date]=w});
+  (cloud.weightLog||[]).forEach(w=>{
+    if(!w||!w.date)return;
+    const cur=wmap[w.date];
+    if(!cur){wmap[w.date]=w;return}
+    const cmp=_dts(w.date);
+    if(cmp<0){wmap[w.date]=w;return}              // 云端这天更晚改 → 云端为准
+    if(cmp===0){                                  // 同刻 → 取较大值，仅为两端一致
+      const a=Number(cur.weight),b=Number(w.weight);
+      if(isFinite(a)&&isFinite(b)&&b>a)wmap[w.date]=w;
+    }
+  });
   out.weightLog=Object.values(wmap);
   // 3) 兑换记录去重：带 id 按 id 精确去重（同一天可多次转盘/同名兑换，不能按 日期+名称 合并）。
   // 例外：自动兑换（清日常，dailyLimit:1，每天每款至多1次）必须按 日期+名称 去重、忽略 id——
@@ -1747,14 +1844,19 @@ function mergeSyncData(local,cloud){
   (cloud.milestones||[]).forEach(m=>{if(m.k&&!mmap[m.k])mmap[m.k]=m});
   out.milestones=Object.values(mmap);
   // 5) 周/月便签按 key 合并（条目按 id 去重）
+  //    末尾按 id 排序：id = 创建时间戳×4000+序号，排序即「创建先后」。
+  //    不排的话合并结果的顺序取决于传输先后，两端会以不同顺序显示同一批便签
+  //    （不影响得分，但「两端不一致」本来就是这次要根治的问题）。便签没有手动拖拽排序，故排序无副作用。
   ['weekTodos','monthTodos'].forEach(field=>{
     const loc=out[field]||{}, cl=cloud[field]||{};
     Object.keys(cl).forEach(wk=>{
       const arr=loc[wk]||[];
       const ids=new Set(arr.map(t=>t&&t.id));
       (cl[wk]||[]).forEach(t=>{if(t&&!ids.has(t.id)){arr.push(t);ids.add(t.id)}});
+      arr.sort((a,b)=>((a&&a.id)||0)-((b&&b.id)||0));
       loc[wk]=arr;
     });
+    Object.keys(loc).forEach(wk=>{if(Array.isArray(loc[wk]))loc[wk].sort((a,b)=>((a&&a.id)||0)-((b&&b.id)||0))});
     out[field]=loc;
   });
   // 5b) 次数包按 id 合并。两条规则：
