@@ -1172,6 +1172,7 @@ function dataGuard(db,where){
   return db;
 }
 function focusDevAdd(d,kind,n){const mk=kind+'Dev';if(!d.c[mk])d.c[mk]={};d.c[mk][myDev()]=(d.c[mk][myDev()]||0)+n;recalcCount(d,kind)}
+function focusDevAddTo(d,kind,devId,n){const mk=kind+'Dev';if(!d.c[mk])d.c[mk]={};d.c[mk][devId]=(d.c[mk][devId]||0)+n;recalcCount(d,kind)}
 function load(){try{const r=localStorage.getItem(KEY);if(r){DB=JSON.parse(r);
   // 迁移：旧版「完课奖励」为勾选布尔 → 转为计数（每次15G）
   // 注意：必须补 d.c，老备份/手工改过的备份里可能存在只有 t 没有 c 的天，否则下面 d.c.studyDone 直接 TypeError，
@@ -1180,7 +1181,10 @@ function load(){try{const r=localStorage.getItem(KEY);if(r){DB=JSON.parse(r);
   // 迁移：旧版专注零头为顶层数字 _focusCarry → 改为按设备记账 focusCarryDev
   if(typeof DB._focusCarry==='number'&&!DB.focusCarryDev){DB.focusCarryDev={};DB.focusCarryDev[myDev()]=DB._focusCarry;delete DB._focusCarry;}
   if(!DB.focusCarryDev)DB.focusCarryDev={};
-  if(!DB.carryConvertedTotal)DB.carryConvertedTotal=0;
+  // 迁移：carryConvertedTotal（全局标量）→ carryConvertedDev（按设备记账）——修复双设备各自折算被 max 合并吞掉、下轮重复 +1
+  if(!DB.carryConvertedDev||typeof DB.carryConvertedDev!=='object'||Array.isArray(DB.carryConvertedDev))DB.carryConvertedDev={};
+  if(typeof DB.carryConvertedTotal==='number'&&DB.carryConvertedTotal>0){const _mine=DB.focusCarryDev&&typeof DB.focusCarryDev[myDev()]==='number'?DB.focusCarryDev[myDev()]:0;DB.carryConvertedDev[myDev()]=Math.min(DB.carryConvertedTotal,Math.max(0,Math.floor(_mine/45)))}
+  delete DB.carryConvertedTotal;
   // 迁移/初始化：删除墓碑（-40 删除传播），并裁掉超过保留期的墓碑
   if(!DB.tombs||typeof DB.tombs!=='object')DB.tombs={};
   tombPrune();
@@ -1225,7 +1229,7 @@ function load(){try{const r=localStorage.getItem(KEY);if(r){DB=JSON.parse(r);
    背景：曾因手机 PWA/浏览器缓存了旧 index.html，导致统计区渲染异常（兑换记录"对不上"）。
    此后每次发布新版本递增 APP_VERSION；用户打开时若发现版本变化，提示完全关闭重开，
    确保跑的是最新代码，避免旧缓存残留造成同类显示问题。 */
-const APP_VERSION='2026-09-20-51';
+const APP_VERSION='2026-09-20-52';
 try{
   const lastVer=localStorage.getItem('lpVer');
   if(lastVer&&lastVer!==APP_VERSION){
@@ -1923,8 +1927,17 @@ function mergeSyncData(local,cloud){
   }
   // 旧版顶层数字 _focusCarry 不参与云端合并：每台设备各自在 load() 时迁移进本机桶，
   // 云端旧值无法判断归属，折入任何设备都可能吞值或双计，直接忽略（过渡期数据，一两轮同步即被新格式覆盖）
-  if(typeof cloud.carryConvertedTotal==='number'){
-    out.carryConvertedTotal=Math.max(out.carryConvertedTotal||0,cloud.carryConvertedTotal);
+  // 6b) 已折算次数按设备合并（-52）：与 focusCarryDev 同规则「本机桶本机优先、他机桶信任云端」。
+  //   旧写法用全局 carryConvertedTotal 取 max，会把「甲折算2次 + 乙折算2次」误成「总共2次」，下一轮 settleCarry 再补折算 = 重复 +10G。
+  if(cloud.carryConvertedDev&&typeof cloud.carryConvertedDev==='object'&&!Array.isArray(cloud.carryConvertedDev)){
+    out.carryConvertedDev=(out.carryConvertedDev&&typeof out.carryConvertedDev==='object'&&!Array.isArray(out.carryConvertedDev))?out.carryConvertedDev:{};
+    const ME8=myDev();
+    Object.keys(cloud.carryConvertedDev).forEach(k=>{
+      const cv=cloud.carryConvertedDev[k];
+      if(typeof cv!=='number')return;
+      const av=out.carryConvertedDev[k];
+      out.carryConvertedDev[k]=(k===ME8)?(typeof av==='number'?av:cv):cv;
+    });
   }
   // 7) 删除传播（-40）：墓碑取并集，然后统一清掉带墓碑的条目 —— 本机删掉的，对端不会再带回来
   out.tombs=mergeTombs(out.tombs,cloud.tombs);
@@ -4122,27 +4135,32 @@ function openFocusStartBox(){
   window._focusStartBox=box;
 }
 function boxCloseAndStart(ev,k){const b=window._focusStartBox;if(b)b.remove();window._focusStartBox=null;startFocus(k)}
+function carryConvertedCount(){return sumDev(DB.carryConvertedDev||{});}
 function carryTotal(){
-  const raw=sumDev(DB.focusCarryDev)-(DB.carryConvertedTotal||0)*45;
+  const raw=sumDev(DB.focusCarryDev)-carryConvertedCount()*45;
   return raw>0?raw:0;
 }
 // 按累计值结算 +1（专注听课每满45分钟 +10G）：用累计桶总数而非「扣减桶」，避免云同步把已扣零头加回来导致重复 +1
 // 2026-09-04 修复：计时折算也要消费「精力充沛/经验暴击」buff，否则计时完成的学习任务不享受翻倍（手动+按钮才会触发）
 function settleCarry(){
-  const total=sumDev(DB.focusCarryDev||{});
-  const target=Math.floor(total/45);
-  const conv=DB.carryConvertedTotal||0;
-  if(target>conv){
-    DB.carryConvertedTotal=target;
-    const orig=curDate;curDate=todayKey(); // maybeConsumeNext 依赖 curDate，计时针对今天
+  if(!DB.carryConvertedDev||typeof DB.carryConvertedDev!=='object'||Array.isArray(DB.carryConvertedDev))DB.carryConvertedDev={};
+  const orig=curDate;curDate=todayKey(); // maybeConsumeNext 依赖 curDate，计时针对今天
+  let changed=false;
+  Object.keys(DB.focusCarryDev||{}).forEach(dev=>{
+    const mins=(typeof DB.focusCarryDev[dev]==='number')?DB.focusCarryDev[dev]:0;
+    const target=Math.floor(mins/45);
+    const conv=DB.carryConvertedDev[dev]||0;
+    if(target<=conv)return;
+    DB.carryConvertedDev[dev]=target;
     for(let i=conv;i<target;i++){
       const d=touchDay(todayKey());
-      focusDevAdd(d,'study45',1);
+      focusDevAddTo(d,'study45',dev,1); // 折算计入「攒了这些分钟」的那台设备，不再固定写本机
       maybeConsumeNext('study45'); // 先 +1 计数再消费 buff，与 adjCount 路径保持一致
     }
-    curDate=orig;
-    save();
-  }
+    changed=true;
+  });
+  curDate=orig;
+  if(changed)save();
 }
 function addCarry(m){
   if(!DB.focusCarryDev)DB.focusCarryDev={};
@@ -4155,7 +4173,7 @@ function addCarry(m){
 // 合并是「取较大值」，会把云端残留的污染值拉回本机，等于白清。
 function resetCarry(){
   if(!confirm('确定清空专注零头吗？\n\n会把所有设备的零头分钟清零（已折算入账的 +10G 保留，不受影响）。\n每台设备都要各点一次；点完会自动把「清零结果」直接覆盖到云端。'))return;
-  DB.focusCarryDev={};DB.carryConvertedTotal=0;render();
+  DB.focusCarryDev={};DB.carryConvertedDev={};render();
   if(_sbReady){overwriteCloudFromLocal();}
   else{save();alert('未连接云同步，已清零本机。请先连接云，再到设置里点「本机覆盖云端」同步一次。');}
 }
@@ -4258,7 +4276,7 @@ function openManualAdd(){
   const upd=()=>{
     const k=sel.value,f=FOCUS_TASKS[k],m=Math.max(0,parseInt(inp.value||'0',10));
     if(f.type==='carry'){
-      const total=carryTotal()+m;prev.textContent='补录 '+m+' 分钟 → 累计池约 '+total+' 分钟（可折算 '+Math.floor(total/45)+' 次，已折算 '+(DB.carryConvertedTotal||0)+' 次）';
+      const total=carryTotal()+m;prev.textContent='补录 '+m+' 分钟 → 累计池约 '+total+' 分钟（可折算 '+Math.floor(total/45)+' 次，已折算 '+carryConvertedCount()+' 次）';
     }else{
       const today=todayKey();const td=getDay(today);
       const poolNow=(td.c.taskMinPool&&td.c.taskMinPool[k])||0;
@@ -4331,7 +4349,7 @@ function renderFocusPill(){
       const elMin=focusElapsedMs(st)/60000;
       const seg=((elMin%45)+45)%45;
       const remain=Math.ceil((45-seg)||0);
-      const hintTxt=elMin<45?('还差 '+remain+' 分钟折算 +10G（已折算 '+(DB.carryConvertedTotal||0)+' 次，零头自动累计）'):'已满 45 分钟自动 +10G，可继续累计';
+      const hintTxt=elMin<45?('还差 '+remain+' 分钟折算 +10G（已折算 '+carryConvertedCount()+' 次，零头自动累计）'):'已满 45 分钟自动 +10G，可继续累计';
       body='<div class="fp-time" style="font-size:22px">'+fmtFocus(focusElapsedMs(st))+'</div>'
         +'<div class="fp-bar"><div class="fp-bar-fill" style="width:'+Math.min(100,(seg/45*100))+'%"></div></div>'
         +'<div class="fp-hint" style="color:'+(paused?'var(--muted)':'var(--study)')+'">'+(paused?'已暂停 · '+hintTxt:hintTxt)+'</div>';
@@ -4390,9 +4408,9 @@ function focusTick(){
       const last=st.lastCarryMin||0;
       if(el>last){
         st.lastCarryMin=el;needPersist=true;
-        const before=DB.carryConvertedTotal||0;
+        const before=carryConvertedCount();
         addCarry(el-last);
-        if((DB.carryConvertedTotal||0)!==before)render(); // 刚折算 +1，刷新计数/余额
+        if(carryConvertedCount()!==before)render(); // 刚折算 +1，刷新计数/余额
       }
     }else{
       // once：在线分钟实时写入「开始当天」的任务池，拼满目标即自动打卡
@@ -4585,10 +4603,9 @@ function importData(e){
     for(const key of ['redeemLog','weightLog','milestones','wheelLog']){
       if(obj[key]!==undefined&&!Array.isArray(obj[key])){alert('导入失败：'+key+' 字段格式不对（原数据未动）');return}
     }
-    for(const key of ['doubled','dayBuff30','weekTodos','monthTodos','focusCarryDev']){
+    for(const key of ['doubled','dayBuff30','weekTodos','monthTodos','focusCarryDev','carryConvertedDev']){
       if(obj[key]!==undefined&&(typeof obj[key]!=='object'||Array.isArray(obj[key]))){alert('导入失败：'+key+' 字段格式不对（原数据未动）');return}
     }
-    if(obj.carryConvertedTotal!==undefined&&typeof obj.carryConvertedTotal!=='number'){alert('导入失败：carryConvertedTotal 字段格式不对（原数据未动）');return}
     if(obj.pendingBuffs!==undefined&&(!Array.isArray(obj.pendingBuffs)||obj.pendingBuffs.some(x=>x!=='study'&&x!=='any'&&!(x&&typeof x==='object'&&x.id&&(x.t==='study'||x.t==='any'))))){alert('导入失败：pendingBuffs 字段格式不对（原数据未动）');return}
     if(obj.usedBuffs!==undefined&&(!Array.isArray(obj.usedBuffs)||obj.usedBuffs.some(x=>typeof x!=='string'))){alert('导入失败：usedBuffs 字段格式不对（原数据未动）');return}
     if(obj.meta!==undefined&&(typeof obj.meta!=='object'||Array.isArray(obj.meta))){alert('导入失败：meta 字段格式不对（原数据未动）');return}
