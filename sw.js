@@ -5,7 +5,7 @@
    - 离线：用上次成功加载的缓存兜底
    - 跨域请求（Supabase 等）一律不拦截
    更新：新 sw.js 部署后自动接管（skipWaiting），旧缓存版本在激活时清理 */
-const CACHE = 'lp-cache-v2';
+const CACHE = 'lp-cache-v3';
 self.addEventListener('install', e => { self.skipWaiting(); });
 self.addEventListener('activate', e => {
   e.waitUntil((async () => {

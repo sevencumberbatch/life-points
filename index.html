@@ -716,7 +716,7 @@
 
   <!-- 主线二 学业 -->
   <div class="section sec-study">
-    <h2><span class="ic">📘</span>主线二 · 中级经济师</h2>
+    <h2><span class="ic">📘</span>主线二 · 备考冲刺</h2>
     <div class="sub">每 45 分钟专注 +10G · 完课每次 +15G（均不受软上限）</div>
     <div class="counter counter-full">
       <div style="flex:1"><div class="tname">专注听课<span class="full-badge">全额</span></div><div class="tstd" id="study45Std">每 45 分钟 +10G</div></div>
@@ -1229,7 +1229,7 @@ function load(){try{const r=localStorage.getItem(KEY);if(r){DB=JSON.parse(r);
    背景：曾因手机 PWA/浏览器缓存了旧 index.html，导致统计区渲染异常（兑换记录"对不上"）。
    此后每次发布新版本递增 APP_VERSION；用户打开时若发现版本变化，提示完全关闭重开，
    确保跑的是最新代码，避免旧缓存残留造成同类显示问题。 */
-const APP_VERSION='2026-09-20-52';
+const APP_VERSION='2026-10-22-54';
 try{
   const lastVer=localStorage.getItem('lpVer');
   if(lastVer&&lastVer!==APP_VERSION){
@@ -1298,10 +1298,20 @@ async function connectBackupDir(){if(!window.showDirectoryPicker){alert('当前�
 }catch(e){if(e.name!=='AbortError')alert('连接失败：'+e.message)}}
 async function cleanOldBackups(){if(!_dirHandle)return;try{const cutoff=Date.now()-30*86400000;for await(const entry of _dirHandle.values()){const m=entry.name.match(/^backup-(\d{4})-(\d{2})-(\d{2})-(\d{2})(\d{2})\.json$/);if(m){const ft=new Date(m[1],m[2]-1,m[3],m[4],m[5]).getTime();if(ft<cutoff){try{await _dirHandle.removeEntry(entry.name)}catch(e){}}}}}catch(e){}}
 // 手动恢复的统一落地：生成权威版本标记（_forced）+ 立即上传云端成为最新；其他设备同步时整包覆盖一次，之后系统照常自动运行
+// 2026-10-22-54 修复：原来这里 DB=JSON.parse(JSON.stringify(snap)) 是「整包覆盖」，
+//   会用旧快照把本机恢复之后新记的数据（步数/称重/洗晾/当天新打卡）整段抹掉 ——
+//   这就是 9-20 13:29 那次「从云端恢复」把 6 天步数 + 10 天称重 + 2 天洗晾冲掉的根因。
+//   改为「以快照为基底、把当前本机数据按字段并集进去」：恢复只会补回缺失字段，绝不抹掉本机已有数据。
 async function restoreApply(snap,label){
   const hist=DB._history;
-  DB=JSON.parse(JSON.stringify(snap));
-  if(!DB||typeof DB!=='object'||!DB.days||typeof DB.days!=='object'){DB={days:{}}}
+  const curLocal=JSON.parse(JSON.stringify(DB));   // 恢复前先保留当前本机数据
+  let base=JSON.parse(JSON.stringify(snap));
+  if(!base||typeof base!=='object'||!base.days||typeof base.days!=='object'){base={days:{}}}
+  // 并集合并：快照为基底，本机当前数据补进来（只增不减，字段级）
+  let merged;
+  try{ merged=dataGuard(mergeSyncData(base,curLocal),'restore'); }
+  catch(e){ merged=base; }
+  DB=merged;
   DB._history=hist||[];
   DB._updatedAt=Date.now();
   DB._forced={ver:Date.now().toString(36)+Math.random().toString(36).slice(2,7),at:new Date().toISOString()}; // 权威版本标记：其他设备同步时整包覆盖一次，之后系统照常自动运行
@@ -1391,7 +1401,7 @@ function renderBackup(){const el=document.getElementById('backupBar');if(!el)ret
     h+='</span>';
   }
   h+='<span style="display:flex;gap:6px;flex-wrap:wrap">';
-  if(cbEnv&&cbKey){h+='<button onclick="forceSync()">立即同步</button>';h+='<button onclick="syncDoctor()">🩺 同步诊断</button>';h+='<button onclick="reconcile()">🔍 一键对账</button>';h+='<button onclick="restoreLocalFromCloud()">从云端恢复(以云为准)</button>';h+='<button onclick="overwriteCloudFromLocal()">覆盖云端(以本机为准)</button>';h+='<button onclick="restoreFromCloudHistory()">历史版本恢复('+(DB._history?DB._history.length:0)+')</button>'}
+  if(cbEnv&&cbKey){h+='<button onclick="forceSync()">立即同步</button>';h+='<button onclick="forceReMerge()">🔁 强制重新合并</button>';h+='<button onclick="syncDoctor()">🩺 同步诊断</button>';h+='<button onclick="reconcile()">🔍 一键对账</button>';h+='<button onclick="restoreLocalFromCloud()">从云端恢复(以云为准)</button>';h+='<button onclick="overwriteCloudFromLocal()">覆盖云端(以本机为准)</button>';h+='<button onclick="restoreFromCloudHistory()">历史版本恢复('+(DB._history?DB._history.length:0)+')</button>'}
   h+='<button onclick="exportAllData()">⬇️ 导出数据文件</button>';h+='<button onclick="importAllData()">⬆️ 导入数据文件</button>';h+='<button onclick="configCloud()">'+(cbEnv?'同步设置':'配置云同步')+'</button></span>';
   // 访问密码状态：必须真实反映是否设置过，不能无条件写死"已设置"，否则用户以为有密码保护、实际裸奔
   if(getAccessPass()){
@@ -1425,6 +1435,13 @@ function renderSyncWarn(){
   }else if(!_sbReady){
     if(Date.now()-_sbBootAt<8000){el.style.display='none';return}
     msg='云同步未连接';tip='同步组件可能没加载成功（网络被拦或 CDN 不可达）。改动只保存在本机。';
+  }else if(_sbCloudFresh===false){
+    // -52：这一支才是真正的「两端不一致」——探测确认云端已被另一端改写，而本机还没合进来。
+    //   旧逻辑用「本机余额 vs 上次推送时的云端余额」来判，方向正好错位（本机一改就误报、本机不动就误报一致）。
+    const _lb52=Math.round(totalBalance()*10)/10;
+    msg='云端已被另一台设备更新';
+    tip='本机余额 '+_lb52+' · 本机上次推送时云端余额 '+_sbCloudBalCache+'。说明另一台设备往云端写了新内容，本机还没合进来。点「立即同步」按并集合并（只增不减）；若点了没反应，用「🔁 强制重新合并」无条件跑一次下载+合并+上传。';
+    btns='<button onclick="forceReMerge()">🔁 强制重新合并</button><button onclick="forceSync()">立即同步</button><button onclick="reconcile()">🔍 一键对账</button><button onclick="dismissSyncWarn()">知道了</button>';
   }else if(_sbBalDiff()!==null&&_sbBalDiff()!==0){
     const _d49=_sbBalDiff(),_lb49=Math.round(totalBalance()*10)/10;
     msg="两端数据不一致";
@@ -1461,12 +1478,27 @@ let _sbCloudBalCache=null,_sbCloudBalAt=0,_sbLastCheckAt=0,_sbLastCheckSavedAt=0
 function lastCloudCheck(){return localStorage.getItem("lpLastCheck")||""}   // -49：最近一次「成功连上云端」的时间（探测即可，不要求有上传）
 function _sbSetCloudBal(v){try{if(v===null||v===undefined){_sbCloudBalCache=null;_sbCloudBalAt=0;return}var _n=Number(v);if(isFinite(_n)){_sbCloudBalCache=Math.round(_n*10)/10;_sbCloudBalAt=Date.now()}}catch(e){}}
 function _sbAgo(ms){try{if(ms<0)return"—";const s=Math.floor(ms/1000);if(s<15)return"刚刚";if(s<60)return s+" 秒前";const m=Math.floor(s/60);if(m<60)return m+" 分钟前";const h=Math.floor(m/60);if(h<24)return h+" 小时前";return Math.floor(h/24)+" 天前"}catch(e){return"—"}}
-function _sbBalDiff(){try{if(_sbCloudBalCache===null)return null;return Math.round((totalBalance()-_sbCloudBalCache)*10)/10}catch(e){return null}}
+function _sbBalDiff(){
+  try{
+    if(_sbCloudBalCache===null)return null;
+    if(_sbCloudFresh!==true)return null;   // -52：云端已被另一端改写（或尚未核对）→ 缓存不能代表此刻的云端，不许据此下结论
+    return Math.round((totalBalance()-_sbCloudBalCache)*10)/10;
+  }catch(e){return null}
+}
 function _sbBalRow(){
   try{
     const lb=Math.round(totalBalance()*10)/10;
     let s="<br><span>💰 本机余额 <b>"+lb+"</b>";
     if(_sbCloudBalCache===null){s+=" · <span style=\"color:var(--muted)\">云端余额：同步一次后显示</span>"}
+    else if(_sbCloudFresh===false){
+      s+=" · 云端余额 <b>"+_sbCloudBalCache+"</b><span style=\"color:var(--muted)\">（上次同步时）</span> · <b style=\"color:var(--neg)\">云端已被另一台设备更新</b>（点「立即同步」按并集合并补齐，只增不减）";
+    }
+    else if(_sbCloudFresh!==true){
+      s+=" · 云端余额 <b>"+_sbCloudBalCache+"</b><span style=\"color:var(--muted)\">（上次同步时 · 正在核对云端是否已变…）</span>";
+    }
+    else if(_sbLocalSig&&contentSig()!==_sbLocalSig){
+      s+=" · 云端余额 <b>"+_sbCloudBalCache+"</b><span style=\"color:var(--muted)\">（上次同步时）</span> · <b>本机有改动尚未上传</b>";
+    }
     else{
       const d=_sbBalDiff();
       s+=" · 云端余额 <b>"+_sbCloudBalCache+"</b> · "+(d===0
@@ -1951,6 +1983,27 @@ function mergeSyncData(local,cloud){
 function kickSync(){const n=Date.now();if(n-_sbLastKick<1200)return;_sbLastKick=n;if(_sbReady)cloudSync()}
 // 提示条上的「立即重试」：清掉失败退避，立刻同步一次，然后重排轮询
 function retrySync(){_sbFailN=0;if(_sbReady){_sbLastKick=0;cloudSync().then(scheduleNextPoll,scheduleNextPoll)}else{ensureCloud()}}
+/* === -52：「强制重新合并」逃生口 ===
+   背景：cloudSync 为了省流量有两处「就地返回」（见下方 ① 轻量探测 的注释）——
+   云端时间戳与本机记录一致 + 本机内容指纹未变 → 直接返回，一个字节都不传。
+   正常情况没问题（两边确实都没变）。但只要任一侧的「时间戳基线 / 内容指纹」因换浏览器、清缓存、
+   旧版本写入、或推送失败后残留而失真，本机就会一直认为「没什么可同步的」，
+   用户点「立即同步」也毫无反应，而两端数据实际上可能差着几十上百天的记录。
+   这就是「电脑端和手机端分数差值巨大、怎么点都不动」的死角。
+   做法：把两个基线清零 → 强制走一次完整的「探测 → 下载整包 → 并集合并 → 上传」。
+   合并是并集、只增不减，不覆盖也不删除本机任何数据，所以可以放心作为一键修复。 */
+async function forceReMerge(){
+  if(!_sbReady){alert('请先配置并连接云同步');return}
+  const sk=getSbSyncKey();if(!sk){alert('未设置同步密码');return}
+  if(!confirm('强制重新合并？\n\n· 从云端下载完整数据，与本机做【并集合并】（只增不减，绝不覆盖本机）\n· 合并结果再上传到云端\n\n这是修「两端分数对不上」最直接的一步，通常点一次就好。'))return;
+  _sbCloudTsMs=0;      // 让「云端没变」的判定必然不成立 → 一定走完整下载+合并
+  _sbLocalSig='';      // 同上
+  _sbCloudFresh=null;
+  try{if(typeof showFocusToast==='function')showFocusToast('正在强制合并…请保持网络');}catch(e){}
+  await cloudSync();
+  if(_sbLastErr)alert('强制合并未成功：'+_sbLastErr+'\n\n请先点「🩺 同步诊断」，看是网络、密钥还是数据体积的问题。');
+  else alert('已强制合并完成。\n本机余额：'+(Math.round(totalBalance()*10)/10)+'\n\n另一台设备也点一次同样的按钮，两端就会完全一致。');
+}
 
 /* ===== -47 云同步可靠性改造（2026-09-18）=====
    症状：顶部常驻「云同步失败 · TypeError: Failed to fetch」，改动长期上不去。
@@ -1966,8 +2019,12 @@ function retrySync(){_sbFailN=0;if(_sbReady){_sbLastKick=0;cloudSync().then(sche
      ④ 15~45 秒超时保护 + 人话报错 + 连续失败自动退避（10s→20s→40s→60s）+ 卡死自愈；
      ⑤ 新增「🩺 同步诊断」：一键测出到底是断网、密钥、权限还是体积问题。
    ============================================ */
-const SIG_SKIP={_updatedAt:1,_guard:1,_history:1,_forcedSeen:1};
-function cloudPayload(){const o={};for(const k in DB){if(k==='_history')continue;o[k]=DB[k]}return o}
+// -52：SIG_SKIP 多排除 _ver/_dev —— 它们只描述「谁写的、用哪个版本写的」，不是数据内容。
+//   不排除的话，每次算内容指纹都会变 → 每轮轮询都被判成「本机有改动」→ 无意义的反复上传。
+const SIG_SKIP={_updatedAt:1,_guard:1,_history:1,_forcedSeen:1,_ver:1,_dev:1};
+// 上传包顺带带上「写入方版本 + 设备号」。另一端点「一键对账」时就能看到
+// 云端最后一次是被哪个版本、哪台设备写的 —— 「是不是有一端还在跑旧版本」从此一眼可见。
+function cloudPayload(){const o={};for(const k in DB){if(k==='_history')continue;o[k]=DB[k]}try{o._ver=APP_VERSION;o._dev=myDev()}catch(e){}return o}
 function contentSig(){try{return JSON.stringify(cloudPayload(),function(k,v){return SIG_SKIP[k]?undefined:v})}catch(e){return ''}}
 function withTimeout(p,ms,label){
   let timer=null;
@@ -2115,6 +2172,9 @@ async function reconcile(){
     return;
   }
   L.push('云端更新于：'+(cloudUpdated?new Date(cloudUpdated).toLocaleString('zh-CN'):'?'));
+  // -52：云端这条记录最后是被哪个版本、哪台设备写的 —— 「有一端还在跑旧版本」从此一眼可见
+  //   （旧版本写入的包没有这两个字段，会显示「未记录」，也能反过来说明云端是被旧版本覆盖的）
+  L.push('云端写入方：版本 '+(cloudData._ver||'(旧版本·未记录)')+' · 设备 '+(cloudData._dev||'(旧版本·未记录)'));
 
   let lb=NaN,cb=NaN;
   lb=balanceOf(DB);
@@ -2401,7 +2461,7 @@ async function overwriteCloudFromLocal(skipConfirm){
 async function restoreLocalFromCloud(){
   if(!_sbReady){alert('请先配置并连接云同步');return}
   const syncKey=getSbSyncKey();if(!syncKey){alert('未设置同步密码');return}
-  if(!confirm('确定用【云端数据】覆盖本机？\n\n本机当前内容将被云端替代。\n（本机旧数据会先存入浏览器内备份，可经「从浏览器恢复」找回）'))return;
+  if(!confirm('确定用【云端数据】合并进本机？\n\n云端有的、本机缺的内容会补进来；本机已有的内容一律保留、不会被覆盖。\n（本机旧数据会先存入浏览器内备份，可经「从浏览器恢复」找回）'))return;
   try{
     const{data:rows,error}=await _sbApp.from('life_points').select('*').eq('sync_key',syncKey);
     if(error)throw error;
@@ -2412,11 +2472,17 @@ async function restoreLocalFromCloud(){
     let hist=cloudData._history||DB._history||[];
     hist.push({data:oldLocal,updated_at:new Date().toISOString(),ts:Date.now()});
     hist=trimHistory(hist);
-    cloudData._history=hist;cloudData._updatedAt=Date.now();
-    DB=cloudData;DB._forced={ver:Date.now().toString(36)+Math.random().toString(36).slice(2,7),at:new Date().toISOString()}; // 以云为准恢复 → 权威版本
+    // 2026-10-22-54 修复：原来 DB=cloudData 是「整包覆盖」，会用旧云端把本机新记的数据抹掉
+    //   （9-20 那次就把 6 天步数 + 10 天称重 + 2 天洗晾冲掉了）。
+    //   改为并集合并：本机为基底、云端补进来，只增不减。
+    let merged;
+    try{ merged=dataGuard(mergeSyncData(DB,cloudData),'restore-cloud'); }
+    catch(e){ merged=DB; }
+    merged._history=hist;merged._updatedAt=Date.now();
+    DB=merged;DB._forced={ver:Date.now().toString(36)+Math.random().toString(36).slice(2,7),at:new Date().toISOString()}; // 以云为准恢复 → 权威版本
     localStorage.setItem(KEY,JSON.stringify(DB));await scheduleBackup();render();
     await sbPush(syncKey); // -47：统一走带超时的上传
-    alert('已用云端数据覆盖本机。');
+    alert('已用云端数据合并进本机（本机已有内容已保留）。');
   }catch(e){_sbLastErr=(e&&e.message)?e.message:String(e);alert('恢复失败：'+_sbLastErr);renderBackup()}
 }
 function getDay(k){if(!DB.days[k])DB.days[k]=blankDay();return DB.days[k]}
@@ -3836,9 +3902,9 @@ function dayEarnedLines(k){
   FAT.forEach(t=>{if(d.t[t.k])add(t.n,wadj(t.pts,t.k,k),'主线一·减脂攻坚')});
   const wc=waterCupsDone(d);if(wc>0)add('喝水 '+wc+'/'+WATER_CUPS+'杯',wadj(wc*WATER_PTS_PER_CUP,null,k),'主线一·减脂攻坚');
   const sp=stepPts(d);if(sp>0)add('步行 '+(d.c.steps||0)+' 步（'+stepTierOf(d.c.steps).steps+' 档）',wadj(sp,null,k),'主线一·减脂攻坚');
-  const sc=d.c.study45||0;if(sc>0)add('专注听课 ×'+sc,wadj(sc*10,null,k),'主线二·中级经济师');
-  const dc=d.c.studyDone||0;if(dc>0)add('完课奖励 ×'+dc,wadj(dc*15,null,k),'主线二·中级经济师');
-  if(d.t.review)add('复习回顾',wadj(5,'review',k),'主线二·中级经济师');
+  const sc=d.c.study45||0;if(sc>0)add('专注听课 ×'+sc,wadj(sc*10,null,k),'主线二·备考冲刺');
+  const dc=d.c.studyDone||0;if(dc>0)add('完课奖励 ×'+dc,wadj(dc*15,null,k),'主线二·备考冲刺');
+  if(d.t.review)add('复习回顾',wadj(5,'review',k),'主线二·备考冲刺');
   SKILL.forEach(t=>{if(d.t[t.k])add(t.n,wadj(t.pts,t.k,k),'主线三·技能养成')});
   LIFE1.forEach(t=>{if(d.t[t.k])add(t.n,wadj(t.pts,t.k,k),'主线四·生活维护')});
   if(LIFE1_COMBO.need.every(x=>d.t[x]))add('洗漱三项组合',wadj(LIFE1_COMBO.pts,null,k),'主线四·生活维护');
@@ -3891,7 +3957,7 @@ function renderEarnDetail(){
     const taskLines=dayEarnedLines(k);
     // 任务基础分行（日常/学习列）。注意「无外卖连击」虽不参与软上限，但它必须留在任务列里：
     // 软上限折减只折 normal（不含连击），故「任务列加总(含连击) − 折减」恰好等于 dayNet。
-    taskLines.forEach(l=>lines.push({...l,type:l.cat==='主线二·中级经济师'?'study':'earn'}));
+    taskLines.forEach(l=>lines.push({...l,type:l.cat==='主线二·备考冲刺'?'study':'earn'}));
     // 当日软上限折减（与 totalBalance 同口径）：普通任务超 50 部分 ×50% 被折，转盘加成/学习/步行/full 不折
     // 以独立负行展示，用户把任务行加总后能对上「到账」
     const bd=dayCapBreakdown(k);
@@ -5416,7 +5482,7 @@ function addTodoTestData(){
   getTodos(dayBefore).push({id:4,text:'买猫粮',done:true});
   getTodos(today).push({id:5,text:'今天记得喝够水',done:false});
   // 周便签测试数据
-  getWeekTodos(lastWeek).push({id:11,text:'完成中级经济师第二章',done:false,createdAt:lastWeek+' 09:30'});
+  getWeekTodos(lastWeek).push({id:11,text:'看完第二章网课',done:false,createdAt:lastWeek+' 09:30'});
   getWeekTodos(lastWeek).push({id:12,text:'大扫除卫生间',done:true,createdAt:lastWeek+' 14:00',completedAt:lastWeek+' 16:20'});
   getWeekTodos(todoViewWeek).push({id:13,text:'整理本周学习笔记',done:false,createdAt:fmtTs(new Date())});
   // 月便签测试数据
@@ -5521,7 +5587,7 @@ function renderStatsPage(){
     if(!DB.days[k]||isBlankDay(k))continue;
     dayEarnedLines(k).forEach(l=>{
       const v=l.pts>0?l.pts:0;
-      if(l.cat==='主线二·中级经济师')pStudy+=v;else pDaily+=v;
+      if(l.cat==='主线二·备考冲刺')pStudy+=v;else pDaily+=v;
     });
     pWeek+=dayWeeklySum(k);
     const wpt=weightDeltaPts(k);if(wpt&&wpt.pts>0)pWeek+=wpt.pts;
