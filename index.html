@@ -47,7 +47,7 @@
     --input-bg:var(--card); --box-border:#4b5563; --mark-bg:#854d0e;
     --btn:#2f6fb8; --btn-hover:#4585c9;
   }
-  /* 深色下金色兑换按钮用深色文字（金底白字对比不足） */
+  /* 深色下金色兑换按钮用深色文字（金底白字���比不足） */
   html[data-theme="dark"] .shop-item button{color:#1c1917}
   html[data-theme="dark"] .shop-item button:hover{color:#1c1917}
   *{box-sizing:border-box;margin:0;padding:0}
@@ -1229,7 +1229,7 @@ function load(){try{const r=localStorage.getItem(KEY);if(r){DB=JSON.parse(r);
    背景：曾因手机 PWA/浏览器缓存了旧 index.html，导致统计区渲染异常（兑换记录"对不上"）。
    此后每次发布新版本递增 APP_VERSION；用户打开时若发现版本变化，提示完全关闭重开，
    确保跑的是最新代码，避免旧缓存残留造成同类显示问题。 */
-const APP_VERSION='2026-10-22-54';
+const APP_VERSION='2026-10-23-55';
 try{
   const lastVer=localStorage.getItem('lpVer');
   if(lastVer&&lastVer!==APP_VERSION){
@@ -1429,7 +1429,7 @@ function renderSyncWarn(){
   //   还并入本会话内存里的 _sbLastCheckAt（比落盘值更新，落盘有 60 秒节流）
   const lastT=Math.max(last?((Date.parse(last)||0)):0,lastCk?((Date.parse(lastCk)||0)):0,_sbLastCheckAt||0);
   const mins=lastT?Math.floor((Date.now()-lastT)/60000):-1;
-  if(_sbLastErr){
+  if(_sbLastErr&&_sbFailN>=2){
     msg='云同步失败';tip=_sbLastErr+'（改动只保存在本机，其它设备看不到）'+(_sbErrAt?('｜'+new Date(_sbErrAt).toLocaleTimeString('zh-CN')):'');
     if(_sbLastErrRaw&&_sbLastErrRaw!==_sbLastErr)tip+='｜原始信息：'+_sbLastErrRaw;
   }else if(!_sbReady){
@@ -1446,7 +1446,7 @@ function renderSyncWarn(){
     const _d49=_sbBalDiff(),_lb49=Math.round(totalBalance()*10)/10;
     msg="两端数据不一致";
     tip="本机余额 "+_lb49+" · 云端余额 "+_sbCloudBalCache+"（本机"+(_d49>0?"多 ":"少 ")+Math.abs(_d49)+" 分）。点「立即同步」会按并集合并，把缺的记录补回来 —— 合并只增不减，不会丢东西。";
-    btns='<button onclick="forceSync()">立即同步</button><button onclick="reconcile()">🔍 一键对账</button><button onclick="dismissSyncWarn()">知道了</button>';
+    btns='<button onclick="forceSync()">立即同��</button><button onclick="reconcile()">🔍 一键对账</button><button onclick="dismissSyncWarn()">知道了</button>';
   }else if(!lastT||mins>=10){
     msg='云同步已 '+(lastT?(mins+' 分钟'):'很久')+'没能连上云端';tip='可能是断网、代理/VPN 异常。改动仍保存在本机，联网后会自动补传。';
   }else{el.style.display='none';return}
@@ -2128,6 +2128,7 @@ async function syncDoctor(){
   const txt=L.join('\n');
   try{console.log(txt)}catch(e){}
   try{if(navigator.clipboard&&navigator.clipboard.writeText)await navigator.clipboard.writeText(txt)}catch(e){}
+  if(txt.indexOf('① 读云端：✅')>=0&&txt.indexOf('② 下载整包：✅')>=0&&txt.indexOf('③ 写入权限：✅')>=0){_sbClearErr();if(typeof renderSyncWarn==='function')renderSyncWarn()}
   prompt('云同步诊断（已尝试复制到剪贴板，可全选复制后发给我）',txt);
 }
 /* ===== -48 数据可观测性（2026-09-19）=====
@@ -2166,7 +2167,7 @@ async function reconcile(){
   L.push('本机打开方式：'+location.protocol+'//'+location.host);
   if(!cloudData){
     L.push('');
-    L.push('云端暂无数据 —— 本机数据从未成功上传过。');
+    L.push('云��暂无数据 —— 本机数据从未成功上传过。');
     try{ if(navigator.clipboard&&navigator.clipboard.writeText)await navigator.clipboard.writeText(L.join('\n')); }catch(e){}
     prompt('对账结果（已尝试复制到剪贴板）',L.join('\n'));
     return;
@@ -2906,7 +2907,7 @@ function spinWheel(depth,acc){
     acc.push({n:prize.n,eff:already?'今日任务 +15% 已生效，本次重复抽到不会叠加（0.5G 已扣除）':'今日所有任务积分 +15%（立即生效）'});
   }
   else if(prize.kind==='nextStudy'){DB.pendingBuffs=(DB.pendingBuffs||[]).concat({id:uid(),t:'study'});DB.wheelLog.push(Object.assign(wk,{kind:'state',n:'精力充沛·下项学习任务×2',g:0}));acc.push({n:prize.n,eff:'下一项学习任务积分 ×2（勾选即触发，可累计）'})}
-  else if(prize.kind==='nextAny'){DB.pendingBuffs=(DB.pendingBuffs||[]).concat({id:uid(),t:'any'});DB.wheelLog.push(Object.assign(wk,{kind:'state',n:'经验暴击·下项任务×2',g:0}));acc.push({n:prize.n,eff:'下一项任务积分 ×2（勾选即触发，可累计）'})}
+  else if(prize.kind==='nextAny'){DB.pendingBuffs=(DB.pendingBuffs||[]).concat({id:uid(),t:'any'});DB.wheelLog.push(Object.assign(wk,{kind:'state',n:'经验暴击·下项任务×2',g:0}));acc.push({n:prize.n,eff:'下一项任务积分 ×2（勾选即触发，可累��）'})}
   else if(prize.kind==='respin'){DB.wheelLog.push(Object.assign(wk,{kind:'respin',n:'免费单抽',g:0}));acc.push({n:prize.n,eff:'免费再转一次！'});save();spinWheel(depth+1,acc);return;}
   save();showWheelModal(acc);render();
 }
