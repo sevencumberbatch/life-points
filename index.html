@@ -155,6 +155,11 @@
   .backup-bar{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:8px 14px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:var(--fs-3);color:var(--muted);flex-wrap:wrap}
   .backup-bar button{background:var(--panel);border:1px solid var(--btn);color:var(--text);border-radius:6px;padding:4px 10px;cursor:pointer;font-size:var(--fs-2);white-space:nowrap;font-weight:600}
   .backup-bar button:hover{background:var(--btn-solid);color:#fff}
+  /* 云同步区默认折叠（手机与桌面一致）：只留「云同步状态」一行 + 「管理」，其余（版本/自检/按钮/密码/备份）收进 .ds-more */
+  .ds-toggle{display:inline-block;margin-left:6px;background:var(--panel);border:1px solid var(--btn);color:var(--text);
+    border-radius:6px;padding:2px 8px;font-size:var(--fs-2);font-weight:600;cursor:pointer;white-space:nowrap;line-height:1.5}
+  .ds-more{display:none;width:100%}
+  .ds-more.open{display:block}
   /* 从文件恢复 - 自绘选择器 */
   .pick-body{overflow:auto;padding:6px;min-height:80px}
   .pick-row{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:8px;cursor:pointer;font-size:var(--fs-4);border-bottom:1px solid transparent}
@@ -308,11 +313,17 @@
   .custom-redeem-box .btn-ghost{background:var(--box-border);color:var(--muted)}
   .redeem-tag{display:inline-block;padding:1px 6px;border-radius:10px;font-size:var(--fs-2);margin-left:6px;color:#fff}
 
-  /* 扣分救赎 */
-  .penalty{display:flex;justify-content:space-between;align-items:center;padding:8px 10px;border-radius:8px;font-size:var(--fs-4)}
-  .penalty .pn{color:var(--neg);font-weight:600}
-  .rescue-list{margin-top:8px}
-  .rescue-item{display:flex;justify-content:space-between;padding:6px 10px;font-size:var(--fs-3);background:var(--panel);border-radius:6px;margin-bottom:4px}
+  /* 扣分检测：每行 = 扣分项 + 状态（已结算 / 待结算） */
+  .penalty{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:8px;font-size:var(--fs-3)}
+  .penalty .pn{flex:1;min-width:0;color:var(--muted)}
+  .penalty.on{background:var(--panel)}
+  .penalty.on .pn{color:var(--neg);font-weight:600}
+  .penalty .pst{color:var(--muted);white-space:nowrap}
+  .penalty.on .pst{color:var(--neg);font-weight:600}
+  .penalty.pend .pn{color:var(--text);font-weight:600}
+  .penalty.pend .pst{color:var(--muted)}
+  .pn-title{font-size:var(--fs-4);font-weight:600;margin-bottom:4px}
+  .pn-sum{margin-top:6px;font-size:var(--fs-3);color:var(--muted);line-height:1.6}
 
   /* 统计看板 */
   .stats-legend{display:flex;flex-wrap:wrap;gap:12px;font-size:var(--fs-3);color:var(--muted)}
@@ -369,12 +380,6 @@
   .footer-acts button:hover{background:var(--btn-solid);color:#fff}
   .footer-acts button.danger{color:var(--neg);border-color:var(--neg)}
   .footer-acts button.danger:hover{background:var(--neg);color:#fff}
-  #rescueBtns{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
-  #rescueBtns button{flex:1;min-width:130px;background:var(--card);border:1px solid var(--btn);color:var(--text);border-radius:8px;padding:8px 10px;cursor:pointer;font-size:var(--fs-4);font-weight:600;text-align:center;line-height:1.4}
-  #rescueBtns button:hover{background:var(--btn-solid);color:#fff}
-  #rescueBtns button:hover span{color:rgba(255,255,255,.85)}
-  #rescueBtns button.rescue-cancel{background:var(--btn-solid);color:#fff;border-color:var(--btn-solid)}
-  #rescueBtns button.rescue-cancel:hover{background:var(--btn-solid-hover);opacity:1}
 
   .empty{padding:20px;text-align:center;color:var(--muted);font-size:var(--fs-4)}
   .note{font-size:var(--fs-2);color:var(--muted);margin-top:4px}
@@ -452,19 +457,52 @@
   .todo-clear-btn:hover{color:var(--neg);border-color:var(--neg)}
 
   /* 次数包（疗程/储值次数：买了多少次、用了几次、还剩几次） */
-  .pack-input-row{display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap}
-  .pack-input-row input{border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:var(--fs-4);outline:none;transition:border-color .2s;background:var(--input-bg);color:var(--text);font-family:inherit}
-  .pack-input-row input:focus{border-color:var(--study)}
-  .pack-input-row #packName{flex:1;min-width:130px}
-  .pack-input-row #packTotal{width:96px}
-  .pack-input-row button{background:var(--btn-solid);color:#fff;border:none;border-radius:8px;padding:8px 16px;cursor:pointer;font-size:var(--fs-4);font-weight:600;white-space:nowrap}
-  .pack-input-row button:hover{opacity:.9}
-  .pack-summary{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
-  .pack-sum-chip{font-size:var(--fs-3);font-weight:600;padding:3px 10px;border-radius:20px;background:var(--panel);color:var(--muted);border:1px solid var(--border)}
-  .pack-sum-chip.warn{background:var(--full-bg);color:var(--full);border-color:var(--full-badge-bg)}
-  .pack-sum-chip.empty{background:var(--panel);color:var(--muted);border-color:var(--border)}
+  /* 顶部工具条：搜索 + 房间 + 状态 + 查询（同一行；输入后按查询/回车才生效，手机上打字时列表不跳） */
+  .pack-toolbar{display:flex;gap:6px;margin-bottom:8px;align-items:center}
+  .pack-toolbar input{flex:1 1 120px;min-width:88px;border:1px solid var(--border);border-radius:8px;padding:7px 9px;font-size:var(--fs-3);
+    outline:none;transition:border-color .2s;background:var(--input-bg);color:var(--text);font-family:inherit}
+  .pack-toolbar input:focus{border-color:var(--study)}
+  .pack-query-btn{background:var(--btn-solid);color:#fff;border:none;border-radius:8px;padding:7px 12px;cursor:pointer;
+    font-size:var(--fs-3);font-weight:600;white-space:nowrap;flex-shrink:0}
+  .pack-query-btn:hover{background:var(--btn-solid-hover)}
+  /* 查询行下面：只放「＋ 新建」 */
+  .pack-cond{display:flex;gap:6px;align-items:center;margin-bottom:10px}
+  .pack-new-btn{background:var(--btn-solid);color:#fff;border:none;border-radius:8px;padding:6px 12px;cursor:pointer;
+    font-size:var(--fs-3);font-weight:600;white-space:nowrap;flex-shrink:0}
+  .pack-new-btn:hover{opacity:.9}
+  .pack-sel{flex:0 1 auto;width:auto;min-width:0;max-width:150px;background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:8px;
+    padding:6px 2px;font-size:var(--fs-2);font-weight:600;font-family:inherit;cursor:pointer;flex-shrink:1}
+  .pack-sel:focus{outline:none;border-color:var(--study)}
+  .pack-new-panel{display:none;border:1px dashed var(--border);border-radius:10px;padding:10px;margin-bottom:10px}
+  .pack-new-panel.open{display:block}
+  /* 房间分组标题：📚 书房 · 3 个 · 还剩 12 次 */
+  .pack-room-head{display:flex;align-items:center;gap:6px;margin:16px 0 8px;font-size:var(--fs-4);font-weight:700}
+  .pack-room-head:first-child{margin-top:0}
+  .pack-room-head .rc{font-size:var(--fs-2);font-weight:500;color:var(--muted)}
+  .pack-room-head::after{content:"";flex:1;height:1px;background:var(--border)}
+  /* 二级分类：筛选行用虚线（区别于房间的实心行），分组小标题更轻更小 */
+  .pack-subs{display:flex;gap:6px;flex-wrap:wrap;margin:-2px 0 8px}
+  .pack-subs button{background:var(--panel);border:1px dashed var(--border);color:var(--muted);border-radius:7px;
+    padding:2px 9px;font-size:var(--fs-2);font-weight:600;cursor:pointer;line-height:1.6;font-family:inherit}
+  .pack-subs button:hover{background:var(--hover)}
+  .pack-subs button.on{background:var(--study-bg);color:var(--text);border-style:solid;border-color:var(--study)}
+  .pack-sub-head{display:flex;align-items:center;gap:6px;margin:8px 0 6px;font-size:var(--fs-3);font-weight:600;color:var(--muted)}
+  .pack-sub-head::before{content:"└";opacity:.55}
+  .pack-sub-head::after{content:"";flex:1;height:1px;background:var(--border);opacity:.7}
+  .pack-sub-head .rc{font-size:var(--fs-1);font-weight:500;opacity:.85}
+  .pack-sumline{font-size:var(--fs-3);color:var(--muted);margin-bottom:8px}
+  .pack-filter-reset{margin-top:8px;background:var(--panel);border:1px solid var(--border);color:var(--text);
+    border-radius:8px;padding:5px 12px;font-size:var(--fs-3);font-weight:600;cursor:pointer;font-family:inherit}
+  .pack-filter-reset:hover{background:var(--hover)}
   .pack-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px}
-  .pack-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 14px;box-shadow:var(--shadow);transition:border-color .15s}
+  /* 桌面端：房间分组并排成「几排货架」，避免每个房间/分类各占一整行、右边大片空白 */
+  @media(min-width:1024px){
+    #packGrid.grouped{display:flex;flex-wrap:wrap;gap:2px 20px;align-items:flex-start}
+    #packGrid.grouped .pack-room-block{flex:1 1 460px;min-width:0;max-width:640px}
+    #packGrid.grouped .pack-room-block .pack-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  }
+  .pack-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 14px;box-shadow:var(--shadow);transition:border-color .15s;
+    display:flex;flex-direction:column}
   .pack-card.low{border-color:var(--full)}
   .pack-card.empty{border-color:var(--border)}
   .pack-card.archived{opacity:.62}
@@ -489,7 +527,7 @@
   .pack-bar i{display:block;height:100%;background:var(--btn-solid);border-radius:4px;transition:width .25s}
   .pack-card.low .pack-bar i{background:var(--full)}
   .pack-card.empty .pack-bar i{background:var(--muted)}
-  .pack-acts{display:flex;gap:6px;align-items:center}
+  .pack-acts{display:flex;gap:6px;align-items:center;margin-top:auto}
   .pack-acts button{border:1px solid var(--border);background:var(--panel);color:var(--text);border-radius:8px;padding:5px 10px;cursor:pointer;font-size:var(--fs-3);font-weight:600;font-family:inherit;transition:all .15s}
   .pack-acts button:hover{background:var(--hover)}
   .pack-acts button.primary{background:var(--btn-solid);border-color:var(--btn-solid);color:#fff;flex:1}
@@ -507,6 +545,21 @@
   .pack-arch-head{display:flex;align-items:center;gap:8px;margin:18px 0 8px;font-size:var(--fs-3);color:var(--muted);font-weight:600}
   .pack-arch-head::after{content:"";flex:1;height:1px;background:var(--border)}
   .pack-empty-tip{font-size:var(--fs-4);color:var(--muted);text-align:center;padding:24px 12px;border:1px dashed var(--border);border-radius:12px;line-height:1.8;grid-column:1/-1}
+  /* 手机：固定两列紧凑卡，一屏尽量多看到几个包（桌面仍按 220px 自适应） */
+  @media(max-width:640px){
+    .pack-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+    .pack-card{padding:9px 10px;border-radius:10px}
+    .pack-name{font-size:var(--fs-4)}
+    .pack-badge{padding:1px 5px}
+    .pack-tools button{font-size:var(--fs-4);padding:2px 3px}
+    .pack-sub{font-size:var(--fs-1);margin-top:2px}
+    .pack-main{margin:6px 0 5px;gap:3px}
+    .pack-left{font-size:var(--fs-6)}
+    .pack-unit{font-size:var(--fs-2)}
+    .pack-bar{margin-bottom:7px}
+    .pack-acts{gap:4px}
+    .pack-acts button{padding:5px 6px;font-size:var(--fs-2)}
+  }
   @media(hover:none){.pack-acts button:active{opacity:.75}}
   /* 每日签到：一行 = 一条可勾选任务 + 右侧「改名/删除」图标按钮（复用 .task / .pack-tools 的观感） */
   .signin-row{display:flex;align-items:center;gap:2px}
@@ -524,7 +577,7 @@
   /* 触摸设备没有 hover，用 :active 给点击即时反馈 */
   @media(hover:none){
     .task:active,.zone-tasks .task:active,.todo-item:active,.shop-item:active{background:var(--hover)}
-    .page-tab:active,.footer-acts button:active,#rescueBtns button:active{opacity:.75}
+    .page-tab:active,.footer-acts button:active{opacity:.75}
     .counter .ctrl button:active,.date-nav button:active{background:var(--study-bg)}
   }
 
@@ -621,7 +674,6 @@
     .todo-item .box{width:22px;height:22px}
     .section h2 .toggle-ic{width:32px;height:32px}
     .footer-acts button{min-height:40px}
-    #rescueBtns button{min-height:44px}
     .shop-item button{min-height:32px;padding:5px 12px}
     /* 密码输入保留 16px 防 iOS 聚焦放大；其余窄输入框跟随正文 14px，视觉更协调 */
     .auth-card input{font-size:var(--fs-5)}
@@ -879,14 +931,11 @@
     <div class="weight-info" id="weightInfo">基准体重未设置，明早称完告诉我。</div>
   </div>
 
-  <!-- 扣分与救赎 -->
+  <!-- 扣分检测（救赎入口已移除，历史日子已登记的救赎仍按原规则抵扣） -->
   <div class="section">
-    <h2><span class="ic">⚖️</span>扣分与救赎</h2>
-    <div class="sub">扣分自动检测；救赎可手动登记抵扣</div>
+    <h2><span class="ic">⚖️</span>扣分检测</h2>
+    <div class="sub">未完成类扣分在当天结束后结算，次日生效</div>
     <div id="penaltyList"></div>
-    <div style="margin-top:10px;font-size:var(--fs-4);font-weight:600">救赎通道</div>
-    <div class="rescue-list" id="rescueList"></div>
-    <div class="footer-acts" id="rescueBtns"></div>
   </div>
 
   <!-- 奖励商店入口：商店本体已挪到「🛒 兑换商店」独立页，这里只留余额与今日统计 -->
@@ -1047,16 +1096,40 @@
 
   <div id="pagePacks" class="hidden">
     <div class="section">
-      <h2><span class="ic">🎫</span>次数包 · 剩余次数</h2>
-      <div class="sub">买了多少次、用了几次、还剩几次一目了然 · 剩余 ≤2 会标黄提醒 · 纯记录，不参与积分</div>
-      <div class="pack-input-row">
-        <input type="text" id="packName" placeholder="名称，随便写，如：针灸" onkeydown="if(event.key==='Enter')addPack()">
-        <input type="number" id="packTotal" min="1" step="1" placeholder="总次数" onkeydown="if(event.key==='Enter')addPack()">
-        <button onclick="addPack()">添加</button>
+      <h2><span class="ic">🎫</span>次数包 · 我买过的卡</h2>
+      <div class="sub">按房间收纳你买过的卡，房间里还能再分一层（厨房：粮食 / 调料；浴室：人类洗护 / 非人类洗护） · 剩余 ≤2 会标黄提醒 · 纯记录，不参与积分</div>
+      <div class="pack-toolbar">
+        <input type="search" id="packSearch" placeholder="搜名称 / 房间 / 分类 / 机构 / 备注"
+          onkeydown="if(event.key==='Enter'){event.preventDefault();applyPackQuery()}">
+        <select class="pack-sel" id="packRoomSel" onchange="applyPackQuery()" aria-label="按房间筛选"></select>
+        <select class="pack-sel" id="packStatusSel" onchange="applyPackQuery()" aria-label="按状态筛选"></select>
+        <button class="pack-query-btn" onclick="applyPackQuery()">查询</button>
       </div>
-      <div class="pack-summary" id="packSummary"></div>
-      <div class="pack-grid" id="packGrid"></div>
+      <div class="pack-cond">
+        <button class="pack-new-btn" id="packNewBtn" onclick="togglePackNew()">＋ 新建</button>
+      </div>
+      <div class="pack-subs" id="packSubs"></div>
+      <div class="pack-new-panel" id="packNewPanel">
+        <div class="pack-edit-grid">
+          <div class="pack-edit-row"><label>名称</label><input id="packName" placeholder="如：针灸" onkeydown="if(event.key==='Enter')addPack()"></div>
+          <div class="pack-edit-row"><label>总次数</label><input type="number" min="1" step="1" id="packTotal" placeholder="10" onkeydown="if(event.key==='Enter')addPack()"></div>
+          <div class="pack-edit-row"><label>单位</label><input id="packUnit" placeholder="次"></div>
+          <div class="pack-edit-row"><label>放进哪个房间（可选）</label><input id="packRoomIn" list="packRoomList" placeholder="书房 / 厨房 / 浴室…" oninput="packRoomChanged()"></div>
+          <div class="pack-edit-row"><label>二级分类（可选）</label><input id="packSubIn" list="packSubList" placeholder="粮食 / 调料 / 人类洗护…"></div>
+          <div class="pack-edit-row"><label>机构 / 地点（可选）</label><input id="packOrg" placeholder="如：XX中医院"></div>
+          <div class="pack-edit-row"><label>有效期（可选）</label><input type="date" id="packExpire"></div>
+          <div class="pack-edit-row"><label>备注（可选）</label><input id="packNote" placeholder="如：卡号 8899"></div>
+        </div>
+        <div class="pack-acts">
+          <button class="primary" onclick="addPack()">添加</button>
+          <button onclick="togglePackNew()">取消</button>
+        </div>
+      </div>
+      <div class="pack-sumline" id="packSummary"></div>
+      <div id="packGrid"></div>
       <div id="packArchived"></div>
+      <datalist id="packRoomList"></datalist>
+      <datalist id="packSubList"></datalist>
     </div>
   </div>
 </div>
@@ -1299,6 +1372,8 @@ function load(){try{const r=localStorage.getItem(KEY);if(r){DB=JSON.parse(r);
     p.total=(typeof p.total==='number'&&p.total>0)?Math.floor(p.total):Math.max(1,Math.floor(Number(p.total)||1));
     if(typeof p.name!=='string')p.name=String(p.name==null?'':p.name)||'未命名';
     if(typeof p.unit!=='string'||!p.unit)p.unit='次';
+    if(typeof p.room!=='string')p.room='';   // 房间/类别（旧数据没有这个字段 → 归到未分类）
+    if(typeof p.sub!=='string')p.sub='';     // 二级分类（厨房：粮食/调料，浴室：人类洗护/非人类洗护）
     if(typeof p.org!=='string')p.org='';
     if(typeof p.expire!=='string')p.expire='';
     if(typeof p.note!=='string')p.note='';
@@ -1482,12 +1557,17 @@ function renderBackup(){const el=document.getElementById('backupBar');if(!el)ret
     else{let _same=false;try{_same=(contentSig()===_sbLocalSig)}catch(e){}
       h+=_same?' · <b style="color:var(--skill)">改动已上传</b>':' · <b style="color:var(--neg)">有改动待上传</b>'}
     h+='</span>';
-    // -48：版本号与设备标识可见 —— 两端「版本必须相同、设备必须不同」，一眼可比，不必再猜
-    h+='<br><span>📦 版本 <b>'+APP_VERSION+'</b> · 本机设备 <b>'+String(myDev())+'</b>'
-      +' <span style="color:var(--muted)">（两台设备版本号应一致、设备号应不同）</span></span>';
-    try{h+=_sbBalRow()}catch(e){}
   }else{
     h+='<span>☁️ 云同步：<b style="color:var(--muted)">未配置</b></span>';
+  }
+  // 手机端只显示上面这一行状态 + 「管理」按钮；其余内容收进 .ds-more，点开才展开（桌面端 .ds-toggle 隐藏、.ds-more 始终显示）
+  h+='<button class="ds-toggle" id="dataMoreBtn" onclick="toggleDataMore()">'+(_dsMoreOpen?'收起 ‹':'管理 ›')+'</button>';
+  h+='<div class="ds-more'+(_dsMoreOpen?' open':'')+'" id="dataMore">';
+  if(cbEnv&&cbKey){
+    // -48：版本号与设备标识可见 —— 两端「版本必须相同、设备必须不同」，一眼可比，不必再猜
+    h+='<span>📦 版本 <b>'+APP_VERSION+'</b> · 本机设备 <b>'+String(myDev())+'</b>'
+      +' <span style="color:var(--muted)">（两台设备版本号应一致、设备号应不同）</span></span><br>';
+    try{h+=_sbBalRow()}catch(e){}
   }
   // 数据自检状态（-32）：幂等哨兵 + 计数钳制的最近一次结果，让异常可见
   const g=DB._guard;
@@ -1513,7 +1593,16 @@ function renderBackup(){const el=document.getElementById('backupBar');if(!el)ret
     h+='<span style="display:flex;gap:6px;flex-wrap:wrap"><button onclick="changeAccessPass()">设置访问密码</button></span>';
   }
   h+='<br><span>💾 备份：';if(dir){h+='已连接 <b>'+dir+'</b> · 每次改动留存版本（保留30天） · '}else{h+='<b>浏览器内自动备份</b>（建议连接文件夹加强） · '}h+='上次 '+lbStr;if(needsExportReminder())h+=' · <b style="color:var(--neg)">超7天未导出，建议备份</b>';
-  h+='</span><span style="display:flex;gap:6px;flex-wrap:wrap">';h+='<button onclick="connectBackupDir()">'+(dir?'换目录':'连接文件夹')+'</button>';if(dir)h+='<button onclick="restoreFromFile()">从文件恢复</button>';h+='<button onclick="restoreFromIDB()">从浏览器恢复</button>';h+='</span>';el.innerHTML=h;renderSyncWarn()}
+  h+='</span><span style="display:flex;gap:6px;flex-wrap:wrap">';h+='<button onclick="connectBackupDir()">'+(dir?'换目录':'连接文件夹')+'</button>';if(dir)h+='<button onclick="restoreFromFile()">从文件恢复</button>';h+='<button onclick="restoreFromIDB()">从浏览器恢复</button>';h+='</span>';
+  h+='</div>';  // /.ds-more
+  el.innerHTML=h;renderSyncWarn()}
+// 手机端「管理 ›」展开/收起云同步详情；桌面端该按钮不显示，.ds-more 始终展开
+var _dsMoreOpen=false;
+function toggleDataMore(){
+  _dsMoreOpen=!_dsMoreOpen;
+  const box=document.getElementById('dataMore');if(box)box.classList.toggle('open',_dsMoreOpen);
+  const btn=document.getElementById('dataMoreBtn');if(btn)btn.textContent=_dsMoreOpen?'收起 ‹':'管理 ›';
+}
 /* -40：同步异常不能只藏在设置区一行小字里（曾经的坑：看着"开着"，其实一笔都没同步）。
    未连上 / 上次同步失败 / 长时间没成功 → 页面顶部常驻提示。 */
 var _syncWarnHidden=false;
@@ -3467,7 +3556,7 @@ function checkMilestones(){
 function render(){
   renderTop();
   renderFat();renderStudy();renderSkill();renderLife();renderSignin();
-  renderWeekly();renderWeight();renderPenalty();renderRescue();
+  renderWeekly();renderWeight();renderPenalty();
   renderShop();renderShopEntry();renderStats();renderDetail();
   if(typeof renderBackup==='function')renderBackup();
   if(!document.getElementById('pageTodo').classList.contains('hidden'))renderAllTodos();
@@ -3770,7 +3859,10 @@ function renderPenalty(){
   const pen=dayPenalty(curDate);
   const d=getDay(curDate);
   const isToday=(curDate===todayKey());
-  let html='<div style="font-size:var(--fs-4);font-weight:600;margin-bottom:6px">今日扣分检测</div>';
+  const r=d.resc||[];
+  const resSum=r.reduce((s,k)=>{const def=RESCUES.find(x=>x.k===k);return s+(def?def.pts:0)},0);
+  let html='<div class="pn-title">'+(isToday?'今日扣分检测':curDate.slice(5).replace('-','/')+' 扣分检测')+'</div>';
+  let pendPts=0; // 今天只是预告、次日才真正扣的部分
   // 列出所有扣分项，显示状态
   PENALTIES.forEach(pe=>{
     let triggered=false;
@@ -3794,36 +3886,33 @@ function renderPenalty(){
       pending = isToday && !triggered && ['noWash','noMain','noOintment','noStudy2d'].includes(pe.k);
     }
     const notSunday = pe.k==='noWeekly' && !isSunday(curDate) && !triggered;
-    const style = triggered ? 'color:var(--neg);font-weight:600' : 'color:var(--muted)';
-    const status = triggered ? `${pe.pts}G` : (pending?'待结算':(notSunday?'周日结算':'未触发'));
-    const statusColor = triggered ? 'var(--neg)' : 'var(--muted)';
-    html+=`<div class="penalty"><span style="${style}">${pe.n}</span><span style="color:${statusColor};font-weight:${triggered?'600':'400'}">${status}</span></div>`;
+    // 已结算：日期已过去，或今天的即时扣分（含糖饮料）。今天的「未完成」类只是预告，次日才真正扣
+    const settled = !isToday || pe.k==='drankSugar';
+    if(triggered&&!settled)pendPts+=pe.pts;
+    const status = triggered ? (settled?`${pe.pts}G`:`待结算 ${pe.pts}G`) : (pending?'待结算':(notSunday?'周日结算':'未触发'));
+    html+=`<div class="penalty${triggered?(settled?' on':' pend'):''}"><span class="pn">${pe.n}</span><span class="pst">${status}</span></div>`;
   });
   // 手动标记：喝了含糖饮料（已在上方列表，这里保留勾选入口）
   const ds=d.t.drankSugar;
   html+=`<div onclick="toggleDrankSugar()" style="margin-top:8px;padding:8px 10px;border:1px ${ds?'solid var(--neg)':'dashed var(--border)'};border-radius:8px;display:flex;align-items:center;gap:8px;cursor:pointer;background:${ds?'rgba(239,68,68,0.05)':'transparent'}">`
     +`<input type="checkbox" ${ds?'checked':''} style="pointer-events:none;accent-color:var(--neg)">`
     +`<span style="font-size:var(--fs-4);${ds?'color:var(--neg)':''}">今天喝了含糖饮料</span>`
-    +`<span style="margin-left:auto;font-size:12px;color:var(--neg);font-weight:600">${ds?'已扣 -5G':'勾选确认 → -5G'}</span>`
+    +`<span style="margin-left:auto;font-size:var(--fs-2);color:var(--neg);font-weight:600">${ds?'已扣 -5G':'勾选确认 → -5G'}</span>`
     +`</div>`;
-  const rescueUse=rescueCredit(curDate); // 实际抵减（无扣分/未结算时为 0）
-  html+=`<div style="margin-top:8px;font-size:12px;color:var(--muted)">今日扣分合计：<b style="color:var(--neg)">${pen.pts}G</b> · 救赎抵扣：<b style="color:var(--text)">${rescueUse>0?'+'+rescueUse+'G':'0G（需次日扣分结算后生效）'}</b> · <span style="color:var(--muted)">单日扣分最多 <b style="color:var(--neg)">-10G</b></span></div>`;
+  // 合计：未完成类扣分次日才真正结算，今天只预告
+  const credit=rescueCredit(curDate); // 历史日子已登记的救赎仍按原规则抵扣
+  if(isToday){
+    html+='<div class="pn-sum">今日已扣 <b style="color:var(--neg)">'+pen.pts+'G</b>'
+      +(pendPts?' · 待结算 <b style="color:var(--neg)">'+pendPts+'G</b>（次日生效）':'')
+      +(resSum?' · 已登记救赎 <b>+'+resSum+'G</b>':'')
+      +'<br><span style="color:var(--muted)">未完成类扣分在当天结束后结算；单日扣分封顶 -10G</span></div>';
+  }else{
+    const net=pen.pts+credit;
+    html+='<div class="pn-sum">扣分 <b style="color:var(--neg)">'+pen.pts+'G</b>'
+      +(credit?' · 救赎抵扣 <b>+'+credit+'G</b> · 净 <b style="color:'+(net<0?'var(--neg)':'var(--text)')+'">'+net+'G</b>':'')
+      +'</div>';
+  }
   document.getElementById('penaltyList').innerHTML=html;
-}
-function renderRescue(){
-  const d=getDay(curDate);
-  const r=d.resc||[];
-  document.getElementById('rescueList').innerHTML=r.length?r.map(rk=>{
-    const def=RESCUES.find(x=>x.k===rk);
-    if(!def)return ''; // 防御：旧数据/云合并可能残留已废弃的救赎 key，跳过而非崩溃
-    return `<div class="rescue-item"><span>${def.n} <span class="tag">${def.desc}</span></span><span style="color:var(--text);font-weight:600">+${def.pts}G</span></div>`;
-  }).join(''):'<div class="empty">今日无救赎</div>';
-  // 按钮：已选则显示为取消
-  document.getElementById('rescueBtns').innerHTML=RESCUES.map(def=>{
-    const sel=r.includes(def.k);
-    const label=sel?`✓ ${def.n}（点击取消）`:`${def.n} +${def.pts}G`;
-    return `<button class="${sel?'rescue-cancel':''}" onclick="addRescue('${def.k}')">${label}<br><span style="font-size:11px;color:var(--muted)">${def.desc}</span></button>`;
-  }).join('');
 }
 let shopLv=1;
 let detailTab='earn';
@@ -3997,7 +4086,7 @@ function reconcileBook(){
   else if(corrupt)verdict='❌ 检测到数据异常：'+bad.slice(0,5).join('；')+(bad.length>5?'等 '+bad.length+' 处':'')+'。请到「每日明细」/兑换记录核对，必要时留存导出后用「重置全部」重建。';
   else verdict='❌ 存在差异 '+diff+'G。多半是数据被手动改动或云端合并残留，建议：①到「每日明细」逐行核对扣分/兑换；②必要时用「导出/导入」留存后用「重置全部」重建看是否恢复。';
   html+=`<div style="margin-top:8px;padding:8px 10px;border-radius:8px;font-size:12px;${ok?'background:var(--panel);color:var(--text)':'background:rgba(239,68,68,0.08);color:var(--neg)'}">${verdict}</div>`;
-  html+=`<div style="font-size:11px;color:var(--muted);margin-top:6px">注：每日任务净分含扣分封顶-10与救赎抵扣；转盘翻倍与+15%已含在当日净分中，此处不再单独加。</div>`;
+  html+=`<div style="font-size:11px;color:var(--muted);margin-top:6px">注：每日任务净分含扣分封顶-10（历史日子含已登记的救赎抵扣）；转盘翻倍与+15%已含在当日净分中，此处不再单独加。</div>`;
   return {html,ok,computed,balance,corrupt,bad};
 }
 function renderReconcile(){
@@ -5156,11 +5245,13 @@ function renderSignin(){
 }
 
 /* ============ 次数包（疗程 / 储值次数） ============
-   用途：记录「买了多少次、用了几次、还剩几次」，比如针灸 10 次。
+   用途：像收纳一样记「放在哪个房间、买了多少次、用了几次、还剩几次」，比如药房 · 针灸 10 次。
+   房间是自由文本（预设书房/厨房/浴室/药房/保健品/其他，也能自己写），旧数据没有这个字段 → 归到「未分类」。
+   二级分类（sub）挂房间下面：厨房 → 粮食/调料，浴室 → 人类洗护/非人类洗护；同样可自由填写，没填就显示「未细分」。
    纯提醒模块 —— 不参与任何计分，改动它不会影响余额、软上限或任何分数口径。
 
    数据结构：DB.packs = [{
-     id, name, total, unit, org, expire, note, archived, ts,
+     id, name, total, unit, room, sub, org, expire, note, archived, ts,
      useDev:{设备id:次数},   // 各设备记下的「用掉」
      fixDev:{设备id:次数}    // 各设备记下的「撤销」
    }]
@@ -5172,6 +5263,11 @@ function renderSignin(){
    分桶后沿用既有规则：本机桶本地权威（减量能传出去）、他机桶信任云端，幂等且不会两端相加翻倍。
    删除走墓碑（tombAdd），否则刚删掉的包会被云端旧副本拉回来。 */
 let packEditId=null;   // 正在编辑的包 id（纯 UI 状态，不持久化）
+let packQuery='';      // 搜索关键词（纯 UI 状态）
+let packFilter='all';  // 当前状态筛选：all/low/soon/empty/arch（纯 UI 状态）
+let packRoomSel='all'; // 当前房间筛选（纯 UI 状态）
+let packSubSel='all';  // 当前二级分类筛选（纯 UI 状态）
+let packNewOpen=false; // 顶部「新建」面板是否展开（纯 UI 状态）
 const PACK_LOW=2;      // 剩余 ≤ 此值时标黄提醒「快用完了」
 
 // 注意：getPacks 必须返回 DB 上的**原数组**，不能返回过滤后的副本 ——
@@ -5188,15 +5284,110 @@ function packDaysLeft(p){
   try{return Math.round((parseKey(p.expire).getTime()-parseKey(todayKey()).getTime())/86400000)}catch(e){return null}
 }
 
+// 搜索命中：名称 / 房间 / 二级分类 / 机构 / 备注 / 有效期都能搜
+function packMatch(p,q){
+  if(!q)return true;
+  const h=((p.name||'')+' '+(p.room||'')+' '+(p.sub||'')+' '+(p.org||'')+' '+(p.note||'')+' '+(p.expire||'')).toLowerCase();
+  return h.indexOf(q)>=0;
+}
+/* 房间 = 一级收纳位置。预设几个常用房间，输入框里也能自己写新的（如「卧室」「车里」），
+   写过的会自动进下拉建议，不用维护一份写死的清单。 */
+const PACK_ROOMS=['书房','厨房','浴室','药房','保健品','其他'];
+const PACK_ROOM_ICON={'书房':'📚','厨房':'🍳','浴室':'🛁','药房':'💊','保健品':'🌿','卧室':'🛏️','客厅':'🛋️','阳台':'🌿','车里':'🚗','其他':'🏷'};
+/* 二级分类：只给真正需要分的房间预置，其他房间留空 = 不分组；
+   输入框照样可以自己写（写了就进该房间下的建议）。 */
+const PACK_SUBS={'厨房':['粮食','调料'],'浴室':['人类洗护','非人类洗护']};
+function packRoomName(r){return r||'未分类'}
+function packRoomIcon(r){return PACK_ROOM_ICON[r]||'📦'}
+// 房间顺序：预设房间常驻（即使暂时没东西，也当成固定货架摆着）→ 自定义按名称排 → 未分类垫底
+function packRoomOrder(){
+  const used={};validPacks().forEach(p=>{used[p.room||'']=1});
+  return PACK_ROOMS
+    .concat(Object.keys(used).filter(r=>r&&PACK_ROOMS.indexOf(r)<0).sort())
+    .concat(used['']?['']:[]);
+}
+// 某房间的二级分类顺序：预置在前 → 自定义按名称排 → 未细分垫底（只列数据里真的有的）
+function packSubOrder(room){
+  const used={};
+  validPacks().forEach(p=>{if((p.room||'')===room)used[p.sub||'']=1});
+  const pre=(PACK_SUBS[room]||[]).filter(s=>used[s]);
+  const custom=Object.keys(used).filter(s=>s&&pre.indexOf(s)<0&&(PACK_SUBS[room]||[]).indexOf(s)<0).sort();
+  return pre.concat(custom).concat(used['']?['']:[]);
+}
+// 房间名 / 二级分类要放进 onclick="setPackSub('...')" 的单引号里，先转义
+function packRoomArg(r){return String(r).replace(/\\/g,'\\\\').replace(/'/g,"\\'")}
+// 查询：把「搜索框 + 房间下拉 + 状态下拉」三个条件一次性收进状态再重绘
+function applyPackQuery(){
+  const s=document.getElementById('packSearch');
+  const rs=document.getElementById('packRoomSel');
+  const fs=document.getElementById('packStatusSel');
+  if(s)packQuery=(s.value||'').trim().toLowerCase();
+  const prevRoom=packRoomSel;
+  if(rs)packRoomSel=rs.value===''?'':(rs.value||'all');
+  if(fs)packFilter=fs.value||'all';
+  if(packRoomSel!==prevRoom)packSubSel='all';   // 换房间后二级分类回到「全部分类」
+  renderPacks();
+}
+function setPackSub(s){packSubSel=s;renderPacks()}
+// 换房间时，把不属于新房间的二级分类清掉（否则「厨房 · 鱼类」这种怪组合会留下来）
+function packRoomChanged(){
+  const r=document.getElementById('packRoomIn'),s=document.getElementById('packSubIn');
+  if(!r||!s)return;
+  const room=(r.value||'').trim();
+  const subs=PACK_SUBS[room]||[];
+  if(s.value&&subs.length&&subs.indexOf((s.value||'').trim())<0)s.value='';
+  renderPacks();
+}
+function clearPackFilter(){
+  const s=document.getElementById('packSearch');if(s)s.value='';
+  packQuery='';packFilter='all';packRoomSel='all';packSubSel='all';renderPacks();
+}
+function togglePackNew(){
+  packNewOpen=!packNewOpen;renderPacks();
+  if(packNewOpen){const el=document.getElementById('packName');if(el)el.focus()}
+}
+
+// 房间分组标题：📚 书房 · 3 个 · 还剩 12 次
+function packRoomHeadHtml(r,items){
+  const totalLeft=items.reduce(function(s,p){return s+packLeft(p)},0);
+  const units=new Set(items.map(p=>p.unit||'次'));
+  return '<div class="pack-room-head">'+packRoomIcon(r)+' '+escapeHtml(packRoomName(r))
+    +'<span class="rc">'+items.length+' 个 · 还剩 '+totalLeft+(units.size===1?' '+escapeHtml([...units][0]):'')+'</span></div>';
+}
+// 二级分类小标题：└ 粮食 · 2 个 · 还剩 20 斤
+function packSubHeadHtml(s,items){
+  const totalLeft=items.reduce(function(a,p){return a+packLeft(p)},0);
+  const units=new Set(items.map(p=>p.unit||'次'));
+  return '<div class="pack-sub-head">'+escapeHtml(s||'未细分')
+    +'<span class="rc">'+items.length+' 个 · 还剩 '+totalLeft+(units.size===1?' '+escapeHtml([...units][0]):'')+'</span></div>';
+}
+function packGridHtml(list){return '<div class="pack-grid">'+list.map(packCardHtml).join('')+'</div>'}
+// 一个房间内部的渲染：有二级分类就按分类分组，没有就平铺
+function packSubGroupsHtml(room,items){
+  const order=packSubOrder(room);
+  if(order.length<=1&&order[0]==='')return packGridHtml(items);   // 全是「未细分」→ 不用多一层标题
+  return order.map(function(s){
+    const sub=items.filter(p=>(p.sub||'')===s);
+    return sub.length?packSubHeadHtml(s,sub)+packGridHtml(sub):'';
+  }).join('');
+}
+
 function addPack(){
   const nmEl=document.getElementById('packName'),ttEl=document.getElementById('packTotal');
   if(!nmEl||!ttEl)return;
+  const g=id=>{const el=document.getElementById(id);return el?(el.value||'').trim():''};
   const name=(nmEl.value||'').trim();
   const total=Math.floor(Number(ttEl.value));
   if(!name){alert('先填名称，比如「针灸」');nmEl.focus();return}
   if(!(total>0)){alert('总次数要填一个大于 0 的整数');ttEl.focus();return}
-  getPacks().push({id:uid(),name:name,total:total,unit:'次',org:'',expire:'',note:'',archived:false,ts:Date.now(),useDev:{},fixDev:{}});
-  nmEl.value='';ttEl.value='';
+  getPacks().push({id:uid(),name:name,total:total,unit:g('packUnit')||'次',room:g('packRoomIn'),sub:g('packSubIn'),org:g('packOrg'),
+    expire:g('packExpire'),note:g('packNote'),archived:false,ts:Date.now(),useDev:{},fixDev:{}});
+  // 清空输入；房间与二级分类刻意保留 —— 连着录同一格的卡时不用重复填
+  ['packName','packTotal','packUnit','packOrg','packExpire','packNote'].forEach(function(id){
+    const el=document.getElementById(id);if(el)el.value='';
+  });
+  const sEl=document.getElementById('packSearch');if(sEl)sEl.value='';
+  packQuery='';packFilter='all';packRoomSel='all';packSubSel='all';
   save();renderPacks();
   nmEl.focus();
 }
@@ -5222,6 +5413,8 @@ function savePackEdit(id){const p=packFind(id);if(!p)return;
   if(total<used&&!confirm('总次数（'+total+'）比已用的（'+used+'）还少，保存后剩余会显示成 0。要继续吗？'))return;
   p.name=name;p.total=total;
   p.unit=((g('unit')||'').trim())||'次';
+  p.room=(g('room')||'').trim();
+  p.sub=(g('sub')||'').trim();
   p.org=(g('org')||'').trim();
   p.expire=(g('expire')||'').trim();
   p.note=(g('note')||'').trim();
@@ -5251,6 +5444,8 @@ function packCardHtml(p){
         +'<div class="pack-edit-row"><label>名称</label><input id="pk-name-'+p.id+'" value="'+v(p.name)+'"></div>'
         +'<div class="pack-edit-row"><label>总次数</label><input type="number" min="1" step="1" id="pk-total-'+p.id+'" value="'+(total||1)+'"></div>'
         +'<div class="pack-edit-row"><label>单位</label><input id="pk-unit-'+p.id+'" value="'+v(p.unit||'次')+'"></div>'
+        +'<div class="pack-edit-row"><label>放进哪个房间（可选）</label><input id="pk-room-'+p.id+'" list="packRoomList" value="'+v(p.room)+'" placeholder="书房 / 厨房 / 浴室…"></div>'
+        +'<div class="pack-edit-row"><label>二级分类（可选）</label><input id="pk-sub-'+p.id+'" list="packSubList" value="'+v(p.sub)+'" placeholder="粮食 / 调料 / 人类洗护…"></div>'
         +'<div class="pack-edit-row"><label>机构 / 地点（可选）</label><input id="pk-org-'+p.id+'" value="'+v(p.org)+'" placeholder="如：XX中医院"></div>'
         +'<div class="pack-edit-row"><label>有效期（可选）</label><input type="date" id="pk-expire-'+p.id+'" value="'+v(p.expire)+'"></div>'
         +'<div class="pack-edit-row"><label>备注（可选）</label><input id="pk-note-'+p.id+'" value="'+v(p.note)+'" placeholder="如：卡号 8899 / 还剩 3 次可退"></div>'
@@ -5292,7 +5487,12 @@ function packCardHtml(p){
 
 function renderPacks(){
   const grid=document.getElementById('packGrid');if(!grid)return;
+  grid.className='';
   const sumEl=document.getElementById('packSummary'),archEl=document.getElementById('packArchived');
+  const subEl=document.getElementById('packSubs'),slEl=document.getElementById('packSubList');
+  const rselEl=document.getElementById('packRoomSel'),stselEl=document.getElementById('packStatusSel');
+  const npEl=document.getElementById('packNewPanel'),nbEl=document.getElementById('packNewBtn'),dlEl=document.getElementById('packRoomList');
+
   const all=validPacks();
   const active=all.filter(p=>!p.archived).sort((a,b)=>{
     const la=packLeft(a),lb=packLeft(b);
@@ -5301,33 +5501,132 @@ function renderPacks(){
     return (a.ts||0)-(b.ts||0);               // 其余按创建先后
   });
   const arch=all.filter(p=>p.archived).sort((a,b)=>(b.ts||0)-(a.ts||0));
-  // 汇总条：进行中 / 合计剩余 / 已用完 / 快用完 / 30 天内到期
-  if(sumEl){
-    const totalLeft=active.reduce((s,p)=>s+packLeft(p),0);
-    const low=active.filter(p=>{const l=packLeft(p);return l>0&&l<=PACK_LOW});
-    const empty=active.filter(p=>packLeft(p)<=0);
-    const expSoon=active.filter(p=>{const d=packDaysLeft(p);return d!==null&&d<=30});
-    const units=new Set(active.map(p=>p.unit||'次'));
-    let h='';
-    if(active.length){
-      h+='<span class="pack-sum-chip">进行中 '+active.length+' 个</span>';
-      h+='<span class="pack-sum-chip">合计剩余 '+totalLeft+(units.size===1?' '+escapeHtml([...units][0]):'')+'</span>';
-    }
-    if(low.length)h+='<span class="pack-sum-chip warn">快用完 '+low.length+' 个：'+low.map(p=>escapeHtml(p.name)).join('、')+'</span>';
-    if(empty.length)h+='<span class="pack-sum-chip empty">已用完 '+empty.length+' 个：'+empty.map(p=>escapeHtml(p.name)).join('、')+'</span>';
-    if(expSoon.length)h+='<span class="pack-sum-chip empty">30 天内到期 '+expSoon.length+' 个：'+expSoon.map(p=>escapeHtml(p.name)).join('、')+'</span>';
-    sumEl.innerHTML=h;
+
+  // 房间：顺序、下拉建议（预设 + 自己写过的房间都进建议）
+  const rooms=packRoomOrder();
+  if(packRoomSel!=='all'&&rooms.indexOf(packRoomSel)<0)packRoomSel='all';
+  if(dlEl){
+    dlEl.innerHTML=PACK_ROOMS.concat(rooms.filter(r=>r&&PACK_ROOMS.indexOf(r)<0))
+      .map(r=>'<option value="'+escapeHtml(r)+'">').join('');
   }
-  if(!active.length&&!arch.length){
-    grid.innerHTML='<div class="pack-empty-tip">还没有次数包。<br>在上面填「名称 + 总次数」就能记下，比如：针灸 · 10 次</div>';
+  // 房间下拉（第一项永远是「全部房间」）：选项带该房间「进行中」的数量
+  if(rselEl){
+    let oh='<option value="all">全部房间 ('+active.length+')</option>';
+    rooms.forEach(function(r){
+      const n=active.filter(p=>(p.room||'')===r).length;
+      oh+='<option value="'+escapeHtml(r)+'">'+packRoomIcon(r)+' '+escapeHtml(packRoomName(r))+' ('+n+')</option>';
+    });
+    rselEl.innerHTML=oh;
+    rselEl.value=packRoomSel;
+  }
+
+  // 二级分类：只属于当前房间（全部房间时不显示，避免跨房间串味）
+  const subs=packRoomSel==='all'?[]:packSubOrder(packRoomSel);
+  if(packSubSel!=='all'&&subs.indexOf(packSubSel)<0)packSubSel='all';
+  if(subEl){
+    // 只有真的分出了二级分类（至少一个非空）才显示这一行，否则「全部分类 / 未细分」纯属噪音
+    subEl.innerHTML=(packRoomSel!=='all'&&subs.some(s=>s))
+      ?(['<button class="'+(packSubSel==='all'?'on':'')+'" onclick="setPackSub(\'all\')">全部分类</button>']
+        .concat(subs.map(function(s){
+          return '<button class="'+(packSubSel===s?'on':'')+'" onclick="setPackSub(\''+packRoomArg(s)+'\')">'
+            +escapeHtml(s||'未细分')+'</button>';
+        })).join(''))
+      :'';
+  }
+  // 二级分类输入框的建议：跟着「房间」输入框里写的房间走
+  if(slEl){
+    const roomIn=document.getElementById('packRoomIn');
+    const typed=((roomIn&&roomIn.value)||'').trim();
+    let opts;
+    if(typed){
+      const pre=PACK_SUBS[typed]||[];
+      opts=pre.concat(packSubOrder(typed).filter(x=>x&&pre.indexOf(x)<0));
+    }else{
+      opts=Object.keys(PACK_SUBS).reduce((a,k)=>a.concat(PACK_SUBS[k]),[]);
+    }
+    slEl.innerHTML=Array.from(new Set(opts)).map(s=>'<option value="'+escapeHtml(s)+'">').join('');
+  }
+
+  // 作用域：状态筛选的计数与列表都只看当前房间 + 当前二级分类
+  const inRoom=p=>packRoomSel==='all'||(p.room||'')===packRoomSel;
+  const inScope=p=>inRoom(p)&&(packSubSel==='all'||(p.sub||'')===packSubSel);
+  const sActive=active.filter(inScope), sArch=arch.filter(inScope);
+  const low=sActive.filter(p=>{const l=packLeft(p);return l>0&&l<=PACK_LOW});
+  const empty=sActive.filter(p=>packLeft(p)<=0);
+  const soon=sActive.filter(p=>{const d=packDaysLeft(p);return d!==null&&d<=30});
+  const cnt={all:sActive.length,low:low.length,soon:soon.length,empty:empty.length,arch:sArch.length};
+
+  // 新建面板的开合 + 按钮文案
+  if(npEl)npEl.classList.toggle('open',packNewOpen);
+  if(nbEl)nbEl.textContent=packNewOpen?'收起':'＋ 新建';
+
+  // 状态下拉：选项固定五项，括号里是当前房间/分类下对应的数量
+  if(stselEl){
+    const items=[['all','全部'],['low','快用完'],['soon','临期'],['empty','已用完'],['arch','已归档']];
+    stselEl.innerHTML=items.map(it=>'<option value="'+it[0]+'">'+it[1]+' ('+cnt[it[0]]+')</option>').join('');
+    stselEl.value=packFilter;
+  }
+
+  // 依据筛选选出来源集合，再套搜索过滤
+  let list,showArch=false;
+  if(packFilter==='arch')list=sArch;
+  else if(packFilter==='low')list=low;
+  else if(packFilter==='soon')list=soon;
+  else if(packFilter==='empty')list=empty;
+  else{list=sActive;showArch=true}
+  list=list.filter(p=>packMatch(p,packQuery));
+
+  // 汇总一行：进行中 / 房间数 / 合计剩余 / 快用完 / 临期
+  if(sumEl){
+    const totalLeft=sActive.reduce((s,p)=>s+packLeft(p),0);
+    const units=new Set(sActive.map(p=>p.unit||'次'));
+    const bits=[];
+    if(sActive.length){
+      bits.push('进行中 '+sActive.length+' 个');
+      if(packRoomSel==='all'&&rooms.filter(r=>r).length>1)bits.push(rooms.filter(r=>r).length+' 个房间');
+      bits.push('合计还剩 '+totalLeft+(units.size===1?' '+escapeHtml([...units][0]):''));
+    }
+    if(low.length)bits.push('快用完 '+low.length);
+    if(soon.length)bits.push('30 天内到期 '+soon.length);
+    if(empty.length)bits.push('已用完 '+empty.length);
+    if(packQuery)bits.push('匹配 '+(list.length+(showArch?sArch.filter(p=>packMatch(p,packQuery)).length:0))+' 个');
+    sumEl.innerHTML=bits.join(' · ');
+  }
+
+  const tipHtml=m=>'<div class="pack-empty-tip">'+m+'</div>';
+  if(!all.length){
+    grid.innerHTML=tipHtml('还没有次数包。<br>点上面的「＋ 新建」填「名称 + 总次数」，再挑一个房间（书房 / 厨房 / 浴室 / 药房 / 保健品）放进去');
     if(archEl)archEl.innerHTML='';
     return;
   }
-  grid.innerHTML=active.length?active.map(packCardHtml).join('')
-    :'<div class="pack-empty-tip">进行中的次数包都清空了（用完的包可以「📦 归档」收起来）</div>';
-  if(archEl)archEl.innerHTML=arch.length
-    ?('<div class="pack-arch-head"><span>已归档（'+arch.length+'）</span></div><div class="pack-grid">'+arch.map(packCardHtml).join('')+'</div>')
-    :'';
+  let h='',grouped=false;
+  if(list.length){
+    if(packRoomSel==='all'){
+      // 全部房间：按房间分组，房间内再按二级分类分组（粮食 / 调料、人类洗护 / 非人类洗护…）
+      grouped=true;
+      rooms.forEach(function(r){
+        const items=list.filter(p=>(p.room||'')===r);
+        if(items.length)h+='<div class="pack-room-block">'+packRoomHeadHtml(r,items)+packSubGroupsHtml(r,items)+'</div>';
+      });
+    }else{
+      h=packRoomHeadHtml(packRoomSel,list)
+        +(packSubSel==='all'?packSubGroupsHtml(packRoomSel,list):packGridHtml(list));
+    }
+  }else if(packFilter==='all'&&!packQuery){
+    h=tipHtml(packRoomSel==='all'
+      ?'没有进行中的次数包了。<br>用完的可以点卡片上的「📦」归档收起来，归档区还留底。'
+      :'「'+escapeHtml(packRoomName(packRoomSel))+'」里还没有进行中的次数包。');
+  }else{
+    h=tipHtml('没有符合条件的次数包<br><button class="pack-filter-reset" onclick="clearPackFilter()">清除搜索 / 筛选</button>');
+  }
+  if(grouped)grid.className='grouped';
+  grid.innerHTML=h;
+  if(archEl){
+    const archShow=showArch?sArch.filter(p=>packMatch(p,packQuery)):[];
+    archEl.innerHTML=archShow.length
+      ?('<div class="pack-arch-head"><span>已归档（'+archShow.length+'）</span></div>'+packGridHtml(archShow))
+      :'';
+  }
 }
 
 /* ============ 便签待办 ============ */
