@@ -6,7 +6,7 @@
 <title>人生积分系统 · 星伴版</title>
 <!-- 主题色：浅色/深色分别匹配系统，PWA 独立窗口的状态栏颜色由它决定 -->
 <meta name="theme-color" content="#54637a">
-<meta name="theme-color" content="#16151a" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#0a0909" media="(prefers-color-scheme: dark)">
 <link rel="manifest" href="./manifest.webmanifest">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <!-- black-translucent：视口延伸到状态栏下方，配合下方 safe-area 内边距，背景铺满不露白边 -->
@@ -45,26 +45,35 @@
     --fs-6:20px;  /* 大数字：总积分、统计卡片 */
     --fs-timer:30px;
   }
+  /* 深色主题（唯一的一套暗色）：底色是"漆黑"，金做主强调，红只给操作与风险。
+     取色原则：大面积（底色/卡片/面板/边框）都是低饱和的中性色并带一点暖调（贴近漆器），
+     金色只用于积分、全额、高亮，酒红只用于主按钮、余额框、扣分与警告，避免整屏红雾。 */
   html[data-theme="dark"]{
-    --bg:#16151a; --card:#201f24; --border:#3b3733; --text:#eee9e2; --muted:#a29a90;
-    --fat:#c8959e; --fat-bg:#2e2429; --study:#a8b4c8; --study-bg:#242a33;
-    --skill:#96b3ad; --skill-bg:#22302c; --life:#a9a2bd; --life-bg:#2a2733;
-    --weekly:#b0b59a; --weekly-bg:#2b2d24; --gold:#d9bd85; --neg:#cb9391;
-    --full:#d5c08c; --full-bg:#302b21; --full-badge-bg:#423a2a;
-    --gold-1:#efd9a6; --gold-2:#d7b172; --gold-hi:#fcedc4; --gold-badge-1:#e9d094; --gold-badge-2:#d3ac62; --gold-sheen:#fff4d2; --gold-ink:#3c2d10;
-    --shadow:0 1px 3px rgba(0,0,0,.5);
-    --panel:#2a272c; --hover:#343033; --topbar-bg:#16151a;
-    --seg1-bg:var(--panel); --seg2-bg:var(--panel); --seg3-bg:var(--panel);
-    --input-bg:var(--card); --box-border:#49423a; --mark-bg:#494a2f;
-    --chk:#7c7266; --chk-line:#4e4842;
-    --btn:#b8a992; --btn-hover:#c9bba6; --btn-solid:#5a4f42; --btn-solid-hover:#4a4136;
+    /* 中性色统一带一点暖调（像漆器的黑），比原先把卡片/面板做成偏紫的灰更耐看 */
+    --bg:#0a0909; --card:#171314; --border:#332b2c; --text:#f3ede4; --muted:#a99f95;
+    --panel:#201b1c; --hover:#2b2425; --topbar-bg:#0a0909;
+    --input-bg:#171314; --box-border:#3b3233; --mark-bg:#3d3320;
+    --chk:#9c875f; --chk-line:#4c4238;
+    --btn:#e3c07f; --btn-hover:#f2d59b; --btn-solid:#8d2b35; --btn-solid-hover:#a33540;
+    --gold:#e9c77f; --neg:#e09299;
+    /* 分类色统一收进暖金家族：粉、紫、绿都改成琥珀/沙金/香槟，红色只留给扣分与风险 */
+    --fat:#d9a97a; --fat-bg:#2a2119; --study:#d9c29b; --study-bg:#272118;
+    --skill:#e3c07f; --skill-bg:#2b2518; --life:#cbb5a0; --life-bg:#272120;
+    --weekly:#cbbd92; --weekly-bg:#262317;
+    --full:#e9d19b; --full-bg:#2c271b; --full-badge-bg:#41381e;
+    --gold-1:#f7e3b4; --gold-2:#d9b271; --gold-hi:#fdeecb; --gold-badge-1:#efdaa6; --gold-badge-2:#d9b372;
+    --gold-sheen:#fff4d4; --gold-ink:#33240c;
+    --shadow:0 2px 10px rgba(0,0,0,.6);
+    --seg1-bg:#201b1c; --seg2-bg:#201b1c; --seg3-bg:#201b1c;
   }
   /* 深色下金色兑换按钮用深色文字（金底白字对比不足） */
   html[data-theme="dark"] .shop-item button{color:var(--gold-ink)}
   html[data-theme="dark"] .shop-item button:hover{color:var(--gold-ink)}
-  html[data-theme="dark"] .balance-box{background:linear-gradient(135deg,#2b2620,#4a4034)}
-  html[data-theme="dark"] .balance-box .val{color:#f2e6cf}
-  html[data-theme="dark"] #authGate{background:linear-gradient(135deg,#1b1a1f,#332f2b)}
+  /* 总积分框：整页唯一一块饱和酒红，暗红→酒红过渡 + 金色数字；外圈一道很细的金线收边 */
+  html[data-theme="dark"] .balance-box{background:linear-gradient(135deg,#211214 0%,#6f212a 58%,#8b2b34 100%);border:1px solid rgba(233,199,127,.18);box-shadow:0 3px 14px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,235,190,.10)}
+  html[data-theme="dark"] .balance-box .val{color:#f9e4b2}
+  html[data-theme="dark"] .balance-box .lbl{color:#efd7ae}
+  html[data-theme="dark"] #authGate{background:linear-gradient(135deg,#100e10,#241a1c)}
   *{box-sizing:border-box;margin:0;padding:0}
   /* html 背景会铺满整个视口（含安全区），左右 padding 仅约束内容，横屏刘海不压字 */
   html{background:var(--bg);-webkit-text-size-adjust:100%;
@@ -110,9 +119,9 @@
   .cap-bar .seg.s2{background:var(--seg2-bg)}
   .cap-bar .seg.s3{background:var(--seg3-bg)}
   .cap-bar .seg-fill{position:absolute;left:0;top:0;bottom:0;border-radius:3px;transition:width .3s}
-  .cap-bar .seg.s1 .seg-fill{background:linear-gradient(90deg,#729aa3,#93b6be)}
-  .cap-bar .seg.s2 .seg-fill{background:linear-gradient(90deg,#9aa58d,#b5bea9)}
-  .cap-bar .seg.s3 .seg-fill{background:linear-gradient(90deg,#8889a6,#a7a8c2)}
+  .cap-bar .seg.s1 .seg-fill{background:linear-gradient(90deg,#c8a05a,#e8cb8f)}
+  .cap-bar .seg.s2 .seg-fill{background:linear-gradient(90deg,#a98648,#cdb07a)}
+  .cap-bar .seg.s3 .seg-fill{background:linear-gradient(90deg,#9c4550,#bb7b83)}
   .cap-bar .seg-lock{position:absolute;left:50%;top:50%;transform:translate(-50%,-52%);font-size:var(--fs-2);line-height:1;z-index:2;opacity:.95}
   .cap-bar .cap-scale{position:relative;font-size:var(--fs-1);color:var(--muted);margin-top:4px;height:14px}
   .cap-bar .cap-scale span{position:absolute;top:0;white-space:nowrap}
@@ -196,6 +205,15 @@
   .task.disabled:hover{background:transparent}
   .task.disabled .box{border-color:var(--border)}
   .task .lock-msg{font-size:var(--fs-2);color:var(--neg);margin-top:2px}
+  /* 任务行即时反馈：按下有回弹，点中时在手指位置飘出对应的 ±G（挂在 body 上，不受重建影响） */
+  .task:active{background:var(--panel)}
+  .row-float{position:fixed;z-index:900;pointer-events:none;font-size:var(--fs-3);font-weight:700;
+    color:var(--gold);text-shadow:0 1px 4px rgba(0,0,0,.35);animation:rowFloat .9s ease-out forwards}
+  .row-float.neg{color:var(--neg)}
+  @keyframes rowFloat{0%{opacity:0;transform:translate(-50%,0) scale(.9)}
+    15%{opacity:1}100%{opacity:0;transform:translate(-50%,-26px) scale(1)}}
+  /* 统计柱状图：没有记录的日期用主题边框色，避免写死灰色 */
+  .chart-bar.zero{fill:var(--border)}
 
   /* 不受软上限标记（香槟金渐变 = 全额到账） */
   .full-badge,.cnt{display:inline-block;padding:0 6px;border-radius:8px;font-size:var(--fs-1);font-weight:700;line-height:1.6;
@@ -393,7 +411,7 @@
   .auth-card h2{font-size:var(--fs-6);margin-bottom:6px;color:var(--text)}
   .auth-card p{font-size:var(--fs-4);color:var(--muted);margin-bottom:20px}
   .auth-card input{width:100%;padding:12px 14px;border:2px solid var(--border);border-radius:10px;font-size:var(--fs-5);margin-bottom:12px;outline:none;transition:border-color .2s}
-  .auth-card input:focus{border-color:var(--study)}
+  .auth-card input:focus{border-color:var(--gold)}
   .auth-card button{width:100%;padding:12px;border:none;border-radius:10px;font-size:var(--fs-5);font-weight:600;cursor:pointer;transition:opacity .2s}
   .auth-card button.primary{background:var(--btn-solid);color:#fff}
   .auth-card button.primary:hover{opacity:.9}
@@ -438,7 +456,7 @@
   /* 便签待办 */
   .todo-input-row{display:flex;gap:8px;margin-bottom:10px}
   .todo-input-row input{flex:1;border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:var(--fs-4);outline:none;transition:border-color .2s;background:var(--input-bg);color:var(--text)}
-  .todo-input-row input:focus{border-color:var(--study)}
+  .todo-input-row input:focus{border-color:var(--gold)}
   .todo-input-row button{background:var(--btn-solid);color:#fff;border:none;border-radius:8px;padding:8px 16px;cursor:pointer;font-size:var(--fs-4);font-weight:600;white-space:nowrap}
   .todo-input-row button:hover{opacity:.9}
   .todo-list{}
@@ -461,7 +479,7 @@
   .pack-toolbar{display:flex;gap:6px;margin-bottom:8px;align-items:center}
   .pack-toolbar input{flex:1 1 120px;min-width:88px;border:1px solid var(--border);border-radius:8px;padding:7px 9px;font-size:var(--fs-3);
     outline:none;transition:border-color .2s;background:var(--input-bg);color:var(--text);font-family:inherit}
-  .pack-toolbar input:focus{border-color:var(--study)}
+  .pack-toolbar input:focus{border-color:var(--gold)}
   .pack-query-btn{background:var(--btn-solid);color:#fff;border:none;border-radius:8px;padding:7px 12px;cursor:pointer;
     font-size:var(--fs-3);font-weight:600;white-space:nowrap;flex-shrink:0}
   .pack-query-btn:hover{background:var(--btn-solid-hover)}
@@ -472,7 +490,7 @@
   .pack-new-btn:hover{opacity:.9}
   .pack-sel{flex:0 1 auto;width:auto;min-width:0;max-width:150px;background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:8px;
     padding:6px 2px;font-size:var(--fs-2);font-weight:600;font-family:inherit;cursor:pointer;flex-shrink:1}
-  .pack-sel:focus{outline:none;border-color:var(--study)}
+  .pack-sel:focus{outline:none;border-color:var(--gold)}
   .pack-new-panel{display:none;border:1px dashed var(--border);border-radius:10px;padding:10px;margin-bottom:10px}
   .pack-new-panel.open{display:block}
   /* 房间分组标题：📚 书房 · 3 个 · 还剩 12 次 */
@@ -485,7 +503,7 @@
   .pack-subs button{background:var(--panel);border:1px dashed var(--border);color:var(--muted);border-radius:7px;
     padding:2px 9px;font-size:var(--fs-2);font-weight:600;cursor:pointer;line-height:1.6;font-family:inherit}
   .pack-subs button:hover{background:var(--hover)}
-  .pack-subs button.on{background:var(--study-bg);color:var(--text);border-style:solid;border-color:var(--study)}
+  .pack-subs button.on{background:var(--study-bg);color:var(--text);border-style:solid;border-color:var(--gold)}
   .pack-sub-head{display:flex;align-items:center;gap:6px;margin:8px 0 6px;font-size:var(--fs-3);font-weight:600;color:var(--muted)}
   .pack-sub-head::before{content:"└";opacity:.55}
   .pack-sub-head::after{content:"";flex:1;height:1px;background:var(--border);opacity:.7}
@@ -536,9 +554,9 @@
   .pack-edit-row{margin-bottom:8px}
   .pack-edit-row label{display:block;font-size:var(--fs-2);color:var(--muted);margin-bottom:3px;font-weight:600}
   .pack-edit-row input{width:100%;border:1px solid var(--border);border-radius:8px;padding:6px 10px;font-size:var(--fs-4);background:var(--input-bg);color:var(--text);outline:none;font-family:inherit}
-  .pack-edit-row input:focus{border-color:var(--study)}
+  .pack-edit-row input:focus{border-color:var(--gold)}
   /* 编辑态占满整行：一是字段有地方铺开，二是不会把同一排的卡片顶高留出空档 */
-  .pack-card.editing{grid-column:1/-1;border-color:var(--study)}
+  .pack-card.editing{grid-column:1/-1;border-color:var(--gold)}
   .pack-card.editing .pack-acts button.primary{flex:0 0 auto;min-width:96px}
   .pack-edit-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px 12px;margin-bottom:10px}
   .pack-edit-grid .pack-edit-row{margin-bottom:0}
@@ -561,6 +579,14 @@
     .pack-acts button{padding:5px 6px;font-size:var(--fs-2)}
   }
   @media(hover:none){.pack-acts button:active{opacity:.75}}
+  /* 单行输入 + 添加按钮（每日签到 / 杂事共用） */
+  .pack-input-row{display:flex;gap:8px;margin-bottom:8px}
+  .pack-input-row input{flex:1;min-width:0;border:1px solid var(--border);border-radius:8px;padding:7px 11px;font-size:var(--fs-4);
+    background:var(--input-bg);color:var(--text);font-family:inherit;outline:none;transition:border-color .2s}
+  .pack-input-row input:focus{border-color:var(--gold)}
+  .pack-input-row button{background:var(--btn-solid);color:#fff;border:none;border-radius:8px;padding:7px 14px;cursor:pointer;
+    font-size:var(--fs-3);font-weight:600;flex-shrink:0}
+  .pack-input-row button:hover{background:var(--btn-solid-hover)}
   /* 每日签到：一行 = 一条可勾选任务 + 右侧「改名/删除」图标按钮（复用 .task / .pack-tools 的观感） */
   .signin-row{display:flex;align-items:center;gap:2px}
   .signin-row .signin-task{flex:1;min-width:0}
@@ -594,7 +620,8 @@
       gap:2px;padding:7px 4px;background:none;border:none;cursor:pointer;
       color:var(--muted);font-size:var(--fs-2);font-weight:600;font-family:inherit;
       min-height:54px;transition:color .15s}
-    .tabbar .tab .ti{font-size:var(--fs-6);line-height:1}
+    .tabbar .tab .ti{display:flex;align-items:center;justify-content:center;width:20px;height:20px}
+    .tabbar .tab .ti svg{width:20px;height:20px;display:block}
     .tabbar .tab.active{color:var(--btn)}
     .tabbar .tab:active{background:var(--hover)}
   }
@@ -612,7 +639,7 @@
   .todo-nav .nav-label{font-size:var(--fs-4);font-weight:600;min-width:120px;text-align:center}
   .todo-nav input[type="date"],.todo-nav input[type="month"]{border:1px solid var(--muted);border-radius:8px;padding:5px 8px;font-size:var(--fs-4);background:var(--card);cursor:pointer;color:var(--text);font-family:inherit}
   .todo-nav input[type="date"]:hover,.todo-nav input[type="month"]:hover{background:var(--hover)}
-  .todo-nav input[type="date"]:focus,.todo-nav input[type="month"]:focus{outline:none;border-color:var(--study)}
+  .todo-nav input[type="date"]:focus,.todo-nav input[type="month"]:focus{outline:none;border-color:var(--gold)}
   .todo-history{margin-top:16px}
   .todo-history-list{max-height:300px;overflow-y:auto;border:1px solid var(--border);border-radius:8px}
   .todo-history-row{display:flex;align-items:center;gap:8px;padding:6px 12px;font-size:var(--fs-3);border-bottom:1px solid var(--hover)}
@@ -625,7 +652,7 @@
   .history-filter-row select,.history-filter-row input[type="date"],.history-filter-row input[type="text"]{
     border:1px solid var(--border);border-radius:8px;padding:6px 10px;font-size:var(--fs-4);background:var(--card);color:var(--text);font-family:inherit}
   .history-filter-row select:hover,.history-filter-row input[type="date"]:hover,.history-filter-row input[type="text"]:hover{background:var(--hover)}
-  .history-filter-row select:focus,.history-filter-row input[type="date"]:focus,.history-filter-row input[type="text"]:focus{outline:none;border-color:var(--study)}
+  .history-filter-row select:focus,.history-filter-row input[type="date"]:focus,.history-filter-row input[type="text"]:focus{outline:none;border-color:var(--gold)}
   .history-filter-row .search-input{flex:1;min-width:140px}
   .history-filter-row .date-sep{font-size:var(--fs-3);color:var(--muted)}
 
@@ -776,6 +803,32 @@
   .sync-warn.lv-info{border-color:var(--border);background:var(--panel)}
   .sync-warn.lv-info .sw-t{color:var(--muted)}
   .sync-warn .sw-t{font-weight:600;color:var(--neg)}
+
+  /* ===== 手感修复（手机 / 键盘 / 减弱动效） ===== */
+  /* 1) iOS Safari 聚焦输入框时字号 <16px 会被强制放大整页；手机与触屏设备上把可打字输入框提到 16px。
+     date/month 不在此列：原生日期控件的固有宽度在 16px 下会撑破 375px 的顶栏（且它们点开是原生选择器）。
+     select 同理保持原字号，才能在次数包单行工具栏里排得下。 */
+  @media (pointer:coarse),(max-width:820px){
+    input[type="text"],input[type="search"],input[type="number"],
+    input[type="password"],textarea{font-size:16px}
+  }
+  /* 2) 键盘/辅助技术才显示焦点环，鼠标与触屏看到的外观不变 */
+  :focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+  /* 3) 系统开启「减弱动态效果」时，关掉过渡与动画（进度条、打卡、飘字等） */
+  @media (prefers-reduced-motion:reduce){
+    *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;
+      transition-duration:.001ms!important;scroll-behavior:auto!important}
+  }
+  /* 4) 总积分变化飘字：右上角 +N / -N，0.9s 淡入上浮 */
+  .balance-box{position:relative;overflow:hidden}
+  .bal-float{position:absolute;right:10px;top:5px;font-size:var(--fs-3);font-weight:700;
+    color:var(--gold);opacity:0;pointer-events:none;font-variant-numeric:tabular-nums;white-space:nowrap}
+  .bal-float.show{animation:balFloat .9s cubic-bezier(.2,.7,.3,1)}
+  .bal-float.neg{color:var(--neg)}
+  @keyframes balFloat{0%{opacity:0;transform:translateY(6px)}18%{opacity:1;transform:translateY(0)}
+    70%{opacity:1;transform:translateY(-6px)}100%{opacity:0;transform:translateY(-12px)}}
+  /* 只给读屏软件看的播报区 */
+  .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 </style>
 </head>
 <body>
@@ -785,7 +838,9 @@
     <div class="balance-box">
       <span class="lbl">总积分</span>
       <span class="val"><span id="balVal">0</span><span class="u">G</span></span>
+      <span class="bal-float" id="balFloat" aria-hidden="true"></span>
     </div>
+    <div class="sr-only" aria-live="polite" id="balLive"></div>
     <div class="day-pts">
       <div class="chip" id="chipRaw" title="今日原始分（任务含翻倍/日积月累加成 + 周任务 + 里程碑 + 称重 + 无外卖连击），未扣软上限/扣分前"><span id="rawLbl">今日原始</span><b id="rawVal">0</b></div>
       <div class="chip pos" id="chipDay" title="今日净到账（任务过软上限 + 扣分/救赎 + 周任务 + 里程碑 + 称重 + 无外卖连击 + 转盘直接奖励）"><span id="dayLbl">今日到账</span><b id="dayVal">0</b></div>
@@ -900,6 +955,18 @@
     <div class="pack-summary" id="signinSummary"></div>
     <div id="signinList"></div>
     <div class="combo" id="combo-signin">全部签完额外 +2G<span id="signinComboSt">未达成</span></div>
+  </div>
+
+  <!-- 杂事：零碎小事，做一件 +1G -->
+  <div class="section">
+    <h2><span class="ic">🧩</span>杂事 · 做一件 +1G</h2>
+    <div class="sub">零碎小事写进来，做完打勾就 +1G · 每天前 5 件全额，第 6 件起受软上限 · 不做不扣分</div>
+    <div class="pack-input-row">
+      <input type="text" id="miscInput" placeholder="要做什么？如：取快递 / 交物业费" maxlength="40" onkeydown="if(event.key==='Enter')addMisc()">
+      <button onclick="addMisc()">添加</button>
+    </div>
+    <div id="miscList"></div>
+    <div class="pack-summary" id="miscSum"></div>
   </div>
   </div><!-- /col-main -->
 
@@ -2681,7 +2748,7 @@ async function restoreLocalFromCloud(){
 function getDay(k){if(!DB.days[k])DB.days[k]=blankDay();return DB.days[k]}
 // 标记某天被修改（供按天合并同步使用）
 function touchDay(k){const d=getDay(k);d._ts=Date.now();return d}
-function blankDay(){return{t:{},c:{study45:0,study45Dev:{},study45FixDev:{},studyDone:0,studyDoneDev:{},studyDoneFixDev:{},focusMinDev:{},steps:0,taskMinPool:{}},w:{bedroom:{o:false,s:false,m:false},living:{o:false,s:false,m:false},kitchen:{o:false,s:false,m:false},bath:{o:false,s:false,m:false}},ld:{wash:false,dry:false},wt:null,r:[],resc:[],todos:[]}}
+function blankDay(){return{t:{},c:{study45:0,study45Dev:{},study45FixDev:{},studyDone:0,studyDoneDev:{},studyDoneFixDev:{},focusMinDev:{},steps:0,taskMinPool:{}},w:{bedroom:{o:false,s:false,m:false},living:{o:false,s:false,m:false},kitchen:{o:false,s:false,m:false},bath:{o:false,s:false,m:false}},ld:{wash:false,dry:false},wt:null,r:[],resc:[],todos:[],misc:[]}}
 
 /* ============ 任务定义 ============ */
 const FAT=[
@@ -3232,6 +3299,7 @@ function dayRawPts(k){
   // 每日签到：直接进 base，不走 add()/taskMult —— 1G 的小事不参与 ×2 翻倍，
   // 也就不必配合 maybeConsumeNext，buff 队列不会被签到白白消耗掉。
   base+=signinTotalPts(d);
+  base+=miscDonePts(k);   // 杂事：做完一件 +1G，走普通渠道（受 50G 软上限）
   let p=base+bonus;
   // 日积月累+15%：只对基础分(base，不含翻倍 bonus)加成，翻倍奖励不再乘 15%
   if(DB.dayBuff30&&DB.dayBuff30[k])p=base+bonus+Math.round(base*DAY_BUFF_RATE);
@@ -3270,6 +3338,10 @@ function dayCapBreakdown(k){
   normal+=lampPts(d);
   normal+=gjcTotalPts(d);
   normal+=signinTotalPts(d);   // 每日签到：走普通渠道，受 50G 软上限（不给全额待遇）
+  // 杂事：每天前 5 件按 1G 全额（保住"做一件得 1 分"的手感），第 6 件起回到普通渠道受 50G 软上限
+  const mDone=miscDoneCount(k);
+  full+=Math.min(mDone,MISC_FULL_FREE)*MISC_PTS;
+  normal+=Math.max(0,mDone-MISC_FULL_FREE)*MISC_PTS;
   SKILL.forEach(t=>{if(d.t[t.k])reg(t.k,t.pts,!!t.full)});
   LIFE1.forEach(t=>{if(d.t[t.k])reg(t.k,t.pts,false)});
   if(LIFE1_COMBO.need.every(x=>d.t[x]))normal+=LIFE1_COMBO.pts;
@@ -3499,7 +3571,8 @@ function isBlankDay(k){
   const hasLd=!!(d.ld&&(d.ld.wash||d.ld.dry));
   const hasResc=(d.resc||[]).length>0;
   const hasWt=!!d.wt;
-  return !hasTask&&!hasCount&&!hasWeek&&!hasLd&&!hasResc&&!hasWt;
+  const hasMisc=(d.misc||[]).some(m=>m.done);   // 只勾杂事的日子也要算「有内容」，否则明细/连击会当天丢失
+  return !hasTask&&!hasCount&&!hasWeek&&!hasLd&&!hasResc&&!hasWt&&!hasMisc;
 }
 function totalBalance(){
   let bal=0;
@@ -3555,9 +3628,15 @@ function checkMilestones(){
 /* ============ 渲染 ============ */
 function render(){
   renderTop();
-  renderFat();renderStudy();renderSkill();renderLife();renderSignin();
-  renderWeekly();renderWeight();renderPenalty();
-  renderShop();renderShopEntry();renderStats();renderDetail();
+  renderFat();renderStudy();renderSkill();renderLife();renderSignin();renderMisc();
+  /* 已收起的板块先跳过重建（手机上省掉大量 innerHTML），展开时由 toggleSection 补渲染 */
+  const notCollapsed=id=>{const el=document.getElementById(id);const sec=el&&el.closest('.section');return !(sec&&sec.classList.contains('collapsed'))};
+  if(notCollapsed('scrubRow'))renderWeekly();
+  if(notCollapsed('weightInfo'))renderWeight();
+  renderPenalty();
+  if(notCollapsed('shopGrid'))renderShop();
+  renderShopEntry();renderStats();
+  if(notCollapsed('detailTabs'))renderDetail();
   if(typeof renderBackup==='function')renderBackup();
   if(!document.getElementById('pageTodo').classList.contains('hidden'))renderAllTodos();
   if(!document.getElementById('pageStats').classList.contains('hidden'))renderStatsPage();
@@ -3565,8 +3644,41 @@ function render(){
   renderFocusPill();
   if(typeof renderSyncWarn==='function')renderSyncWarn();
 }
+/* 总积分显示：数值变化时右上角飘出 +N/-N，并把数字从旧值滚到新值（约 0.38s）。
+   只在真的变化时触发，切换日期等不会乱飘；系统开启「减弱动态效果」时直接落值。 */
+var _balShown=null,_balRaf=null,_balQuietUntil=null;
+function updateBalanceDisplay(v){
+  var el=document.getElementById('balVal'),fl=document.getElementById('balFloat'),live=document.getElementById('balLive');
+  if(!el)return;
+  var now=(typeof performance!=='undefined'&&performance.now)?performance.now():Date.now();
+  // 首次加载/云同步会在 1.2s 内让数字从 0 跳到真实值，这段时间只落值、不飘字不滚动
+  if(_balQuietUntil===null)_balQuietUntil=now+1200;
+  if(_balShown===null){el.textContent=v;_balShown=v;return;}
+  var d=Math.round((v-_balShown)*10)/10;
+  if(Math.abs(d)<0.05){el.textContent=v;return;}
+  var from=_balShown; _balShown=v;
+  if(now<_balQuietUntil){el.textContent=v;return;}
+  if(fl){
+    fl.textContent=(d>0?'+':'')+d+'G';
+    fl.className='bal-float'+(d<0?' neg':'');
+    void fl.offsetWidth;                       // 强制回流，确保连续变化时动画能重播
+    fl.classList.add('show');
+    fl.addEventListener('animationend',function(){fl.classList.remove('show')},{once:true});
+  }
+  if(live)live.textContent='总积分 '+v+'G，'+(d>0?'增加':'减少')+Math.abs(d)+'G';
+  var reduce=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if(reduce||typeof requestAnimationFrame!=='function'){el.textContent=v;return;}
+  if(_balRaf)cancelAnimationFrame(_balRaf);
+  var t0=null,dur=380;
+  _balRaf=requestAnimationFrame(function step(ts){
+    if(!t0)t0=ts;
+    var p=Math.min(1,(ts-t0)/dur),ease=1-Math.pow(1-p,3);
+    el.textContent=Math.round((from+(v-from)*ease)*10)/10;
+    if(p<1)_balRaf=requestAnimationFrame(step);else{_balRaf=null;el.textContent=v;}
+  });
+}
 function renderTop(){
-  document.getElementById('balVal').textContent=Math.round(totalBalance()*10)/10;
+  updateBalanceDisplay(Math.round(totalBalance()*10)/10);
   const taskRaw=dayRawPts(curDate);            // 本日任务：日任务原始分
   const weekToday=dayWeeklySum(curDate);       // 当天完成的周任务
   const ms=milestonePtsOn(curDate);            // 今日达成里程碑
@@ -4135,6 +4247,8 @@ function dayEarnedLines(k){
   const gd=gjcDone(d);
   if(gd>0)add('工间操 ×'+gd,wadj(gd*GJC_PTS,null,k),'主线一·减脂攻坚');
   if(gd>=GJC_CUPS)add('工间操4次全勤',wadj(GJC_COMBO_PTS,null,k),'主线一·减脂攻坚');
+  // 杂事：做完的每件小事各 +1G，逐条进「日常任务」列，相当于当天做了什么的流水
+  miscOf(k).filter(m=>m.done).forEach(m=>add('🧩 '+m.n,MISC_PTS,'杂事'));
   return lines;
 }
 function dayContribution(k){
@@ -4307,6 +4421,23 @@ function renderRedeemDetail(){
 }
 
 /* ============ 交互 ============ */
+/* 任务行点击反馈：capture 阶段先于行内 onclick 执行，此时 DOM 还没被重建。
+   点在行内按钮（如「开始」）或禁用行时不飘字，避免误报积分。 */
+document.addEventListener('click',function(e){
+  const row=e.target&&e.target.closest?e.target.closest('.task'):null;
+  if(!row||row.classList.contains('disabled'))return;
+  if(e.target.closest('button,select,input,textarea,a'))return;
+  const t=row.querySelector('.tpts');if(!t)return;
+  const m=(t.textContent||'').match(/\d+(?:\.\d+)?/);if(!m)return;
+  const done=row.classList.contains('done');
+  const f=document.createElement('span');
+  f.className='row-float'+(done?' neg':'');
+  f.textContent=(done?'-':'+')+m[0]+'G';
+  f.setAttribute('aria-hidden','true');
+  f.style.left=e.clientX+'px';f.style.top=(e.clientY-12)+'px';
+  document.body.appendChild(f);
+  setTimeout(function(){if(f.parentNode)f.parentNode.removeChild(f)},950);
+},true);
 function toggle(k){
   const d=touchDay(curDate);
   if(k==='earlySleep'){
@@ -5198,6 +5329,59 @@ function delSignin(id){
   save();render();
 }
 
+/* ============ 杂事：零碎小事，做一件 +1G ============
+   每天一份清单（存在当天记录里 d.misc），勾选才算完成；完成的逐条进「获得明细」的日常任务列。
+   不做不扣分、不会过期：没勾的留在当天清单，回看历史日期就是那天做了什么的流水账。
+   固定 1G/件：每天前 5 件走全额渠道（打勾就得 1 分），第 6 件起走普通渠道（受 50G 软上限）；
+   和签到一样不参与 ×2 翻倍，也不进日积月累之外的额外加成。 */
+var MISC_PTS=1;
+var MISC_FULL_FREE=5;   // 每天前 5 件全额；第 6 件起走普通渠道（受 50G 软上限，超出的部分五折）
+function miscOf(k){const d=getDay(k);if(!Array.isArray(d.misc))d.misc=[];return d.misc}
+function miscDoneCount(k){return miscOf(k).filter(m=>m.done).length}
+function miscDonePts(k){return miscDoneCount(k)*MISC_PTS}
+function addMisc(){
+  const el=document.getElementById('miscInput');if(!el)return;
+  const name=(el.value||'').trim();
+  if(!name){el.focus();return}
+  const list=miscOf(curDate);
+  list.push({id:uid(),n:name.slice(0,40),done:false,ts:Date.now()});
+  el.value='';touchDay(curDate);save();render();el.focus();
+}
+function toggleMisc(id){
+  const it=miscOf(curDate).find(m=>m.id===id);if(!it)return;
+  it.done=!it.done;touchDay(curDate);save();render();
+}
+function delMisc(id){
+  const d=getDay(curDate);d.misc=miscOf(curDate).filter(m=>m.id!==id);
+  touchDay(curDate);save();render();
+}
+function renderMisc(){
+  const box=document.getElementById('miscList');if(!box)return;
+  const list=miscOf(curDate);
+  const v=s=>escapeHtml(s==null?'':String(s));
+  if(!list.length){
+    box.innerHTML='<div class="pack-empty-tip">还没有杂事。<br>上面写一件小事，比如「取快递」「交物业费」，做完回来打勾就行</div>';
+  }else{
+    // 已做的前 5 件标「全额」（金色，与全站"不受软上限"的标记一致），第 6 件起按普通渠道计
+    let doneRank=0;
+    box.innerHTML=list.map(m=>{
+      const isDone=!!m.done, isFull=isDone&&doneRank<MISC_FULL_FREE;
+      if(isDone)doneRank++;
+      return '<div class="signin-row"><div class="signin-task">'
+        +taskRow({k:'misc-'+m.id,n:v(m.n),std:'',pts:MISC_PTS,full:isFull},isDone,'toggleMisc(\''+m.id+'\')')
+        +'</div><span class="pack-tools"><button class="danger" onclick="delMisc(\''+m.id+'\')" title="删除">🗑</button></span></div>';
+    }).join('');
+  }
+  const sumEl=document.getElementById('miscSum');
+  if(sumEl){
+    const done=miscDoneCount(curDate),total=list.length;
+    const over=Math.max(0,done-MISC_FULL_FREE);
+    if(!total)sumEl.innerHTML='<span class="pack-sum-chip">今天还没有杂事 · 做一件 +'+MISC_PTS+'G</span>';
+    else sumEl.innerHTML='<span class="pack-sum-chip'+(done===total?'':' warn')+'">已做 '+done+' / '+total+' 件 · 原始 +'+(done*MISC_PTS)+'G</span>'
+      +(done>MISC_FULL_FREE?'<span class="pack-sum-chip">前 '+MISC_FULL_FREE+' 件全额 · 其余 '+over+' 件受软上限</span>':'');
+  }
+}
+
 function renderSignin(){
   const box=document.getElementById('signinList');if(!box)return;
   const d=getDay(curDate),list=getSignins();
@@ -5961,8 +6145,25 @@ function addTodoTestData(){
 
 /* ============ 区块折叠 ============ */
 const COLLAPSE_KEY='lpCollapsedSections';
+const COLLAPSE_DEFAULT_KEY='lpCollapseDefaultsV1';
 function loadCollapsedSet(){try{return new Set(JSON.parse(localStorage.getItem(COLLAPSE_KEY)||'[]'))}catch(e){return new Set()}}
 function saveCollapsedSet(s){localStorage.setItem(COLLAPSE_KEY,JSON.stringify([...s]))}
+/* 首屏只留「当天要动的东西」：主线一、每日签到、杂事、扣分检测；
+   其余（主线二/三/四、每周任务、称重、商店、明细）默认收起，点标题即可展开。
+   只执行一次，之后完全听用户之前手动折叠的选择。 */
+function applyCollapseDefaults(){
+  try{if(localStorage.getItem(COLLAPSE_DEFAULT_KEY))return}catch(e){return}
+  const keep=['主线一','每日签到','杂事','扣分检测'];
+  const all=[...document.querySelectorAll('.section')];
+  const set=loadCollapsedSet();
+  document.querySelectorAll('#pageMain .section').forEach(sec=>{
+    const i=all.indexOf(sec); if(i<0)return;
+    const t=(sec.querySelector('h2')&&sec.querySelector('h2').textContent)||'';
+    if(!keep.some(k=>t.includes(k))&&!sec.classList.contains('collapsed'))set.add(i);
+  });
+  saveCollapsedSet(set);
+  try{localStorage.setItem(COLLAPSE_DEFAULT_KEY,'1')}catch(e){}
+}
 function toggleSection(sec){
   sec.classList.toggle('collapsed');
   const set=loadCollapsedSet();
@@ -5972,8 +6173,16 @@ function toggleSection(sec){
     if(sec.classList.contains('collapsed'))set.add(idx);else set.delete(idx);
     saveCollapsedSet(set);
   }
+  // 收起时跳过重建的板块，展开后立刻补一次渲染，避免看到旧数据
+  if(!sec.classList.contains('collapsed')){
+    if(sec.id==='detailSection')renderDetail();
+    else if(sec.querySelector('#scrubRow'))renderWeekly();
+    else if(sec.querySelector('#weightInfo'))renderWeight();
+    else if(sec.querySelector('#shopGrid'))renderShop();
+  }
 }
 function initCollapse(){
+  applyCollapseDefaults();
   const sections=[...document.querySelectorAll('.section')];
   const set=loadCollapsedSet();
   sections.forEach((sec,i)=>{
@@ -6017,14 +6226,25 @@ function switchPage(p){
 }
 
 /* ============ 主题切换 ============ */
-function getTheme(){return localStorage.getItem('lpTheme')||'light'}
+/* 两档循环：浅色 ↔ 深色（暖墨黑已移除，暗色只有一套）。 */
+const THEME_NEXT={light:'dark',dark:'light'};
+const THEME_ICON={light:'🌙',dark:'☀️'};
+const THEME_TIP={light:'切到深色',dark:'切回浅色'};
+function getTheme(){
+  const t=localStorage.getItem('lpTheme')||'light';
+  if(t==='blackred')return 'dark';   // 旧的三档主题名 → 迁移到唯一暗色
+  return THEME_NEXT[t]?t:'light';
+}
 function applyTheme(t){
-  document.documentElement.setAttribute('data-theme',t);
+  if(t==='blackred')t='dark';
+  if(!THEME_NEXT[t])t='light';
+  document.documentElement.setAttribute('data-theme',t==='light'?'light':'dark');
+  document.documentElement.removeAttribute('data-palette');
   const btn=document.getElementById('themeBtn');
-  if(btn)btn.textContent=t==='dark'?'☀️':'🌙';
+  if(btn){btn.textContent=THEME_ICON[t];btn.title=THEME_TIP[t]}
   localStorage.setItem('lpTheme',t);
 }
-function toggleTheme(){applyTheme(getTheme()==='dark'?'light':'dark')}
+function toggleTheme(){applyTheme(THEME_NEXT[getTheme()]||'light')}
 
 /* ============ 统计看板 ============ */
 function renderStatsPage(){
@@ -6067,7 +6287,7 @@ function renderStatsPage(){
   const bars=pts14.map((p,i)=>{
     const h=Math.max(2,p.v/maxV*(barH-padB-padT));
     const x=10+i*bw+2,y=barH-padB-h;
-    return `<rect x="${x}" y="${y}" width="${bw-4}" height="${h}" rx="2" fill="${p.v>0?'var(--skill)':'#4b5563'}"><title>${p.k}: ${p.v}G</title></rect>`+
+    return `<rect x="${x}" y="${y}" width="${bw-4}" height="${h}" rx="2" class="chart-bar${p.v>0?'':' zero'}" fill="${p.v>0?'var(--skill)':'#4b5563'}"><title>${p.k}: ${p.v}G</title></rect>`+
       (i%2===1?`<text x="${x+bw/2}" y="${barH-padB+14}" font-size="10" text-anchor="middle" fill="var(--muted)">${p.k.slice(8)}</text>`:'');
   }).join('');
   el.innerHTML=`
@@ -6137,11 +6357,11 @@ if(isAuthed()){
 
 <!-- 移动端底部导航栏：手机上常驻，单手即可切换三个页面 -->
 <nav class="tabbar" id="tabbar" aria-label="页面导航">
-  <button class="tab active" id="navMain" onclick="switchPage('main')"><span class="ti">📋</span><span>积分</span></button>
-  <button class="tab" id="navStats" onclick="switchPage('stats')"><span class="ti">📊</span><span>统计</span></button>
-  <button class="tab" id="navShop" onclick="switchPage('shop')"><span class="ti">🛒</span><span>兑换</span></button>
-  <button class="tab" id="navTodo" onclick="switchPage('todo')"><span class="ti">📝</span><span>便签</span></button>
-  <button class="tab" id="navPacks" onclick="switchPage('packs')"><span class="ti">🎫</span><span>次数</span></button>
+  <button class="tab active" id="navMain" onclick="switchPage('main')"><span class="ti" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5l2.5 5.2 5.7.8-4.1 4 1 5.7-5.1-2.8-5.1 2.8 1-5.7-4.1-4 5.7-.8z"/></svg></span><span>积分</span></button>
+  <button class="tab" id="navStats" onclick="switchPage('stats')"><span class="ti" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h16"/><path d="M7 20v-6M12 20v-9M17 20v-4"/></svg></span><span>统计</span></button>
+  <button class="tab" id="navShop" onclick="switchPage('shop')"><span class="ti" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5.5 8h13l-1 12h-11z"/><path d="M9 8a3 3 0 0 1 6 0"/></svg></span><span>兑换</span></button>
+  <button class="tab" id="navTodo" onclick="switchPage('todo')"><span class="ti" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h8l6 6v10H5z"/><path d="M13 4v6h6"/><path d="M8 14h7M8 17h5"/></svg></span><span>便签</span></button>
+  <button class="tab" id="navPacks" onclick="switchPage('packs')"><span class="ti" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v2a2 2 0 0 0 0 4v2a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-2a2 2 0 0 0 0-4z"/><path d="M9 7v10"/></svg></span><span>次数</span></button>
 </nav>
 </body>
 </html>
