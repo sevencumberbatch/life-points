@@ -1472,7 +1472,7 @@ function load(){try{const r=localStorage.getItem(KEY);if(r){DB=JSON.parse(r);
    背景：曾因手机 PWA/浏览器缓存了旧 index.html，导致统计区渲染异常（兑换记录"对不上"）。
    此后每次发布新版本递增 APP_VERSION；用户打开时若发现版本变化，提示完全关闭重开，
    确保跑的是最新代码，避免旧缓存残留造成同类显示问题。 */
-const APP_VERSION='2026-10-25-56';
+const APP_VERSION='2026-11-03-57';
 try{
   const lastVer=localStorage.getItem('lpVer');
   if(lastVer&&lastVer!==APP_VERSION){
@@ -1733,7 +1733,7 @@ let _sbLocalSig=localStorage.getItem('lpSbLocalSig')||'';
 /* -49：本机 ↔ 云端 余额对照（纯内存，零网络开销）
    背景：两端「对不上」时用户只能凭记忆比数字、凭猜定位。现在把两边余额与差额直接摆在设置区，
    并在不一致时于页面顶部常驻提示 —— 差多少、差在哪端、下一步点什么，全写在明面上。 */
-let _sbCloudBalCache=null,_sbCloudBalAt=0,_sbLastCheckAt=0,_sbLastCheckSavedAt=0;
+let _sbCloudBalCache=null,_sbCloudBalAt=0,_sbLastCheckAt=0,_sbLastCheckSavedAt=0,_sbCloudFresh=null;
 function lastCloudCheck(){return localStorage.getItem("lpLastCheck")||""}   // -49：最近一次「成功连上云端」的时间（探测即可，不要求有上传）
 function _sbSetCloudBal(v){try{if(v===null||v===undefined){_sbCloudBalCache=null;_sbCloudBalAt=0;return}var _n=Number(v);if(isFinite(_n)){_sbCloudBalCache=Math.round(_n*10)/10;_sbCloudBalAt=Date.now()}}catch(e){}}
 function _sbAgo(ms){try{if(ms<0)return"—";const s=Math.floor(ms/1000);if(s<15)return"刚刚";if(s<60)return s+" 秒前";const m=Math.floor(s/60);if(m<60)return m+" 分钟前";const h=Math.floor(m/60);if(h<24)return h+" 小时前";return Math.floor(h/24)+" 天前"}catch(e){return"—"}}
