@@ -1999,6 +1999,20 @@ function mergeDay(l,c){
   const ids=new Set(lt.map(t=>t&&t.id));
   (c.todos||[]).forEach(t=>{if(t&&!ids.has(t.id)){lt.push(t);ids.add(t.id)}});
   out.todos=lt;
+  // misc（杂事）：与 todos 同为按 id 并集，但杂事条目带勾选状态，同 id 时按条目 ts 取「最后改动者胜」，
+  // 否则一端勾选/取消永远传不过去（两端各显示各的、内容无法跨设备同步）。addMisc/toggleMisc 都会刷新 ts。
+  const lm=Array.isArray(out.misc)?out.misc:[];
+  const mIdx=new Map();
+  lm.forEach((x,_i)=>{if(x&&x.id)mIdx.set(x.id,_i)});
+  (c.misc||[]).forEach(m=>{
+    if(!m||!m.id)return;
+    const _i=mIdx.get(m.id);
+    if(_i===undefined){lm.push(m);mIdx.set(m.id,lm.length-1);return;}
+    const ex=lm[_i];const mt=Number(m.ts)||0,xt=Number(ex.ts)||0;
+    if(mt>xt){ex.done=!!m.done;ex.ts=mt;}
+    else if(mt===xt&&!ex.done&&m.done){ex.done=true;}
+  });
+  out.misc=lm;
   // wt（当天体重）：blankDay() 预置 null，同样不能只判 undefined —— 否则对端称的体重永远合不进来，
   // 而 isBlankDay()（hasWt）与 weightPtsToday() 都要看它。
   if(c.wt!==undefined&&c.wt!==null){
@@ -2043,7 +2057,7 @@ function tombFilterById(arr,tm){if(!Array.isArray(arr))return arr;return arr.fil
 function applyTombs(db,tm){
   if(!db||typeof db!=='object'||!tm)return db;
   const dd=(db.days&&typeof db.days==='object')?db.days:{};
-  Object.keys(dd).forEach(k=>{const day=dd[k];if(day&&Array.isArray(day.todos))day.todos=tombFilterById(day.todos,tm)});
+  Object.keys(dd).forEach(k=>{const day=dd[k];if(day&&Array.isArray(day.todos))day.todos=tombFilterById(day.todos,tm);if(day&&Array.isArray(day.misc))day.misc=tombFilterById(day.misc,tm)});
   ['weekTodos','monthTodos'].forEach(f=>{const m=db[f];if(!m||typeof m!=='object')return;Object.keys(m).forEach(k=>{if(Array.isArray(m[k]))m[k]=tombFilterById(m[k],tm)})});
   ['wheelLog','redeemLog'].forEach(f=>{if(Array.isArray(db[f]))db[f]=tombFilterById(db[f],tm)});
   if(Array.isArray(db.packs))db.packs=tombFilterById(db.packs,tm); // 次数包：删除靠墓碑传播，否则被删的包会被云端旧副本拉回来
@@ -5349,9 +5363,10 @@ function addMisc(){
 }
 function toggleMisc(id){
   const it=miscOf(curDate).find(m=>m.id===id);if(!it)return;
-  it.done=!it.done;touchDay(curDate);save();render();
+  it.done=!it.done;it.ts=Date.now();touchDay(curDate);save();render();
 }
 function delMisc(id){
+  tombAdd(id);  // 删除传播：否则并集合并会把云端旧副本拉回来
   const d=getDay(curDate);d.misc=miscOf(curDate).filter(m=>m.id!==id);
   touchDay(curDate);save();render();
 }
@@ -6348,6 +6363,15 @@ initCollapse();
 if(isAuthed()){
   initTodoSystem();
   render();initBackup();initCloud().then(()=>{repairAutoDupes();autoRedeemDaily();dataGuard(DB,'init')});
+  // 跨午夜自动补今日兑换：PWA/常驻标签页不会重新 load，autoRedeemDaily 只在打开时跑一次会漏掉当天。
+  // 每分钟比对日期，一旦跨天就补跑（幂等：当天已有记录则会跳过，不会重复扣 32G）。
+  (function(){
+    var last=todayKey();
+    setInterval(function(){
+      var t=todayKey();
+      if(t!==last){last=t;try{autoRedeemDaily()}catch(e){console.warn('[自动兑换] 日切补跑失败',e)}}
+    },60000);
+  })();
   initFocus();
 }else{
   showAuthGate();
