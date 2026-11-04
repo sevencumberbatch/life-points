@@ -210,6 +210,9 @@
   .row-float{position:fixed;z-index:900;pointer-events:none;font-size:var(--fs-3);font-weight:700;
     color:var(--gold);text-shadow:0 1px 4px rgba(0,0,0,.35);animation:rowFloat .9s ease-out forwards}
   .row-float.neg{color:var(--neg)}
+  .misc-link{margin-left:8px;background:none;border:none;padding:0;color:var(--gold);font-size:var(--fs-2);
+    font-weight:600;cursor:pointer;text-decoration:underline;text-underline-offset:2px}
+  .misc-link:hover{color:var(--gold-2)}
   @keyframes rowFloat{0%{opacity:0;transform:translate(-50%,0) scale(.9)}
     15%{opacity:1}100%{opacity:0;transform:translate(-50%,-26px) scale(1)}}
   /* 统计柱状图：没有记录的日期用主题边框色，避免写死灰色 */
@@ -467,12 +470,13 @@
   .todo-item.done .box::after{content:"";position:absolute;left:5px;top:1px;width:5px;height:10px;border:solid #fff;border-width:0 2px 2px 0;transform:rotate(45deg)}
   .todo-item .todo-text{flex:1;font-size:var(--fs-4);cursor:pointer}
   .todo-item.done .todo-text{color:var(--muted);text-decoration:line-through}
-  .todo-item .del-btn{background:none;border:none;color:var(--muted);cursor:pointer;font-size:18px;padding:2px 6px;opacity:0;transition:opacity .15s;line-height:1}
-  .todo-item:hover .del-btn{opacity:.6}
+  .todo-item .del-btn{background:none;border:none;color:var(--muted);cursor:pointer;font-size:18px;padding:2px 6px;opacity:.45;transition:opacity .15s;line-height:1}
+  .todo-item:hover .del-btn{opacity:.85}
   .todo-item .del-btn:hover{opacity:1;color:var(--neg)}
   .todo-footer{display:flex;justify-content:space-between;align-items:center;margin-top:8px;font-size:var(--fs-2);color:var(--muted)}
   .todo-clear-btn{background:var(--panel);border:1px solid var(--border);border-radius:6px;padding:3px 8px;cursor:pointer;font-size:var(--fs-2);color:var(--muted)}
   .todo-clear-btn:hover{color:var(--neg);border-color:var(--neg)}
+  .todo-foot-acts{display:inline-flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
 
   /* 次数包（疗程/储值次数：买了多少次、用了几次、还剩几次） */
   /* 顶部工具条：搜索 + 房间 + 状态 + 查询（同一行；输入后按查询/回车才生效，手机上打字时列表不跳） */
@@ -629,6 +633,11 @@
   /* 便签 - 滚动来源标记 */
   .todo-item .origin-tag{font-size:var(--fs-1);color:var(--muted);background:var(--hover);padding:1px 6px;border-radius:6px;margin-left:4px;white-space:nowrap}
   .todo-item .origin-tag:hover{color:var(--text)}
+  /* 便签里的杂事记录：只读的完成记录，用暖金勾标记，不参与待办的勾选/删除 */
+  .todo-item.misc-rec .box{background:var(--chk);border-color:var(--chk)}
+  .todo-item.misc-rec .todo-text{color:var(--text);text-decoration:none}
+  .todo-item .misc-tag{color:var(--gold);background:var(--mark-bg)}
+  .todo-footer .misc-foot{color:var(--muted)}
   .todo-item .ts-tag{font-size:var(--fs-1);color:var(--muted);margin-left:4px;white-space:nowrap}
   .todo-item .ts-tag.done-ts{color:var(--muted)}
 
@@ -960,7 +969,7 @@
   <!-- 杂事：零碎小事，做一件 +1G -->
   <div class="section">
     <h2><span class="ic">🧩</span>杂事 · 做一件 +1G</h2>
-    <div class="sub">零碎小事写进来，做完打勾就 +1G · 每天前 5 件全额，第 6 件起受软上限 · 不做不扣分</div>
+    <div class="sub">零碎小事写进来，做完打勾就 +1G，并自动记入「便签」页 · 每天前 5 件全额，第 6 件起受软上限 · 不做不扣分</div>
     <div class="pack-input-row">
       <input type="text" id="miscInput" placeholder="要做什么？如：取快递 / 交物业费" maxlength="40" onkeydown="if(event.key==='Enter')addMisc()">
       <button onclick="addMisc()">添加</button>
@@ -1079,7 +1088,7 @@
     <!-- 日便签 -->
     <div class="section" id="todoDailySection">
       <h2><span class="ic">📝</span>日便签 · 每日待办</h2>
-      <div class="sub">未完成自动滚动到次日 · 切换日期查看不同日的待办</div>
+      <div class="sub">未完成自动滚动到次日 · 切换日期查看不同日的待办 · 做完的杂事会自动记成当日记录</div>
       <div class="todo-nav">
         <button onclick="shiftTodoDay(-1)">‹</button>
         <input type="date" id="todoDatePicker" onchange="onTodoDatePick(this.value)">
@@ -1158,6 +1167,7 @@
     </div>
     <div class="footer-acts" style="margin-top:16px">
       <button onclick="exportExcel()">导出Excel（积分+便签）</button>
+      <button class="danger" onclick="clearAllTodoPages()">清空全部便签</button>
     </div>
   </div>
 
@@ -4262,7 +4272,7 @@ function dayEarnedLines(k){
   if(gd>0)add('工间操 ×'+gd,wadj(gd*GJC_PTS,null,k),'主线一·减脂攻坚');
   if(gd>=GJC_CUPS)add('工间操4次全勤',wadj(GJC_COMBO_PTS,null,k),'主线一·减脂攻坚');
   // 杂事：做完的每件小事各 +1G，逐条进「日常任务」列，相当于当天做了什么的流水
-  miscOf(k).filter(m=>m.done).forEach(m=>add('🧩 '+m.n,MISC_PTS,'杂事'));
+  miscOf(k).filter(m=>m.done).forEach(m=>add('🧩 杂事 · '+m.n,MISC_PTS,'杂事'));
   return lines;
 }
 function dayContribution(k){
@@ -5393,8 +5403,19 @@ function renderMisc(){
     const over=Math.max(0,done-MISC_FULL_FREE);
     if(!total)sumEl.innerHTML='<span class="pack-sum-chip">今天还没有杂事 · 做一件 +'+MISC_PTS+'G</span>';
     else sumEl.innerHTML='<span class="pack-sum-chip'+(done===total?'':' warn')+'">已做 '+done+' / '+total+' 件 · 原始 +'+(done*MISC_PTS)+'G</span>'
-      +(done>MISC_FULL_FREE?'<span class="pack-sum-chip">前 '+MISC_FULL_FREE+' 件全额 · 其余 '+over+' 件受软上限</span>':'');
+      +(done>MISC_FULL_FREE?'<span class="pack-sum-chip">前 '+MISC_FULL_FREE+' 件全额 · 其余 '+over+' 件受软上限</span>':'')
+      +(done>0?'<button class="misc-link" onclick="jumpMiscRecords()">已记入便签 →</button>':'');
   }
+}
+
+/* 杂事做完的记录会自动出现在「便签」页的日便签里；这里给一个直达入口。 */
+function jumpMiscRecords(){
+  todoViewDate=todayKey();
+  switchPage('todo');
+  const sec=document.getElementById('todoDailySection');
+  if(!sec)return;
+  if(sec.classList.contains('collapsed'))toggleSection(sec);
+  sec.scrollIntoView({behavior:'smooth',block:'start'});
 }
 
 function renderSignin(){
@@ -5907,13 +5928,25 @@ function renderTodos(){
       <div class="todo-text" onclick="toggleTodo(${t.id})">${escapeHtml(t.text)}${t.origin?`<span class="origin-tag" title="从 ${t.origin} 滚动过来">↻ ${t.origin}</span>`:''}</div>
       <button class="del-btn" onclick="deleteTodo(${t.id})">×</button>
     </div>`
-  ).join(''):'<div class="empty">当日暂无待办，添加一个吧</div>';
-  document.getElementById('todoList').innerHTML=html;
+  ).join(''):'';
+  // 杂事做完后自动成为当天的「记录」，只读展示在日便签里（不能勾选或删除）
+  const miscDone=(miscOf(todoViewDate)||[]).filter(m=>m.done);
+  const miscHtml=miscDone.map(m=>
+    `<div class="todo-item misc-rec done">
+      <div class="box" aria-hidden="true"></div>
+      <div class="todo-text">${escapeHtml(m.n)}<span class="origin-tag misc-tag">🧩 杂事 · +${MISC_PTS}G</span></div>
+    </div>`
+  ).join('');
+  document.getElementById('todoList').innerHTML=(html+miscHtml)||'<div class="empty">当日暂无待办，添加一个吧</div>';
   const doneCnt=todos.filter(t=>t.done).length;
-  document.getElementById('todoFooter').innerHTML=todos.length?
-    `<span>已完成 ${doneCnt}/${todos.length}</span>`+
-    (doneCnt>0?`<button class="todo-clear-btn" onclick="clearDoneTodos()">清除已完成</button>`:'')
-    :'';
+  document.getElementById('todoFooter').innerHTML=
+    (todos.length?`<span>已完成 ${doneCnt}/${todos.length}</span>`+
+      `<span class="todo-foot-acts">`+
+        (doneCnt>0?`<button class="todo-clear-btn" onclick="clearDoneTodos()">清除已完成</button>`:'')+
+        `<button class="todo-clear-btn" onclick="clearDailyTodos()">清空当日</button>`+
+      `</span>`
+      :'')
+    +(miscDone.length?`<span class="misc-foot">🧩 杂事记录 ${miscDone.length} 条</span>`:'');
 }
 
 /* --- 渲染周便签 --- */
@@ -5933,7 +5966,10 @@ function renderWeekTodos(){
   const doneCnt=todos.filter(t=>t.done).length;
   document.getElementById('weekTodoFooter').innerHTML=todos.length?
     `<span>已完成 ${doneCnt}/${todos.length}</span>`+
-    (doneCnt>0?`<button class="todo-clear-btn" onclick="clearDoneWeekTodos()">清除已完成</button>`:'')
+    `<span class="todo-foot-acts">`+
+      (doneCnt>0?`<button class="todo-clear-btn" onclick="clearDoneWeekTodos()">清除已完成</button>`:'')+
+      `<button class="todo-clear-btn" onclick="clearWeekTodos()">清空本周</button>`+
+    `</span>`
     :'';
 }
 
@@ -5954,7 +5990,10 @@ function renderMonthTodos(){
   const doneCnt=todos.filter(t=>t.done).length;
   document.getElementById('monthTodoFooter').innerHTML=todos.length?
     `<span>已完成 ${doneCnt}/${todos.length}</span>`+
-    (doneCnt>0?`<button class="todo-clear-btn" onclick="clearDoneMonthTodos()">清除已完成</button>`:'')
+    `<span class="todo-foot-acts">`+
+      (doneCnt>0?`<button class="todo-clear-btn" onclick="clearDoneMonthTodos()">清除已完成</button>`:'')+
+      `<button class="todo-clear-btn" onclick="clearMonthTodos()">清空本月</button>`+
+    `</span>`
     :'';
 }
 
@@ -5983,6 +6022,16 @@ function renderTodoHistory(){
         if(search&&!t.text.toLowerCase().includes(search))return;
         rows.push({date:k,text:t.text,done:t.done,scope:'日',scopeColor:'#7688a4'})
       });
+      // 杂事的完成记录也属于当天记录，一并进历史查询
+      if(status!=='undone'){
+        const misc=(DB.days[k]&&Array.isArray(DB.days[k].misc))?DB.days[k].misc:[];
+        misc.filter(m=>m.done).forEach(m=>{
+          if(dateFrom&&k<dateFrom)return;
+          if(dateTo&&k>dateTo)return;
+          if(search&&!String(m.n||'').toLowerCase().includes(search))return;
+          rows.push({date:k,text:m.n,done:true,scope:'杂事',scopeColor:'#c8a05a'})
+        });
+      }
     });
   }
   // 周便签
@@ -6119,6 +6168,52 @@ function clearDoneMonthTodos(){
   (DB.monthTodos[todoViewMonth]||[]).forEach(t=>{if(t&&t.done)tombAdd(t.id)});
   DB.monthTodos[todoViewMonth]=(DB.monthTodos[todoViewMonth]||[]).filter(t=>!t.done);
   save();renderMonthTodos();renderTodoHistory();
+}
+
+/* --- 清空便签（单个范围 / 全部） --- */
+function clearDailyTodos(){
+  const todos=getTodos(todoViewDate);
+  if(!todos.length)return;
+  if(!confirm('清空 '+todoViewDate+' 的日便签？共 '+todos.length+' 条，删除后无法恢复。杂事记录不受影响。'))return;
+  todos.forEach(t=>tombAdd(t.id));
+  getDay(todoViewDate).todos=[];
+  touchDay(todoViewDate);save();renderTodos();renderTodoHistory();
+}
+function clearWeekTodos(){
+  const todos=getWeekTodos(todoViewWeek);
+  if(!todos.length)return;
+  if(!confirm('清空本周便签（'+todoViewWeek+' 起）？共 '+todos.length+' 条，删除后无法恢复。'))return;
+  todos.forEach(t=>tombAdd(t.id));
+  DB.weekTodos[todoViewWeek]=[];
+  save();renderWeekTodos();renderTodoHistory();
+}
+function clearMonthTodos(){
+  const todos=getMonthTodos(todoViewMonth);
+  if(!todos.length)return;
+  if(!confirm('清空本月便签（'+todoViewMonth+'）？共 '+todos.length+' 条，删除后无法恢复。'))return;
+  todos.forEach(t=>tombAdd(t.id));
+  DB.monthTodos[todoViewMonth]=[];
+  save();renderMonthTodos();renderTodoHistory();
+}
+/* 一次清掉日 / 周 / 月所有便签；杂事记录属于杂事模块，不在这里删 */
+function clearAllTodoPages(){
+  let n=0;
+  Object.keys(DB.days||{}).forEach(k=>{const d=DB.days[k];if(d&&Array.isArray(d.todos))n+=d.todos.length});
+  Object.keys(DB.weekTodos||{}).forEach(k=>{n+=(DB.weekTodos[k]||[]).length});
+  Object.keys(DB.monthTodos||{}).forEach(k=>{n+=(DB.monthTodos[k]||[]).length});
+  if(!n){alert('便签已经是空的。');return}
+  if(!confirm('清空全部便签？共 '+n+' 条（日 / 周 / 月），删除后无法恢复。杂事记录不受影响。'))return;
+  Object.keys(DB.days||{}).forEach(k=>{
+    const d=DB.days[k];
+    if(d&&Array.isArray(d.todos)&&d.todos.length){
+      d.todos.forEach(t=>tombAdd(t.id));
+      d.todos=[];touchDay(k);
+    }
+  });
+  Object.keys(DB.weekTodos||{}).forEach(k=>{(DB.weekTodos[k]||[]).forEach(t=>tombAdd(t.id))});
+  Object.keys(DB.monthTodos||{}).forEach(k=>{(DB.monthTodos[k]||[]).forEach(t=>tombAdd(t.id))});
+  DB.weekTodos={};DB.monthTodos={};
+  save();renderAllTodos();alert('已清空 '+n+' 条便签。');
 }
 function shiftTodoMonth(n){
   const[y,m]=todoViewMonth.split('-').map(Number);
